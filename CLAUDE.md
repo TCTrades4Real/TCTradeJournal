@@ -95,7 +95,7 @@ r_unit       = entry_price - initial_stop                  (30-min based)
 
 ### Exit Conditions (checked in order, first match wins)
 - [0] `bar_low <= initial_stop` → exit at `initial_stop - SLIPPAGE` (reason: `neg_r`)
-- [1] `bar_low <= highest_slow_low * 0.99` AND `highest_slow_low * 0.99 > entry_price + 0.25` → exit at `highest_slow_low * 0.99 - SLIPPAGE` (reason: `trail_slow`)
+- [2] `bar_low <= highest_slow_low * 0.99` AND `highest_slow_low * 0.99 > entry_price + 0.25` → exit at `highest_slow_low * 0.99 - SLIPPAGE` (reason: `trail_slow`)
   - `highest_slow_low` = running max of all fully-closed 30-min bar lows since entry
 
 ### Warmup

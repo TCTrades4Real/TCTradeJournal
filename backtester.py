@@ -422,7 +422,7 @@ def run_strategy(
             if bar_low <= initial_stop:
                 exit_price = initial_stop - SLIPPAGE
                 reason     = 'neg_r'
-            # [1] Slow trailing stop — only when > entry + 0.25
+            # [2] Slow trailing stop — only when > entry + 0.25
             elif bar_low <= slow_trail and slow_trail > entry_price + 0.25:
                 exit_price = slow_trail - SLIPPAGE
                 reason     = 'trail_slow'
@@ -599,13 +599,26 @@ def print_rules():
     print(f'Fill: breakout level + ${SLIPPAGE:.2f} slippage')
     print()
     print(sep)
-    print('EXIT CONDITIONS  (first met wins)')
+    print('EXIT CONDITIONS  (checked in order, first match wins)')
     print(sep)
-    print('1. Bar low ≤ initial_stop  →  hard stop')
-    print('2. Bar low ≤ highest_slow_low × 0.99  AND  highest_slow_low × 0.99 > entry_price + 0.25  →  trail_slow')
-    print('   highest_slow_low = running max of all fully-closed 30-min bar lows since entry')
-    print('   initial_stop = prev 30-min bar low × 0.99')
-    print(f'Sizing: shares = floor(${RISK_PER_TRADE:.0f} / risk-per-share)')
+    print('1. HARD STOP    bar low ≤ initial_stop')
+    print('                exit at initial_stop − slippage  [neg_r]')
+    print('                initial_stop = prev 30-min bar low × 0.99  (set at entry, never moves)')
+    print()
+    print('2. TRAIL SLOW   bar low ≤ highest_slow_low × 0.99')
+    print('                AND that trail level is > entry price + $0.25 (only when profitable)')
+    print('                exit at (highest_slow_low × 0.99) − slippage  [trail_slow]')
+    print('                highest_slow_low = running max of all fully-closed 30-min bar lows since entry')
+    print()
+    print('   EOD: any open position force-exited at session close')
+    print(sep)
+    print('POSITION SIZING')
+    print(sep)
+    print(f'   Risk per trade : ${RISK_PER_TRADE:.0f}')
+    print( '   R-unit         : entry price − initial_stop')
+    print(f'   Shares         : floor(${RISK_PER_TRADE:.0f} / R-unit)')
+    print(f'   Entry fill     : breakout level + ${SLIPPAGE:.2f} slippage')
+    print(f'   Exit fill      : exit level − ${SLIPPAGE:.2f} slippage')
     print(sep)
 
 # ── Main ──────────────────────────────────────────────────────────────────────
