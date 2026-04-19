@@ -1,0 +1,744 @@
+<!-- Serve with: python -m http.server 8000  (run from dashboard/ folder) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Month Detail</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0f0f;
+      color: #e0e0e0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 16px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    @media (min-width: 640px)  { body { padding: 24px; } }
+    @media (min-width: 1024px) { body { padding: 28px 32px; } }
+
+    /* ── Header ─────────────────────────────────────── */
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+
+    .header-row h1 {
+      flex: 1;
+    }
+
+    .header-row .badge-group {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .header-row .nav-controls {
+      flex: 1;
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    /* ── Breadcrumb ──────────────────────────────────── */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      color: #9ca3af;
+    }
+    .breadcrumb a {
+      color: #9ca3af;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .breadcrumb a:hover { color: #f0f0f0; }
+    .breadcrumb-sep { opacity: 0.4; }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 400;
+      color: #ffffff;
+    }
+
+    .badge-group {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .month-badge {
+      font-size: 20px;
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: 0.05em;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge-pos  { background: rgb(2, 53, 37);  border-color: rgb(3, 98, 68);   color: #ffffff; }
+    .badge-neg  { background: rgb(77, 13, 13); border-color: rgb(143, 25, 25); color: #ffffff; }
+    .badge-zero { background: #1e1e1e; border-color: #333;    color: #ffffff; }
+
+    .sim-badge {
+      font-size: 20px;
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: 0.05em;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px dashed transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      opacity: 0.75;
+    }
+    .sim-badge-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      opacity: 0.7;
+      text-transform: uppercase;
+    }
+    .sim-pos  { background: rgb(1, 30, 21); border-color: rgb(3, 98, 68);   color: #ffffff; }
+    .sim-neg  { background: rgb(44, 8, 8);  border-color: rgb(143, 25, 25); color: #ffffff; }
+    .sim-zero { background: #161616; border-color: #444;    color: #9ca3af; }
+
+
+    .nav-btn {
+      background: transparent;
+      border: 1px solid #333;
+      color: #ffffff;
+      border-radius: 6px;
+      width: 40px;
+      height: 40px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-btn:hover { background: #1e1e1e; }
+
+    /* ── Month calendar table ────────────────────────── */
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .month-cal {
+      width: 100%;
+      min-width: 700px;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .month-cal th {
+      color: #9ca3af;
+      font-size: 13px;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      text-align: center;
+      padding: 8px 4px;
+      border: 1px solid rgb(161, 161, 170);
+    }
+    .month-cal th.total-col { color: #c0c0c0; }
+
+    .month-cal td {
+      border: 1px solid rgb(161, 161, 170);
+      vertical-align: top;
+      padding: 4px;
+      height: 150px;
+    }
+
+    /* Day cell content */
+    .cell-inner {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .cell-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .cell-top-row .cell-link-icon {
+      color: #ffffff;
+      opacity: 0.7;
+      flex-shrink: 0;
+      transition: opacity 0.15s;
+    }
+    .cell-top-row .cell-link-icon:hover { opacity: 1; }
+
+    .cell-day-num {
+      font-size: 14px;
+      font-weight: 300;
+      color: #ffffff;
+    }
+
+    .cell-pnl {
+      font-size: 20px;
+      font-weight: 400;
+      color: #fff;
+      margin: auto 0;
+    }
+
+    .cell-trades {
+      font-size: 14px;
+      font-weight: 400;
+      color: #fff;
+      padding-bottom: 5px;
+    }
+
+    /* Week total column */
+    .cell-total {
+      vertical-align: middle;
+    }
+
+    .cell-total-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      height: 100%;
+      gap: 4px;
+    }
+
+    /* Cell state colors */
+    .mc-empty     { background: #0a0a0a; }
+    .mc-nodata    { background: #111111; }
+    .mc-win       { background: rgb(2, 53, 37); }
+    .mc-loss      { background: rgb(77, 13, 13); }
+    .mc-week-win  { background: rgb(2, 42, 29); }
+    .mc-week-loss { background: rgb(60, 10, 10); }
+    .mc-week-zero { background: #1a1a1a; }
+
+    .mc-nodata.mc-weekend,
+    .mc-empty.mc-weekend { background: rgb(41, 37, 36); }
+
+    /* ── Cell split divider ─────────────────────────── */
+    .cell-divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.15);
+      margin: 4px 0;
+    }
+
+    .cell-sim {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      border-radius: 0 0 6px 6px;
+      padding: 3px 6px 2px;
+    }
+    .cell-sim-green { background: rgb(1, 30, 21); }
+    .cell-sim-red   { background: rgb(44, 8, 8); }
+
+    .cell-sim-pnl {
+      font-size: 16px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.55);
+    }
+
+    .cell-sim-trades {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      padding-bottom: 3px;
+    }
+
+    /* ── Error state ─────────────────────────────────── */
+    .error { color: #f87171; padding: 20px; }
+
+    /* ── Annual view ─────────────────────────────────── */
+    .annual-view {
+      margin-top: 32px;
+    }
+
+    .annual-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    @media (min-width: 640px)  { .annual-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (min-width: 1024px) { .annual-grid { grid-template-columns: repeat(4, 1fr); } }
+
+    .mini-card { background: #0f0f0f; }
+
+    .mini-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      gap: 6px;
+    }
+
+    .mini-label {
+      font-size: 14px;
+      font-weight: 400;
+      color: #e0e0e0;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .mini-badge {
+      font-size: 14px;
+      font-weight: 400;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      line-height: 1;
+    }
+    .mini-badge-pos  { background: rgb(2, 53, 37);  color: #fafaf9; border-color: rgb(3, 98, 68); }
+    .mini-badge-neg  { background: rgb(77, 13, 13); color: #fafaf9; border-color: rgb(143, 25, 25); }
+    .mini-badge-zero { background: #2a2a2a; color: #6b7280; border-color: #3f3f3f; }
+
+    .mini-expand-btn {
+      background: #000000;
+      border: 1px solid #3f3f3f;
+      color: #9ca3af;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 0;
+      border-radius: 6px;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .mini-expand-btn:hover { background: #2a2a2a; color: #e0e0e0; }
+    .mini-expand-btn svg { width: 14px; height: 14px; display: block; }
+
+    .ann-cal {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    .ann-cal th {
+      color: #9ca3af;
+      font-size: 10px;
+      font-weight: 400;
+      text-align: center;
+      padding: 4px 2px;
+      border: 1px solid rgb(161, 161, 170);
+    }
+    .ann-cal td {
+      border: 1px solid rgb(161, 161, 170);
+      text-align: center;
+      padding: 4px 2px;
+      font-size: 14px;
+      color: #e0e0e0;
+      height: 26px;
+    }
+    .ann-empty              { background: rgb(41, 37, 36); }
+    .ann-nodata             { background: transparent; }
+    .ann-nodata.ann-weekend { background: rgb(41, 37, 36); }
+    .ann-win  { background: rgb(2, 53, 37);  color: #fafaf9; }
+    .ann-loss { background: rgb(77, 13, 13); color: #fafaf9; }
+  </style>
+</head>
+<body>
+
+<div class="breadcrumb">
+  <a href="index.html">Calendar</a>
+  <span class="breadcrumb-sep">›</span>
+  <span id="breadcrumbMonth"></span>
+</div>
+
+<div class="header">
+  <div class="header-row">
+    <h1 id="pageTitle"></h1>
+    <div class="badge-group">
+      <span class="month-badge" id="pageBadge"></span>
+      <span class="sim-badge"   id="simBadge"></span>
+    </div>
+    <div class="nav-controls">
+      <button class="nav-btn" id="prevBtn" title="Previous month">&#8592;</button>
+      <button class="nav-btn" id="nextBtn" title="Next month">&#8594;</button>
+    </div>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table class="month-cal" id="monthCal"></table>
+</div>
+
+<div class="annual-view" id="annualView"></div>
+
+<script>
+  const MONTHS = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+  ];
+
+  let allData = {};
+  let btData  = {};   // backtest_results.json  { "YYYY-MM-DD": {trades, pnl} }
+  let curYear, curMonth;
+
+  function fmtDollars(abs) {
+    return abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function fmtBadge(pnl) {
+    const sign = pnl >= 0 ? '' : '-';
+    return `${sign}$${fmtDollars(Math.abs(pnl))}`;
+  }
+
+  function navigate(year, month) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('year', year);
+    url.searchParams.set('month', month);
+    window.history.pushState({}, '', url);
+    curYear  = year;
+    curMonth = month;
+    render();
+  }
+
+  function render() {
+    const yearStr  = String(curYear);
+    const monthStr = String(curMonth);
+    const yearData  = allData[yearStr] || {};
+    const monthData = yearData[monthStr] || { total: 0, trades: 0, days: {} };
+    const total     = monthData.total || 0;
+    const hasTrades = Object.keys(monthData.days).length > 0;
+
+    document.title = `${MONTHS[curMonth - 1]} ${curYear}`;
+    document.getElementById('pageTitle').textContent = `${MONTHS[curMonth - 1]}, ${curYear}`;
+    document.getElementById('breadcrumbMonth').textContent = `${MONTHS[curMonth - 1]} ${curYear}`;
+
+    const badge = document.getElementById('pageBadge');
+    badge.className = 'month-badge ' + (!hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg');
+    badge.innerHTML = `<span class="sim-badge-label">Real</span>${fmtBadge(total)}`;
+
+    // Compute monthly backtest total from btData
+    let simTotal = 0, simHasData = false;
+    const daysInMonthCount = new Date(curYear, curMonth, 0).getDate();
+    for (let d = 1; d <= daysInMonthCount; d++) {
+      const key = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      if (btData[key]) { simTotal += btData[key].pnl; simHasData = true; }
+    }
+    simTotal = Math.round(simTotal * 100) / 100;
+    const simBadge = document.getElementById('simBadge');
+    simBadge.className = 'sim-badge ' + (!simHasData ? 'sim-zero' : simTotal >= 0 ? 'sim-pos' : 'sim-neg');
+    simBadge.innerHTML = `<span class="sim-badge-label">Sim</span>${fmtBadge(simTotal)}`;
+
+    /* Build table */
+    const cal = document.getElementById('monthCal');
+    cal.innerHTML = '';
+
+    /* thead */
+    const thead = document.createElement('thead');
+    const hrow  = document.createElement('tr');
+    ['SUN','MON','TUE','WED','THU','FRI','SAT','TOTAL'].forEach((d, i) => {
+      const th = document.createElement('th');
+      th.textContent = d;
+      if (i === 7) th.className = 'total-col';
+      hrow.appendChild(th);
+    });
+    thead.appendChild(hrow);
+    cal.appendChild(thead);
+
+    /* tbody */
+    const firstDow    = new Date(curYear, curMonth - 1, 1).getDay();
+    const daysInMonth = new Date(curYear, curMonth, 0).getDate();
+    const numRows     = Math.ceil((firstDow + daysInMonth) / 7);
+    const tbody       = document.createElement('tbody');
+    let dayNum = 1;
+
+    for (let row = 0; row < numRows; row++) {
+      const tr = document.createElement('tr');
+      let weekPnl     = 0;
+      let weekTrades  = 0;
+      let weekSimPnl  = 0;
+      let weekSimTrades = 0;
+
+      for (let col = 0; col < 7; col++) {
+        const cellIndex = row * 7 + col;
+        const td = document.createElement('td');
+        const isWeekend = col === 0 || col === 6;
+
+        if (cellIndex < firstDow || dayNum > daysInMonth) {
+          td.className = 'mc-empty' + (isWeekend ? ' mc-weekend' : '');
+        } else {
+          const dayData = monthData.days[String(dayNum)];
+          if (!dayData) {
+            td.className = 'mc-nodata' + (isWeekend ? ' mc-weekend' : '');
+            const inner = document.createElement('div');
+            inner.className = 'cell-inner';
+            const numEl = document.createElement('div');
+            numEl.className = 'cell-day-num';
+            numEl.textContent = dayNum;
+            inner.appendChild(numEl);
+            td.appendChild(inner);
+          } else {
+            td.className = dayData.pnl >= 0 ? 'mc-win' : 'mc-loss';
+            weekPnl    += dayData.pnl;
+            weekTrades += dayData.trades;
+
+            const inner = document.createElement('div');
+            inner.className = 'cell-inner';
+
+            const topRow = document.createElement('div');
+            topRow.className = 'cell-top-row';
+
+            const numEl = document.createElement('div');
+            numEl.className = 'cell-day-num';
+            numEl.textContent = dayNum;
+
+            const iconEl = document.createElement('a');
+            iconEl.className = 'cell-link-icon';
+            iconEl.href = `day.html?year=${curYear}&month=${curMonth}&day=${dayNum}`;
+            iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M8 8h8v8"></path><path d="m8 16 8-8"></path></svg>`;
+
+            topRow.appendChild(numEl);
+            topRow.appendChild(iconEl);
+
+            const pnlEl = document.createElement('div');
+            pnlEl.className = 'cell-pnl';
+            pnlEl.textContent = fmtBadge(dayData.pnl);
+
+            const trdEl = document.createElement('div');
+            trdEl.className = 'cell-trades';
+            trdEl.textContent = `Trades ${dayData.trades}`;
+
+            inner.appendChild(topRow);
+            inner.appendChild(pnlEl);
+            inner.appendChild(trdEl);
+
+            // ── Sim half ──────────────────────────────────
+            const dateKey = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+            const bt = btData[dateKey];
+            if (bt) { weekSimPnl += bt.pnl; weekSimTrades += bt.trades; }
+
+            const divider = document.createElement('hr');
+            divider.className = 'cell-divider';
+            inner.appendChild(divider);
+
+            const simEl = document.createElement('div');
+            const simColor = bt ? (bt.pnl >= 0 ? 'cell-sim-green' : 'cell-sim-red') : '';
+            simEl.className = ('cell-sim ' + simColor).trim();
+
+            const simPnlEl = document.createElement('div');
+            simPnlEl.className = 'cell-sim-pnl';
+            simPnlEl.textContent = bt ? fmtBadge(bt.pnl) : '—';
+
+            const simTrdEl = document.createElement('div');
+            simTrdEl.className = 'cell-sim-trades';
+            simTrdEl.textContent = bt ? `Sim ${bt.trades}` : 'Sim —';
+
+            simEl.appendChild(simPnlEl);
+            simEl.appendChild(simTrdEl);
+            inner.appendChild(simEl);
+
+            td.appendChild(inner);
+          }
+          dayNum++;
+        }
+        tr.appendChild(td);
+      }
+
+      /* Week total cell */
+      const totalTd = document.createElement('td');
+      totalTd.className = 'cell-total ' +
+        (weekTrades === 0 ? 'mc-week-zero' : weekPnl >= 0 ? 'mc-week-win' : 'mc-week-loss');
+
+      if (weekTrades > 0) {
+        const inner = document.createElement('div');
+        inner.className = 'cell-total-inner';
+
+        const pnlEl = document.createElement('div');
+        pnlEl.className = 'cell-pnl';
+        pnlEl.textContent = fmtBadge(weekPnl);
+
+        const trdEl = document.createElement('div');
+        trdEl.className = 'cell-trades';
+        trdEl.textContent = `Trades ${weekTrades}`;
+
+        inner.appendChild(pnlEl);
+        inner.appendChild(trdEl);
+
+        if (weekSimTrades > 0) {
+          const wDivider = document.createElement('hr');
+          wDivider.className = 'cell-divider';
+          inner.appendChild(wDivider);
+
+          const wSimEl = document.createElement('div');
+          wSimEl.className = 'cell-sim ' + (weekSimPnl >= 0 ? 'cell-sim-green' : 'cell-sim-red');
+
+          const wSimPnlEl = document.createElement('div');
+          wSimPnlEl.className = 'cell-sim-pnl';
+          wSimPnlEl.textContent = fmtBadge(weekSimPnl);
+
+          const wSimTrdEl = document.createElement('div');
+          wSimTrdEl.className = 'cell-sim-trades';
+          wSimTrdEl.textContent = `Sim ${weekSimTrades}`;
+
+          wSimEl.appendChild(wSimPnlEl);
+          wSimEl.appendChild(wSimTrdEl);
+          inner.appendChild(wSimEl);
+        }
+
+        totalTd.appendChild(inner);
+      }
+      tr.appendChild(totalTd);
+      tbody.appendChild(tr);
+    }
+
+    cal.appendChild(tbody);
+    buildAnnualView();
+  }
+
+  function buildAnnualView() {
+    const yearData  = allData[String(curYear)] || {};
+    const container = document.getElementById('annualView');
+    container.innerHTML = '';
+    const grid = document.createElement('div');
+    grid.className = 'annual-grid';
+    for (let m = 1; m <= 12; m++) {
+      const monthData = yearData[String(m)] || { total: 0, trades: 0, days: {} };
+      grid.appendChild(buildMiniCard(curYear, m, monthData));
+    }
+    container.appendChild(grid);
+  }
+
+  function buildMiniCard(year, month, monthData) {
+    const card = document.createElement('div');
+    card.className = 'mini-card';
+
+    const header = document.createElement('div');
+    header.className = 'mini-header';
+
+    const label = document.createElement('span');
+    label.className = 'mini-label';
+    label.textContent = `${MONTHS[month - 1]}, ${year}`;
+
+    const hasTrades = Object.keys(monthData.days).length > 0;
+    const total = monthData.total || 0;
+    const badge = document.createElement('span');
+    badge.className = 'mini-badge ' + (!hasTrades ? 'mini-badge-zero' : total >= 0 ? 'mini-badge-pos' : 'mini-badge-neg');
+    badge.textContent = hasTrades ? fmtBadge(total) : '$0.00';
+
+    const expandBtn = document.createElement('button');
+    expandBtn.className = 'mini-expand-btn';
+    expandBtn.title = 'Load this month';
+    expandBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 9-6-6-6 6"/><path d="M12 3v14"/><path d="M5 21h14"/></svg>`;
+    expandBtn.onclick = () => {
+      navigate(year, month);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    header.appendChild(label);
+    header.appendChild(badge);
+    header.appendChild(expandBtn);
+    card.appendChild(header);
+
+    const table = document.createElement('table');
+    table.className = 'ann-cal';
+
+    const thead = document.createElement('thead');
+    const hrow  = document.createElement('tr');
+    ['sun','mon','tue','wed','thu','fri','sat'].forEach(d => {
+      const th = document.createElement('th');
+      th.textContent = d;
+      hrow.appendChild(th);
+    });
+    thead.appendChild(hrow);
+    table.appendChild(thead);
+
+    const firstDow    = new Date(year, month - 1, 1).getDay();
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const numRows     = Math.ceil((firstDow + daysInMonth) / 7);
+    const tbody       = document.createElement('tbody');
+    let dayNum = 1;
+
+    for (let row = 0; row < numRows; row++) {
+      const tr = document.createElement('tr');
+      for (let col = 0; col < 7; col++) {
+        const cellIndex = row * 7 + col;
+        const td = document.createElement('td');
+        const isWeekend = col === 0 || col === 6;
+        if (cellIndex < firstDow || dayNum > daysInMonth) {
+          td.className = 'ann-empty';
+        } else {
+          const dayData = monthData.days[String(dayNum)];
+          if (!dayData) {
+            td.className = 'ann-nodata' + (isWeekend ? ' ann-weekend' : '');
+          } else {
+            td.className = dayData.pnl >= 0 ? 'ann-win' : 'ann-loss';
+          }
+          td.textContent = dayNum;
+          dayNum++;
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    card.appendChild(table);
+    return card;
+  }
+
+  document.getElementById('prevBtn').onclick = () => {
+    let m = curMonth - 1, y = curYear;
+    if (m < 1) { m = 12; y--; }
+    navigate(y, m);
+  };
+  document.getElementById('nextBtn').onclick = () => {
+    let m = curMonth + 1, y = curYear;
+    if (m > 12) { m = 1; y++; }
+    navigate(y, m);
+  };
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft')  document.getElementById('prevBtn').click();
+    if (e.key === 'ArrowRight') document.getElementById('nextBtn').click();
+  });
+
+  /* ── Load data ──────────────────────────────────── */
+  const params = new URLSearchParams(window.location.search);
+  curYear  = parseInt(params.get('year')  || new Date().getFullYear());
+  curMonth = parseInt(params.get('month') || new Date().getMonth() + 1);
+
+  Promise.all([
+    fetch('calendar_data.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+    fetch('backtest_results.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+  ])
+    .then(([calData, bt]) => {
+      allData = calData;
+      btData  = bt;
+      render();
+    })
+    .catch(err => {
+      document.getElementById('monthCal').innerHTML =
+        `<tr><td class="error">Error loading calendar_data.json: ${err.message}<br>
+        Run: <code>python calendar_data.py</code> then serve from dashboard/ folder.</td></tr>`;
+    });
+</script>
+</body>
+</html>

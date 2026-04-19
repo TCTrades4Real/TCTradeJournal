@@ -1,0 +1,33 @@
+# Core trading & brokerage
+schwabdev==3.0.3
+
+# AI / sentiment
+anthropic==0.87.0
+
+# GUI automation
+pyautogui==0.9.54
+keyboard==0.13.5
+pygetwindow==0.0.9
+opencv-python==4.13.0.92
+Pillow==12.1.1
+
+# WebSocket
+websocket-client==1.9.0
+
+# OBS integration
+obsws-python==1.8.0
+
+# Data
+pandas==3.0.1
+numpy==2.4.3
+
+# Time & timezone
+pytz==2026.1.post1
+python-dateutil==2.9.0.post0
+
+# Networking
+requests==2.32.5
+
+# System
+psutil==7.2.2
+cryptography==46.0.5

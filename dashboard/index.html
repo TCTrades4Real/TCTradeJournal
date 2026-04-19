@@ -1,0 +1,454 @@
+<!-- Serve with: python -m http.server 8000  (run from dashboard/ folder) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0f0f;
+      color: #e0e0e0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 16px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    @media (min-width: 640px) { body { padding: 24px; } }
+    @media (min-width: 1024px) { body { padding: 28px 32px; } }
+
+    /* ── Breadcrumb ──────────────────────────────────── */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      color: #9ca3af;
+    }
+    .breadcrumb a {
+      color: #9ca3af;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .breadcrumb a:hover { color: #f0f0f0; }
+    .breadcrumb-sep { opacity: 0.4; }
+
+    /* ── Header ─────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      position: relative;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .header h1 {
+      flex: 1;
+      font-size: 30px;
+      font-weight: 400;
+      color: #ffffff;
+    }
+
+    .year-badge-stack {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .year-badge {
+      font-size: 20px;
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: 0.05em;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .year-sim-badge {
+      font-size: 20px;
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: 0.05em;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px dashed transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      opacity: 0.75;
+    }
+    .sim-badge-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      opacity: 0.7;
+      text-transform: uppercase;
+    }
+    .sim-pos  { background: rgb(1, 30, 21); border-color: rgb(3, 98, 68);   color: #ffffff; }
+    .sim-neg  { background: rgb(44, 8, 8);  border-color: rgb(143, 25, 25); color: #ffffff; }
+    .sim-zero { background: #161616; border-color: #444; color: #9ca3af; }
+
+    .year-selector {
+      display: inline-flex;
+      height: 40px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: #1a1a1a;
+      padding: 4px;
+    }
+
+    .year-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: #9ca3af;
+      padding: 4px 16px;
+      font-size: 18px;
+      font-weight: 400;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: color 0.15s;
+      white-space: nowrap;
+    }
+    .year-btn.active {
+      background: #0f0f0f;
+      color: #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .year-btn:hover:not(.active) { color: #e0e0e0; }
+
+    /* ── Year grid ───────────────────────────────────── */
+    .year-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    @media (min-width: 640px)  { .year-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 1024px) { .year-grid { grid-template-columns: repeat(4, 1fr); } }
+
+    /* ── Month card ──────────────────────────────────── */
+    .month-card { background: #0f0f0f; }
+
+    .month-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      gap: 6px;
+    }
+
+    .month-label {
+      font-size: 14px;
+      font-weight: 400;
+      color: #e0e0e0;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .month-badge {
+      font-size: 13px;
+      font-weight: 400;
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      line-height: 1;
+      transition: opacity 0.15s;
+    }
+    .month-badge:hover { opacity: 0.85; }
+    .badge-pos  { background: rgb(2, 53, 37);  color: #fafaf9; border-color: rgb(3, 98, 68); }
+    .badge-neg  { background: rgb(77, 13, 13); color: #fafaf9; border-color: rgb(143, 25, 25); }
+    .badge-zero { background: #2a2a2a; color: #6b7280; border-color: #3f3f3f; }
+
+    .badge-stack { display: flex; flex-direction: column; gap: 3px; min-width: 90px; }
+    .badge-stack .month-badge { justify-content: space-between; width: 100%; }
+
+    .expand-btn {
+      background: #1e1e1e;
+      border: 1px solid #3f3f3f;
+      color: #9ca3af;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 0;
+      border-radius: 6px;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .expand-btn:hover { background: #2a2a2a; color: #e0e0e0; }
+    .expand-btn svg { width: 14px; height: 14px; display: block; }
+
+    /* ── Mini calendar table ─────────────────────────── */
+    .mini-cal {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .mini-cal th {
+      color: #9ca3af;
+      font-size: 10px;
+      font-weight: 400;
+      text-align: center;
+      padding: 4px 2px;
+      border: 1px solid rgb(161, 161, 170);
+    }
+
+    .mini-cal td {
+      border: 1px solid rgb(161, 161, 170);
+      text-align: center;
+      padding: 4px 2px;
+      font-size: 14px;
+      color: #e0e0e0;
+      height: 26px;
+    }
+
+    .day-empty              { background: rgb(41, 37, 36); }  /* padding cells muted */
+    .day-nodata             { background: transparent; }      /* no-trade weekday = transparent */
+    .day-nodata.day-weekend { background: rgb(41, 37, 36); } /* no-trade weekend = muted */
+    .day-win  { background: rgb(2, 53, 37);  color: #fafaf9; }
+    .day-loss { background: rgb(77, 13, 13); color: #fafaf9; }
+
+  </style>
+</head>
+<body>
+
+<div class="breadcrumb">
+  <span>Calendar</span>
+</div>
+
+<div class="header">
+  <h1>Calendar</h1>
+  <div class="year-badge-stack">
+    <span class="year-badge badge-zero" id="yearBadge"></span>
+    <span class="year-sim-badge sim-zero" id="yearSimBadge"></span>
+  </div>
+  <div class="year-selector" id="yearSelector"></div>
+</div>
+
+<div class="year-grid" id="yearGrid"></div>
+
+
+<script>
+  const MONTHS = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+  ];
+
+  let allData = {};
+  let simMonthly = {};  // year → month(str) → total sim pnl
+  let selectedYear = null;
+
+  /* ── Formatters ─────────────────────────────────── */
+  function fmtDollars(abs) {
+    return abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function fmtPnl(pnl, showPlus = false) {
+    if (pnl === 0) return '$0.00';
+    const sign = pnl > 0 ? (showPlus ? '+' : '') : '-';
+    return `${sign}$${fmtDollars(Math.abs(pnl))}`;
+  }
+
+  function fmtBadge(pnl) {
+    const sign = pnl >= 0 ? '' : '-';
+    return `${sign}$${fmtDollars(Math.abs(pnl))}`;
+  }
+
+  /* ── Sim aggregation ───────────────────────────── */
+  function buildSimMonthly(simResults) {
+    const out = {};
+    for (const [dateStr, dayData] of Object.entries(simResults)) {
+      const [y, m] = dateStr.split('-');
+      const mNum = String(parseInt(m, 10));
+      if (!out[y]) out[y] = {};
+      out[y][mNum] = (out[y][mNum] || 0) + (dayData.pnl || 0);
+    }
+    return out;
+  }
+
+  /* ── Year selector ──────────────────────────────── */
+  function renderYearSelector(years) {
+    const el = document.getElementById('yearSelector');
+    el.innerHTML = '';
+    years.forEach(y => {
+      const btn = document.createElement('button');
+      btn.className = 'year-btn' + (y === selectedYear ? ' active' : '');
+      btn.textContent = y;
+      btn.onclick = () => selectYear(y);
+      el.appendChild(btn);
+    });
+  }
+
+  function updateYearBadge(yearData, year) {
+    const total = Object.values(yearData).reduce((sum, m) => sum + (m.total || 0), 0);
+    const hasTrades = Object.values(yearData).some(m => Object.keys(m.days || {}).length > 0);
+    const badge = document.getElementById('yearBadge');
+    badge.className = 'year-badge ' + (!hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg');
+    badge.innerHTML = `<span class="sim-badge-label">Real</span>${fmtBadge(total)}`;
+
+    const simYear = simMonthly[String(year)] || {};
+    const simTotal = Math.round(Object.values(simYear).reduce((s, v) => s + v, 0) * 100) / 100;
+    const hasSimData = Object.keys(simYear).length > 0;
+    const simBadge = document.getElementById('yearSimBadge');
+    simBadge.className = 'year-sim-badge ' + (!hasSimData ? 'sim-zero' : simTotal >= 0 ? 'sim-pos' : 'sim-neg');
+    simBadge.innerHTML = `<span class="sim-badge-label">Sim</span>${fmtBadge(simTotal)}`;
+  }
+
+  function selectYear(year) {
+    selectedYear = year;
+    const years = Object.keys(allData).sort((a, b) => a - b);
+    renderYearSelector(years);
+    const yearData = allData[year] || {};
+    updateYearBadge(yearData, year);
+    renderGrid(yearData, year);
+  }
+
+  /* ── Year grid ──────────────────────────────────── */
+  function renderGrid(yearData, year) {
+    const grid = document.getElementById('yearGrid');
+    grid.innerHTML = '';
+    for (let m = 1; m <= 12; m++) {
+      const monthData = yearData[String(m)] || { total: 0, trades: 0, days: {} };
+      grid.appendChild(buildMonthCard(year, m, monthData));
+    }
+  }
+
+  function buildMonthCard(year, month, monthData) {
+    const card = document.createElement('div');
+    card.className = 'month-card';
+
+    /* Header row: label | badge | expand icon */
+    const header = document.createElement('div');
+    header.className = 'month-header';
+
+    const label = document.createElement('span');
+    label.className = 'month-label';
+    label.textContent = `${MONTHS[month - 1]}, ${year}`;
+
+    const hasTrades = Object.keys(monthData.days).length > 0;
+    const total = monthData.total || 0;
+    const badge = document.createElement('span');
+    badge.className = 'month-badge ' + (!hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg');
+    badge.innerHTML = `<span class="sim-badge-label">Real</span>${hasTrades ? fmtBadge(total) : '$0.00'}`;
+    badge.title = 'View month detail';
+    badge.onclick = () => { window.location.href = `month.html?year=${year}&month=${month}`; };
+
+    const simPnl = (simMonthly[String(year)] || {})[String(month)];
+    const hasSim = simPnl !== undefined;
+    const simBadge = document.createElement('span');
+    simBadge.className = 'month-badge sim-badge ' + (!hasSim ? 'badge-zero' : simPnl >= 0 ? 'badge-pos' : 'badge-neg');
+    simBadge.innerHTML = `<span class="sim-badge-label">Sim</span>${hasSim ? fmtBadge(simPnl) : '$0.00'}`;
+    simBadge.title = 'View month detail';
+    simBadge.onclick = () => { window.location.href = `month.html?year=${year}&month=${month}`; };
+
+    const badgeStack = document.createElement('div');
+    badgeStack.className = 'badge-stack';
+    badgeStack.appendChild(badge);
+    badgeStack.appendChild(simBadge);
+
+    const expandBtn = document.createElement('button');
+    expandBtn.className = 'expand-btn';
+    expandBtn.title = 'View month detail';
+    expandBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 9-6-6-6 6"/><path d="M12 3v14"/><path d="M5 21h14"/></svg>`;
+    expandBtn.onclick = () => { window.location.href = `month.html?year=${year}&month=${month}`; };
+
+    header.appendChild(label);
+    header.appendChild(badgeStack);
+    header.appendChild(expandBtn);
+    card.appendChild(header);
+
+    /* Mini calendar */
+    const table = document.createElement('table');
+    table.className = 'mini-cal';
+
+    const thead = document.createElement('thead');
+    const hrow  = document.createElement('tr');
+    ['sun','mon','tue','wed','thu','fri','sat'].forEach(d => {
+      const th = document.createElement('th');
+      th.textContent = d;
+      hrow.appendChild(th);
+    });
+    thead.appendChild(hrow);
+    table.appendChild(thead);
+
+    const firstDow    = new Date(year, month - 1, 1).getDay();
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const numRows     = Math.ceil((firstDow + daysInMonth) / 7);
+    const tbody       = document.createElement('tbody');
+    let dayNum = 1;
+
+    for (let row = 0; row < numRows; row++) {
+      const tr = document.createElement('tr');
+      for (let col = 0; col < 7; col++) {
+        const cellIndex = row * 7 + col;
+        const td = document.createElement('td');
+
+        const isWeekend = col === 0 || col === 6;
+        if (cellIndex < firstDow || dayNum > daysInMonth) {
+          td.className = 'day-empty';
+        } else {
+          const dayData = monthData.days[String(dayNum)];
+          if (!dayData) {
+            td.className = 'day-nodata' + (isWeekend ? ' day-weekend' : '');
+          } else {
+            td.className = dayData.pnl >= 0 ? 'day-win' : 'day-loss';
+          }
+          td.textContent = dayNum;
+          dayNum++;
+        }
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    card.appendChild(table);
+    return card;
+  }
+
+/* ── Load data ──────────────────────────────────── */
+  Promise.all([
+    fetch('calendar_data.json').then(r => { if (!r.ok) throw new Error(`calendar_data.json: HTTP ${r.status}`); return r.json(); }),
+    fetch('backtest_results.json').then(r => r.ok ? r.json() : {}).catch(() => {}),
+  ])
+    .then(([calData, simData]) => {
+      allData = calData;
+      simMonthly = buildSimMonthly(simData || {});
+      const years = Object.keys(calData).sort((a, b) => a - b);
+      if (years.length === 0) {
+        document.getElementById('yearGrid').textContent = 'No data found.';
+        return;
+      }
+      selectedYear = years[years.length - 1];
+      selectYear(selectedYear);
+    })
+    .catch(err => {
+      document.getElementById('yearGrid').innerHTML =
+        `<p style="color:#f87171;padding:20px">Error loading data: ${err.message}<br>
+        Run: <code>python calendar_data.py</code> then serve from dashboard/ folder.</p>`;
+    });
+</script>
+</body>
+</html>

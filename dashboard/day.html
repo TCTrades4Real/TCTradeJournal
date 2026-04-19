@@ -1,0 +1,814 @@
+<!-- Serve with: python -m http.server 8000  (run from dashboard/ folder) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Day Detail</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0f0f;
+      color: #f0f0f0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 16px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    @media (min-width: 640px)  { body { padding: 24px; } }
+    @media (min-width: 1024px) { body { padding: 28px 32px; } }
+
+    /* ── Breadcrumb ──────────────────────────────────── */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      color: #9ca3af;
+    }
+    .breadcrumb a {
+      color: #9ca3af;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .breadcrumb a:hover { color: #f0f0f0; }
+    .breadcrumb-sep { opacity: 0.4; }
+
+    /* ── Header ─────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .day-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .day-nav {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .nav-day-btn {
+      background: transparent;
+      border: 1px solid #333;
+      color: #f0f0f0;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .nav-day-btn:hover { background: #1e1e1e; }
+    .nav-day-btn:disabled { opacity: 0.3; cursor: default; }
+
+    /* ── Main 2-column grid ──────────────────────────── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (min-width: 700px) {
+      .main-grid { grid-template-columns: 1.3fr 1.6fr; }
+    }
+
+    /* ── Left panel ──────────────────────────────────── */
+    .left-panel {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .pnl-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: transparent;
+      color: #9ca3af;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .icon-btn:hover { background: #1e1e1e; color: #f0f0f0; }
+    .icon-btn svg { width: 16px; height: 16px; display: block; }
+
+    .day-pnl {
+      font-size: 26px;
+      font-weight: 400;
+    }
+    .pnl-pos { color: rgb(5, 150, 105); }
+    .pnl-neg { color: rgb(220, 38, 38); }
+    .pnl-zero { color: #9ca3af; }
+
+    /* Symbol table */
+    .sym-table-wrap {
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 4px 12px 4px 12px;
+      background: #0f0f0f;
+    }
+
+    .sym-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    .sym-table th, .sym-table td { width: 20%; }
+    .sym-table th {
+      color: #9ca3af;
+      font-size: 15px;
+      font-weight: 400;
+      text-align: left;
+      padding: 4px 8px 8px 0;
+      border-bottom: 1px solid #222;
+    }
+    .sym-table th:not(:first-child) { text-align: right; }
+    .sym-table td {
+      padding: 8px 8px 8px 0;
+      font-size: 15px;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .sym-table td:not(:first-child) { text-align: right; }
+    .sym-table tr:last-child td { border-bottom: none; }
+    .sym-name { color: #ffffff; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+    .sym-pos   { color: rgb(5, 150, 105); }
+    .sym-neg   { color: rgb(220, 38, 38); }
+
+    /* Colored checkboxes in symbol table */
+    .sym-cb {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 2px solid #444;
+      background: transparent;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-right: 16px;
+      transition: border-color 0.15s;
+    }
+    .sym-cb:checked {
+      border-color: #444;
+      background-color: #2a2a2a;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpolyline points='2,6 5,9 10,3' fill='none' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-size: 10px 10px;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    /* ── Right panel (chart) ─────────────────────────── */
+    .chart-panel {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .chart-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #ffffff;
+    }
+
+    .chart-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 360px;
+    }
+
+    /* ── Stats bar ───────────────────────────────────── */
+    .stats-bar {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .stat-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      padding: 12px 0;
+      border-bottom: 1px solid #1e1e1e;
+    }
+    .stat-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .stat-row:first-child { padding-top: 0; }
+
+    .stat-item {
+      flex: 1 1 120px;
+      min-width: 100px;
+      padding: 4px 12px 4px 0;
+    }
+
+    .stat-value {
+      font-size: 18px;
+      font-weight: 500;
+      color: #ffffff;
+      line-height: 1.2;
+    }
+    .stat-value.pos { color: #ffffff; }
+    .stat-value.neg { color: #ffffff; }
+
+    .stat-label {
+      font-size: 14px;
+      color: #9ca3af;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ── Error / empty ───────────────────────────────── */
+    .error { color: rgb(220, 38, 38); padding: 20px; }
+    .no-data { color: #6b7280; padding: 40px; text-align: center; font-size: 16px; }
+  </style>
+</head>
+<body>
+
+<div class="breadcrumb">
+  <a href="index.html">Calendar</a>
+  <span class="breadcrumb-sep">›</span>
+  <a id="breadcrumbMonth" href="#">Month</a>
+  <span class="breadcrumb-sep">›</span>
+  <span id="breadcrumbDay"></span>
+</div>
+
+<div class="page-header">
+  <div class="day-title" id="dayTitle"></div>
+  <div class="day-nav">
+    <button class="nav-day-btn" id="prevBtn">&#8592; <span id="prevLabel"></span></button>
+    <button class="nav-day-btn" id="nextBtn"><span id="nextLabel"></span> &#8594;</button>
+  </div>
+</div>
+
+<div class="main-grid">
+  <div class="left-panel" id="leftPanel"></div>
+  <div class="chart-panel" id="chartPanel">
+    <div class="chart-title">Intraday PnL</div>
+    <div class="chart-wrap"><canvas id="pnlChart"></canvas></div>
+  </div>
+</div>
+
+<div class="stats-bar" id="statsBar"></div>
+
+<script>
+  const MONTHS = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+  ];
+  const MONTHS_SHORT = [
+    'Jan','Feb','Mar','Apr','May','Jun',
+    'Jul','Aug','Sep','Oct','Nov','Dec'
+  ];
+  const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+  let allData = {};
+  let btResults = {};
+  let curYear, curMonth, curDay;
+  let chartInstance = null;
+  let checkedSymbols = null;
+
+  /* ── Formatters ─────────────────────────────────── */
+  function fmtDollars(abs) {
+    return abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtPnl(pnl) {
+    const sign = pnl < 0 ? '-' : '';
+    return `${sign}$${fmtDollars(Math.abs(pnl))}`;
+  }
+  function fmtVolume(v) {
+    if (v >= 1000) return (v / 1000).toFixed(2).replace(/\.?0+$/, '') + 'K';
+    return String(v);
+  }
+  function ordinal(n) {
+    const s = ['th','st','nd','rd'];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+  function fmtNavDate(year, month, day) {
+    return `${MONTHS_SHORT[month - 1]} ${String(day).padStart(2,'0')}, ${year}`;
+  }
+
+  /* ── Adjacent trading days ──────────────────────── */
+  function getAllTradingDays() {
+    const days = [];
+    for (const [yr, yData] of Object.entries(allData)) {
+      for (const [mo, mData] of Object.entries(yData)) {
+        for (const dy of Object.keys(mData.days)) {
+          days.push({ year: parseInt(yr), month: parseInt(mo), day: parseInt(dy) });
+        }
+      }
+    }
+    days.sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      if (a.month !== b.month) return a.month - b.month;
+      return a.day - b.day;
+    });
+    return days;
+  }
+
+  function navigate(year, month, day) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('year', year);
+    url.searchParams.set('month', month);
+    url.searchParams.set('day', day);
+    window.history.pushState({}, '', url);
+    curYear = year; curMonth = month; curDay = day;
+    render();
+  }
+
+  /* ── Render ─────────────────────────────────────── */
+  function render() {
+    const dayData = (allData[curYear]?.[curMonth]?.days?.[curDay]) || null;
+
+    // Title
+    const d = new Date(curYear, curMonth - 1, curDay);
+    document.title = `${DAYS_OF_WEEK[d.getDay()]}, ${MONTHS[curMonth - 1]} ${ordinal(curDay)} ${curYear}`;
+    document.getElementById('dayTitle').textContent = document.title;
+
+    // Breadcrumb
+    document.getElementById('breadcrumbMonth').href = `month.html?year=${curYear}&month=${curMonth}`;
+    document.getElementById('breadcrumbMonth').textContent = `${MONTHS[curMonth - 1]} ${curYear}`;
+    document.getElementById('breadcrumbDay').textContent = `${ordinal(curDay)}`;
+
+    // Prev / next
+    const allDays = getAllTradingDays();
+    const idx = allDays.findIndex(x => x.year === curYear && x.month === curMonth && x.day === curDay);
+    const prev = idx > 0 ? allDays[idx - 1] : null;
+    const next = idx >= 0 && idx < allDays.length - 1 ? allDays[idx + 1] : null;
+
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    document.getElementById('prevLabel').textContent = prev ? fmtNavDate(prev.year, prev.month, prev.day) : '';
+    document.getElementById('nextLabel').textContent = next ? fmtNavDate(next.year, next.month, next.day) : '';
+    prevBtn.disabled = !prev;
+    nextBtn.disabled = !next;
+    prevBtn.onclick = prev ? () => navigate(prev.year, prev.month, prev.day) : null;
+    nextBtn.onclick = next ? () => navigate(next.year, next.month, next.day) : null;
+
+    if (!dayData) {
+      document.getElementById('leftPanel').innerHTML = '<p class="no-data">No trade data for this day.</p>';
+      document.getElementById('statsBar').innerHTML = '';
+      renderChart(null, null);
+      return;
+    }
+
+    checkedSymbols = null; // reset on each new day
+    renderLeft(dayData);
+    updateFiltered(dayData);
+  }
+
+  /* ── Helpers for client-side recomputation ─────── */
+  function fmtHold(totalSecs) {
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  }
+
+  function computeFromRoundtrips(rts) {
+    const winning = rts.filter(rt => rt.pnl > 0);
+    const losing  = rts.filter(rt => rt.pnl < 0);
+    const totalPnl     = Math.round(rts.reduce((s, rt) => s + rt.pnl, 0) * 100) / 100;
+    const grossProfit  = winning.reduce((s, rt) => s + rt.pnl, 0);
+    const grossLossAbs = Math.abs(losing.reduce((s, rt) => s + rt.pnl, 0));
+    const oneSidedQty  = rts.reduce((s, rt) => s + rt.qty, 0);
+    const avgHold = (arr) => arr.length ? Math.round(arr.reduce((s, rt) => s + rt.hold_secs, 0) / arr.length) : 0;
+    const avgCents = (arr) => {
+      const valid = arr.filter(rt => rt.qty > 0);
+      return valid.length ? Math.round(valid.reduce((s, rt) => s + rt.pnl / rt.qty, 0) / valid.length * 100000) / 100000 : 0;
+    };
+    const sorted = [...rts].sort((a, b) => a.exit_time.localeCompare(b.exit_time));
+    let cum = 0;
+    const chart = sorted.map(rt => { cum += rt.pnl; return { t: rt.exit_time, pnl: Math.round(cum * 100) / 100 }; });
+    return {
+      pnl:    totalPnl,
+      trades: rts.length,
+      stats: {
+        accuracy:          rts.length ? Math.round(winning.length / rts.length * 10000) / 100 : 0,
+        profit_factor:     grossLossAbs > 0 ? Math.round(grossProfit / grossLossAbs * 100) / 100 : 0,
+        volume:            Math.round(oneSidedQty * 2),
+        avg_trade_pnl:     rts.length ? Math.round(totalPnl / rts.length * 100) / 100 : 0,
+        avg_qty:           rts.length ? Math.round(oneSidedQty / rts.length) : 0,
+        biggest_winner:    winning.length ? Math.round(Math.max(...winning.map(rt => rt.pnl)) * 100) / 100 : 0,
+        avg_winning_trade: winning.length ? Math.round(grossProfit / winning.length * 100) / 100 : 0,
+        winning_trades:    winning.length,
+        avg_hold_win:      fmtHold(avgHold(winning)),
+        avg_cents_win:     avgCents(winning),
+        biggest_loser:     losing.length ? Math.round(Math.min(...losing.map(rt => rt.pnl)) * 100) / 100 : 0,
+        avg_losing_trade:  losing.length ? Math.round(losing.reduce((s, rt) => s + rt.pnl, 0) / losing.length * 100) / 100 : 0,
+        losing_trades:     losing.length,
+        avg_hold_loss:     fmtHold(avgHold(losing)),
+        avg_cents_loss:    avgCents(losing),
+      },
+      chart,
+    };
+  }
+
+  function getSimChart() {
+    const dateKey = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
+    return (btResults[dateKey] || {}).chart || null;
+  }
+
+  function updateFiltered(dayData) {
+    // Fall back to pre-computed data if roundtrips not in JSON yet
+    if (!dayData.roundtrips || dayData.roundtrips.length === 0) {
+      renderStats(dayData);
+      renderChart(dayData.chart || [], getSimChart());
+      return;
+    }
+    const rts = dayData.roundtrips.filter(rt => checkedSymbols ? checkedSymbols.has(rt.symbol) : true);
+    const computed = computeFromRoundtrips(rts);
+    const pnlEl = document.querySelector('.day-pnl');
+    if (pnlEl) {
+      pnlEl.className = 'day-pnl ' + (computed.pnl > 0 ? 'pnl-pos' : computed.pnl < 0 ? 'pnl-neg' : 'pnl-zero');
+      pnlEl.textContent = fmtPnl(computed.pnl);
+    }
+    renderStats(computed);
+    renderChart(computed.chart, getSimChart());
+  }
+
+  function renderLeft(dayData) {
+    const pnl = dayData.pnl || 0;
+    const pnlClass = pnl > 0 ? 'pnl-pos' : pnl < 0 ? 'pnl-neg' : 'pnl-zero';
+    const symbols = dayData.symbols || {};
+
+    // Initialize checkedSymbols on first render of this day
+    if (checkedSymbols === null) {
+      checkedSymbols = new Set(Object.keys(symbols));
+    }
+
+    const dateKey = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
+    const dayBt   = btResults[dateKey] || {};
+    const symBt   = dayBt.symbols || {};
+
+    let rows = '';
+    for (const [sym, sd] of Object.entries(symbols)) {
+      const pClass  = sd.pnl >= 0 ? 'sym-pos' : 'sym-neg';
+      const cbClass = sd.pnl >= 0 ? 'cb-pos' : 'cb-neg';
+      const checked = checkedSymbols.has(sym) ? 'checked' : '';
+      const btSym   = symBt[sym];
+      const simCell = btSym != null
+        ? `<td class="${btSym.pnl >= 0 ? 'sym-pos' : 'sym-neg'}">${fmtPnl(btSym.pnl)}</td>`
+        : `<td style="color:#4b5563">—</td>`;
+      rows += `<tr>
+        <td><span class="sym-name"><input type="checkbox" class="sym-cb ${cbClass}" data-sym="${sym}" ${checked} />${sym}</span></td>
+        <td>${sd.trades}</td>
+        <td>${sd.shares.toLocaleString('en-US')}</td>
+        <td class="${pClass}">${fmtPnl(sd.pnl)}</td>
+        ${simCell}
+      </tr>`;
+    }
+
+    const simPnl      = dayBt.pnl != null ? dayBt.pnl : null;
+    const simPnlClass = simPnl != null ? (simPnl >= 0 ? 'pnl-pos' : 'pnl-neg') : 'pnl-zero';
+    const simPnlHtml  = simPnl != null
+      ? `<div class="day-pnl ${simPnlClass}" style="font-size:20px;opacity:0.95">${fmtPnl(simPnl)}</div>`
+      : '';
+
+    document.getElementById('leftPanel').innerHTML = `
+      <div class="pnl-row">
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <div class="day-pnl ${pnlClass}">${fmtPnl(pnl)}</div>
+          ${simPnlHtml}
+        </div>
+        <button class="icon-btn" title="Candlestick view" onclick="window.location.href='candlestick.html?year=${curYear}&month=${curMonth}&day=${curDay}'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v4"/><rect width="4" height="6" x="7" y="9" rx="1"/><path d="M9 15v2"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v3"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/></svg>
+        </button>
+      </div>
+      <div class="sym-table-wrap">
+        <table class="sym-table">
+          <thead>
+            <tr>
+              <th><span class="sym-name"><input type="checkbox" class="sym-cb" id="cbSelectAll" checked />Symbol</span></th>
+              <th style="text-align:right">Trades</th>
+              <th style="text-align:right">Shares</th>
+              <th style="text-align:right">Realized</th>
+              <th style="text-align:right">Sim PnL</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+
+    const allSymbols = Object.keys(symbols);
+
+    function syncSelectAll() {
+      const allCb = document.getElementById('cbSelectAll');
+      if (!allCb) return;
+      const checkedCount = allSymbols.filter(s => checkedSymbols.has(s)).length;
+      allCb.checked = checkedCount === allSymbols.length;
+      allCb.indeterminate = checkedCount > 0 && checkedCount < allSymbols.length;
+    }
+
+    // Select-all listener
+    document.getElementById('cbSelectAll').addEventListener('change', (e) => {
+      if (e.target.checked) allSymbols.forEach(s => checkedSymbols.add(s));
+      else checkedSymbols.clear();
+      // Sync row checkboxes
+      document.querySelectorAll('.sym-cb[data-sym]').forEach(cb => {
+        cb.checked = checkedSymbols.has(cb.dataset.sym);
+      });
+      updateFiltered(dayData);
+    });
+
+    // Row checkbox listeners
+    document.querySelectorAll('.sym-cb[data-sym]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const sym = cb.dataset.sym;
+        if (cb.checked) checkedSymbols.add(sym);
+        else checkedSymbols.delete(sym);
+        syncSelectAll();
+        updateFiltered(dayData);
+      });
+    });
+
+    syncSelectAll();
+  }
+
+  const STAT_ICONS = {
+    'PnL':                   `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16c.5-2 1.5-7 4-7 2 0 2 3 4 3 2.5 0 4.5-5 5-7"/></svg>`,
+    'Fees &amp; Com':        `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17"/><path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/><path d="m2 16 6 6"/><circle cx="16" cy="9" r="2.9"/><circle cx="6" cy="5" r="3"/></svg>`,
+    'Accuracy':              `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 13V2l8 4-8 4"/><path d="M20.561 10.222a9 9 0 1 1-12.55-5.29"/><path d="M8.002 9.997a5 5 0 1 0 8.9 2.02"/></svg>`,
+    'Profit Factor':         `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="m14.31 8 5.74 9.94"/><path d="M9.69 8h11.48"/><path d="m7.38 12 5.74-9.94"/><path d="M9.69 16 3.95 6.06"/><path d="M14.31 16H2.83"/><path d="m16.62 12-5.74 9.94"/></svg>`,
+    'Volume':                `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2"/></svg>`,
+    'Total Trades':          `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M2 7v10"/><path d="M6 5v14"/><rect width="12" height="18" x="10" y="3" rx="2"/></svg>`,
+    'Avg Trade PnL':         `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>`,
+    'Avg Quantity':          `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`,
+    'Biggest Winner':        `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>`,
+    'Avg Winning Trade':     `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>`,
+    'Winning Trades':        `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/><path d="M11 12h10"/><path d="M11 16h7"/><path d="M11 20h4"/></svg>`,
+    'Avg Hold Time (Win)':   `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M13.228 21.925A10 10 0 1 1 21.994 12.338"/><path d="M12 6v6l1.562.781"/><path d="m14 18 4-4 4 4"/><path d="M18 22v-8"/></svg>`,
+    'Avg Cent / Share (Win)':`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="M12 7v10"/><path d="M15.4 10a4 4 0 1 0 0 4"/></svg>`,
+    'Biggest Loser':         `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 20V10"/><path d="M18 20v-4"/><path d="M6 20V4"/></svg>`,
+    'Avg Losing Trade':      `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>`,
+    'Losing Trades':         `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M11 4h4"/><path d="M11 8h7"/><path d="M11 12h10"/></svg>`,
+    'Avg Hold Time (Loss)':  `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12.338 21.994A10 10 0 1 1 21.925 13.227"/><path d="M12 6v6l2 1"/><path d="m14 18 4 4 4-4"/><path d="M18 14v8"/></svg>`,
+    'Avg Cent / Share (Loss)':`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="M12 7v10"/><path d="M15.4 10a4 4 0 1 0 0 4"/></svg>`,
+  };
+
+  function renderStats(dayData) {
+    const s = dayData.stats || {};
+    const pnl = dayData.pnl || 0;
+
+    function stat(value, label) {
+      let cls = '';
+      if (label === 'Biggest Winner' || label === 'Avg Winning Trade') cls = 'pos';
+      if (label === 'Biggest Loser'  || label === 'Avg Losing Trade')  cls = 'neg';
+      if (label === 'PnL') cls = pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : '';
+      const icon = STAT_ICONS[label] || '';
+      return `<div class="stat-item">
+        <div class="stat-value ${cls}">${value}</div>
+        <div class="stat-label">${icon}${label}</div>
+      </div>`;
+    }
+
+    const vol = fmtVolume(s.volume || 0);
+
+    document.getElementById('statsBar').innerHTML = `
+      <div class="stat-row">
+        ${stat(fmtPnl(pnl), 'PnL')}
+        ${stat('$0.00', 'Fees &amp; Com')}
+        ${stat((s.accuracy || 0).toFixed(2) + '%', 'Accuracy')}
+        ${stat(s.profit_factor || 0, 'Profit Factor')}
+        ${stat(vol, 'Volume')}
+        ${stat(dayData.trades || 0, 'Total Trades')}
+        ${stat(fmtPnl(s.avg_trade_pnl || 0), 'Avg Trade PnL')}
+        ${stat((s.avg_qty || 0).toLocaleString('en-US'), 'Avg Quantity')}
+      </div>
+      <div class="stat-row">
+        ${stat(fmtPnl(s.biggest_winner || 0), 'Biggest Winner')}
+        ${stat(fmtPnl(s.avg_winning_trade || 0), 'Avg Winning Trade')}
+        ${stat(s.winning_trades || 0, 'Winning Trades')}
+        ${stat(s.avg_hold_win || '00:00', 'Avg Hold Time (Win)')}
+        ${stat(s.avg_cents_win || 0, 'Avg Cent / Share (Win)')}
+      </div>
+      <div class="stat-row">
+        ${stat(fmtPnl(s.biggest_loser || 0), 'Biggest Loser')}
+        ${stat(fmtPnl(s.avg_losing_trade || 0), 'Avg Losing Trade')}
+        ${stat(s.losing_trades || 0, 'Losing Trades')}
+        ${stat(s.avg_hold_loss || '00:00', 'Avg Hold Time (Loss)')}
+        ${stat(s.avg_cents_loss || 0, 'Avg Cent / Share (Loss)')}
+      </div>`;
+  }
+
+  function renderChart(chartPoints, simChartPoints) {
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+    if (!chartPoints || chartPoints.length === 0) return;
+
+    // Insert zero-crossing points so each segment is fully green or fully red
+    function insertZeroCrossings(pts) {
+      const out = [];
+      for (let i = 0; i < pts.length; i++) {
+        out.push(pts[i]);
+        if (i < pts.length - 1) {
+          const p0 = pts[i], p1 = pts[i + 1];
+          if ((p0.pnl > 0 && p1.pnl < 0) || (p0.pnl < 0 && p1.pnl > 0)) {
+            const ratio = p0.pnl / (p0.pnl - p1.pnl);
+            const [h0, m0] = p0.t.split(':').map(Number);
+            const [h1, m1] = p1.t.split(':').map(Number);
+            const mins0 = h0 * 60 + m0, mins1 = h1 * 60 + m1;
+            const mX = mins0 + ratio * (mins1 - mins0);
+            const hX = Math.floor(mX / 60), minX = Math.round(mX % 60);
+            out.push({ t: `${String(hX).padStart(2,'0')}:${String(minX).padStart(2,'0')}`, pnl: 0 });
+          }
+        }
+      }
+      return out;
+    }
+
+    // Merge real + sim labels into a unified sorted x-axis
+    function toMins(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+    const processed = insertZeroCrossings(chartPoints);
+    const allLabels = [...new Set([
+      ...processed.map(p => p.t),
+      ...(simChartPoints || []).map(p => p.t),
+    ])].sort((a, b) => toMins(a) - toMins(b));
+
+    // Map each series to the unified labels (null = gap)
+    function alignToLabels(pts, lbls) {
+      const map = new Map(pts.map(p => [p.t, p.pnl]));
+      let last = null;
+      return lbls.map(l => {
+        if (map.has(l)) { last = map.get(l); return last; }
+        return last; // carry forward so line is continuous
+      });
+    }
+
+    const values    = alignToLabels(processed, allLabels);
+    const simValues = simChartPoints && simChartPoints.length
+      ? alignToLabels(simChartPoints, allLabels)
+      : null;
+
+    const canvas = document.getElementById('pnlChart');
+    const ctx    = canvas.getContext('2d');
+
+    // Plugin: gradient fill that splits at y=0
+    const splitFill = {
+      id: 'splitFill',
+      beforeDatasetDraw(chart) {
+        const { ctx: c, chartArea, scales: { y } } = chart;
+        if (!chartArea) return;
+        const { top, bottom } = chartArea;
+        const zeroY = y.getPixelForValue(0);
+        const clamped = Math.max(top, Math.min(bottom, zeroY));
+        const ratio   = (clamped - top) / (bottom - top);
+
+        const grad = c.createLinearGradient(0, top, 0, bottom);
+        grad.addColorStop(0,                         'rgba(5, 150, 105, 0.6)');
+        grad.addColorStop(Math.max(0, ratio - 0.001), 'rgba(5, 150, 105, 0.6)');
+        grad.addColorStop(Math.min(1, ratio + 0.001), 'rgba(220, 38, 38, 0.6)');
+        grad.addColorStop(1,                          'rgba(220, 38, 38, 0.6)');
+
+        chart.data.datasets[0].backgroundColor = grad;
+      }
+    };
+
+    const datasets = [{
+      label: 'Realized',
+      data: values,
+      fill: 'origin',
+      backgroundColor: 'rgba(26,61,57,0.6)',  // overridden by plugin
+      borderColor: 'rgb(5, 150, 105)',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      tension: 0,
+      segment: {
+        borderColor: ctx => {
+          const y0 = ctx.p0.parsed.y;
+          const y1 = ctx.p1.parsed.y;
+          return (y0 >= 0 && y1 >= 0) ? 'rgb(5, 150, 105)' : 'rgb(220, 38, 38)';
+        }
+      }
+    }];
+
+    if (simValues) {
+      datasets.push({
+        label: 'Simulated',
+        data: simValues,
+        fill: false,
+        borderColor: 'rgba(139,92,246,0.85)',
+        borderWidth: 1.5,
+        borderDash: [5, 4],
+        pointRadius: 0,
+        tension: 0,
+      });
+    }
+
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: { labels: allLabels, datasets },
+      plugins: [splitFill],
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            display: !!simValues,
+            labels: { color: '#9ca3af', font: { size: 12, family: 'Inter' }, boxWidth: 24 },
+          },
+          tooltip: {
+            backgroundColor: '#1e1e1e',
+            borderColor: '#333',
+            borderWidth: 1,
+            titleColor: '#9ca3af',
+            bodyColor: '#ffffff',
+            callbacks: {
+              label: ctx => {
+                const v = ctx.parsed.y;
+                const sign = v < 0 ? '-' : '';
+                return ` ${ctx.dataset.label}: ${sign}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+              },
+              labelColor: ctx => {
+                if (ctx.datasetIndex === 1) return { borderColor: 'rgb(139,92,246)', backgroundColor: 'rgb(139,92,246)' };
+                const color = ctx.parsed.y >= 0 ? 'rgb(5, 150, 105)' : 'rgb(220, 38, 38)';
+                return { borderColor: color, backgroundColor: color };
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: '#1e1e1e' },
+            ticks: { color: '#6b7280', font: { size: 13, family: 'Inter' } },
+          },
+          y: {
+            grid: { color: '#1e1e1e' },
+            ticks: {
+              color: '#6b7280',
+              font: { size: 13, family: 'Inter' },
+              callback: v => {
+                const sign = v < 0 ? '-' : '';
+                return `${sign}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  /* ── Load data ──────────────────────────────────── */
+  const params = new URLSearchParams(window.location.search);
+  curYear  = parseInt(params.get('year')  || new Date().getFullYear());
+  curMonth = parseInt(params.get('month') || new Date().getMonth() + 1);
+  curDay   = parseInt(params.get('day')   || new Date().getDate());
+
+  Promise.all([
+    fetch('calendar_data.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+    fetch('backtest_results.json').then(r => r.ok ? r.json() : {}).catch(() => {}),
+  ]).then(([calData, btData]) => {
+    allData   = calData;
+    btResults = btData || {};
+    render();
+  }).catch(err => {
+    document.getElementById('leftPanel').innerHTML =
+      `<p class="error">Error loading calendar_data.json: ${err.message}</p>`;
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# Sensitive credentials — never commit
+utilities/config.py
+*.env
+.env.*
+secrets.py
+credentials.json
+token.json
+
+# Large data caches — not worth versioning
+dashboard/ohlcv_data.json
+dashboard/ohlcv_backtest_cache.json
+dashboard/backtest_results.json
+dashboard/calendar_data.json
+
+# Trade data CSVs (personal financial data)
+trade_data/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini

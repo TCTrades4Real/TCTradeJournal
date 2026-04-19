@@ -1,0 +1,1357 @@
+<!-- Serve with: python -m http.server 8000  (run from dashboard/ folder) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Candlestick Chart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0f0f;
+      color: #f0f0f0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 16px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    @media (min-width: 640px)  { body { padding: 24px; } }
+    @media (min-width: 1024px) { body { padding: 28px 32px; } }
+
+    /* ── Breadcrumb ──────────────────────────────────── */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      color: #9ca3af;
+    }
+    .breadcrumb a {
+      color: #9ca3af;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .breadcrumb a:hover { color: #f0f0f0; }
+    .breadcrumb-sep { opacity: 0.4; }
+
+    /* ── Header ──────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .page-title {
+      font-size: 22px;
+      font-weight: 400;
+      color: #ffffff;
+      flex: 1;
+    }
+
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #9ca3af;
+      border-radius: 8px;
+      width: 36px;
+      height: 36px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+    .nav-btn:hover { background: #252525; color: #e0e0e0; border-color: #555; }
+    .nav-btn.disabled { opacity: 0.25; pointer-events: none; }
+
+    /* ── Symbol pills ─────────────────────────────────── */
+    .sym-pills {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      min-height: 36px;
+    }
+
+    .sym-pills-inner {
+      flex: 1;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+
+    .sym-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 12px;
+      border-radius: 6px;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #9ca3af;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+      width: 100%;
+    }
+    .sym-pill:hover { background: #2e2e2e; color: #ffffff; border-color: #666; }
+    .sym-pill.active-pos,
+    .sym-pill.active-neg,
+    .sym-pill.active-zero { background: #3a3a3a; border-color: #999; color: #ffffff; }
+    .sym-pill-name { font-size: 13px; font-weight: 600; }
+    .sym-pill-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex: 1;
+      min-width: 0;
+    }
+    .pill-sub {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 15px;
+      font-weight: 500;
+      border: 1px solid transparent;
+      line-height: 1.4;
+    }
+    .pill-sub.pos  { background: rgb(11,98,71);   border-color: rgb(11,98,71);   color: #ffffff; opacity: 1; }
+    .pill-sub.neg  { background: rgb(140,31,31);  border-color: rgb(140,31,31);  color: #ffffff; opacity: 1; }
+    .pill-sub.zero { background: #333;            border-color: #555;            color: #9ca3af; opacity: 1; }
+    .pill-sub-label { font-size: 10px; font-weight: 600; opacity: 1; margin-right: 5px; letter-spacing: 0.04em; }
+    .pill-sub.pos .pill-sub-label { color: rgb(134,239,172); }
+    .pill-sub.neg .pill-sub-label { color: rgb(252,165,165); }
+    .pill-sub.zero .pill-sub-label { color: #9ca3af; }
+    .pill-pnl { font-size: 13px; font-weight: 500; }
+
+    /* ── Timeframe selector ──────────────────────────── */
+    .tf-selector {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+    .tf-btn {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #9ca3af;
+      border-radius: 6px;
+      padding: 7px 18px;
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .tf-btn:hover { background: #252525; color: #e0e0e0; }
+    .tf-btn.active { background: #252525; color: #ffffff; border-color: #666; }
+
+    /* ── Trade toggles ───────────────────────────────── */
+    .trade-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 15px;
+      color: #9ca3af;
+    }
+    .toggle-track {
+      position: relative;
+      width: 54px;
+      height: 30px;
+      border-radius: 15px;
+      background: #333;
+      border: 1px solid #444;
+      transition: background 0.2s, border-color 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-thumb {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #666;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .trade-toggle.on .toggle-track { background: #252525; border-color: #666; }
+    .trade-toggle.on .toggle-thumb { transform: translateX(24px); background: #ffffff; }
+    .trade-toggle.on { color: #ffffff; }
+
+    /* ── Trade selector ──────────────────────────────── */
+    /* ── Legend row ──────────────────────────────────── */
+    .chart-legend {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: #6b7280;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .legend-arrow-up   { color: #089981; font-size: 13px; }
+    .legend-arrow-down { color: #f23645; font-size: 13px; }
+
+    /* ── Chart container ──────────────────────────────── */
+    .chart-outer {
+      background: #000000;
+      border: 1px solid #222;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #chartInner {
+      width: 100%;
+    }
+    #chartMain {
+      height: 660px;
+    }
+
+    /* ── Hover tooltip ───────────────────────────────── */
+    #hoverTooltip {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 20;
+      background: rgba(15,15,15,0.92);
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 8px 11px;
+      font-size: 12px;
+      color: #e0e0e0;
+      pointer-events: none;
+      display: none;
+      line-height: 1.75;
+      min-width: 130px;
+    }
+    #hoverTooltip.visible { display: block; }
+    .tip-time { color: #6b7280; font-size: 11px; margin-bottom: 2px; }
+    .tip-row { display: flex; justify-content: space-between; gap: 14px; }
+    .tip-label { font-variant-numeric: tabular-nums; }
+    .tip-val   { font-variant-numeric: tabular-nums; text-align: right; }
+    .tip-divider { border-top: 1px solid #222; margin: 4px 0; }
+
+    /* ── Status overlay ───────────────────────────────── */
+    #chartStatus {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      background: #000000;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      padding: 40px;
+      text-align: center;
+    }
+    #chartStatus.visible { display: flex; }
+
+    .status-spinner {
+      width: 28px;
+      height: 28px;
+      border: 2px solid #333;
+      border-top-color: #9ca3af;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status-msg { color: #9ca3af; font-size: 14px; }
+    .status-msg.error { color: #f87171; }
+    .status-hint { color: #6b7280; font-size: 12px; max-width: 480px; line-height: 1.6; }
+    .status-hint code { background: #1e1e1e; padding: 1px 5px; border-radius: 3px; color: #d1d5db; }
+
+    /* ── Near-miss detail panel ──────────────────────── */
+    #nearMissPanel {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 20;
+      background: rgba(15,15,15,0.95);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 12px;
+      color: #e0e0e0;
+      pointer-events: none;
+      display: none;
+      line-height: 1.75;
+      min-width: 260px;
+      max-width: 320px;
+    }
+    #nearMissPanel.visible { display: block; }
+    .nm-header { color: #ffffff; font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+    .nm-sub    { color: #6b7280; font-size: 11px; margin-bottom: 8px; }
+    .nm-row    { display: flex; align-items: flex-start; gap: 8px; padding: 2px 0; }
+    .nm-icon   { flex-shrink: 0; width: 14px; text-align: center; }
+    .nm-icon.met  { color: rgb(134,239,172); }
+    .nm-icon.miss { color: rgb(252,165,165); }
+    .nm-label     { font-size: 12px; line-height: 1.4; }
+    .nm-label.miss { color: rgb(248,113,113); }
+
+  </style>
+</head>
+<body>
+
+<div class="breadcrumb">
+  <a href="index.html">Calendar</a>
+  <span class="breadcrumb-sep">›</span>
+  <a id="breadcrumbMonth" href="#">Month</a>
+  <span class="breadcrumb-sep">›</span>
+  <a id="breadcrumbDay" href="#">Day</a>
+  <span class="breadcrumb-sep">›</span>
+  <span>Candlestick</span>
+</div>
+
+<div class="page-header">
+  <div class="page-title" id="pageTitle">Candlestick Chart</div>
+  <div style="display:flex;gap:6px;flex-shrink:0;">
+    <button class="nav-btn disabled" id="btnPrev" title="Previous trading day">&#8592;</button>
+    <button class="nav-btn disabled" id="btnNext" title="Next trading day">&#8594;</button>
+  </div>
+</div>
+
+<div class="sym-pills" id="symPills"></div>
+
+
+<div class="tf-selector" id="tfSelector">
+  <button class="tf-btn" data-tf="1">1m</button>
+  <button class="tf-btn active" data-tf="2">2m</button>
+  <button class="tf-btn" data-tf="5">5m</button>
+  <button class="tf-btn" data-tf="30">30m</button>
+  <span style="width:1px;background:#333;align-self:stretch;margin:0 12px;"></span>
+  <label class="trade-toggle" id="btnShowReal">
+    <span class="toggle-track"><span class="toggle-thumb"></span></span>Real
+  </label>
+  <label class="trade-toggle on" id="btnShowSim" style="margin-left:10px;">
+    <span class="toggle-track"><span class="toggle-thumb"></span></span>Sim
+  </label>
+  <label class="trade-toggle" id="btnShowNearMiss" style="margin-left:10px;">
+    <span class="toggle-track"><span class="toggle-thumb"></span></span>Near Miss
+  </label>
+</div>
+
+<div class="chart-legend" id="chartLegend" style="display:none">
+  <span class="legend-item"><span class="legend-dot" style="background:#089981"></span> Buy</span>
+  <span class="legend-item"><span class="legend-dot" style="background:#f23645"></span> Sell</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(34,31,26);border:1px solid #3a3530"></span> Pre-market</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(26,28,36);border:1px solid #2e3248"></span> After-hours</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(128,255,255)"></span> 9 EMA</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(0,128,255)"></span> 20 EMA</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(246,197,72)"></span> VWAP</span>
+  <span class="legend-item"><svg width="11" height="11" style="flex-shrink:0;vertical-align:middle"><polygon points="5.5,1 1,10 10,10" fill="rgb(139,92,246)" opacity="0.85"/></svg> Near Miss</span>
+  <span class="legend-item" id="entryVolInfo" style="display:none;margin-left:8px;color:#9ca3af;"></span>
+</div>
+
+<div class="chart-outer">
+  <div id="chartStatus" class="visible">
+    <div class="status-spinner"></div>
+    <div class="status-msg">Loading…</div>
+  </div>
+  <div id="chartInner">
+    <div id="chartMain"></div>
+  </div>
+  <div id="hoverTooltip"></div>
+  <div id="nearMissPanel"></div>
+</div>
+
+
+<script>
+  const MONTHS = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+  ];
+  const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+  let curYear, curMonth, curDay;
+  let chartInstance   = null;
+  let candleSeriesRef = null;   // kept for SVG marker redraws
+  let markerCleanup         = null;   // unsubscribe + remove SVG overlay
+  let simMarkerCleanup      = null;   // unsubscribe + remove sim SVG overlay
+  let nearMissMarkerCleanup = null;   // unsubscribe + remove near-miss SVG overlay
+  let showRealTrades  = false;
+  let showSimTrades   = true;
+  let showNearMiss    = false;
+  let btCache         = {};     // loaded from backtest_results.json
+  let activeSymbol    = null;
+  let activeInterval  = 2;      // current timeframe in minutes
+  let rawCandles      = null;   // 1m candles for active symbol
+  let activeExecs     = [];     // executions for active symbol
+  let ohlcvCache      = {};     // loaded from ohlcv_data.json
+  let tradingDays     = [];     // sorted list of {year,month,day} objects with trade data
+  let labelStorageKey = null;   // localStorage key for label offsets (set per symbol/date)
+  let activeTrades    = [];     // activeExecs grouped by round-trip
+
+  /* ── Formatters ──────────────────────────────────── */
+  function ordinal(n) {
+    const s = ['th','st','nd','rd'], v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+  function fmtDollars(abs) {
+    return abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtPnl(pnl) {
+    const sign = pnl < 0 ? '-' : pnl > 0 ? '+' : '';
+    return `${sign}$${fmtDollars(Math.abs(pnl))}`;
+  }
+
+  /* ── Status helpers ──────────────────────────────── */
+  function showLoading(msg = 'Fetching chart data…') {
+    const el = document.getElementById('chartStatus');
+    el.innerHTML = `<div class="status-spinner"></div><div class="status-msg">${msg}</div>`;
+    el.className = 'visible';
+  }
+  function showError(msg, hint = '') {
+    const el = document.getElementById('chartStatus');
+    el.innerHTML = `
+      <div class="status-msg error">${msg}</div>
+      ${hint ? `<div class="status-hint">${hint}</div>` : ''}`;
+    el.className = 'visible';
+  }
+  function hideStatus() {
+    document.getElementById('chartStatus').className = '';
+  }
+
+  /* ── Fetch OHLCV from Massive ───────────────────── */
+  const MASSIVE_API_KEY = 'REDACTED_API_KEY';
+
+  async function fetchCandles(symbol, year, month, day) {
+    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const url = `https://api.massive.com/v2/aggs/ticker/${encodeURIComponent(symbol)}/range/1/minute/${dateStr}/${dateStr}` +
+                `?adjusted=false&sort=asc&limit=50000&apiKey=${MASSIVE_API_KEY}`;
+
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`Massive API returned HTTP ${resp.status}`);
+
+    const data = await resp.json();
+    if (!data.results?.length) {
+      throw new Error(`No 1-minute data available for ${symbol} on ${dateStr}`);
+    }
+
+    return data.results.map(r => ({
+      time:   Math.floor(r.t / 1000),   // ms → seconds
+      open:   r.o,
+      high:   r.h,
+      low:    r.l,
+      close:  r.c,
+      volume: r.v || 0,
+    }));
+  }
+
+  /* ── Time helpers ────────────────────────────────── */
+  // Convert Unix timestamp → "HH:MM" in ET
+  function tsToET(ts) {
+    return new Date(ts * 1000).toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+  }
+
+  // Build map: "HH:MM" ET → first Unix timestamp for that minute
+  function buildTimeMap(candles) {
+    const map = {};
+    for (const c of candles) {
+      const et = tsToET(c.time);
+      if (!(et in map)) map[et] = c.time;
+    }
+    return map;
+  }
+
+  // Convert execution time string "HH:MM:SS" → candle timestamp.
+  // Floors to the nearest candle that started at or before the execution time.
+  function execToTimestamp(timeStr, timeMap) {
+    const [hh, mm] = timeStr.slice(0, 5).split(':').map(Number);
+    const execMins = hh * 60 + mm;
+    let best = null, bestMins = -1;
+    for (const key of Object.keys(timeMap)) {
+      const [kh, km] = key.split(':').map(Number);
+      const kMins = kh * 60 + km;
+      if (kMins <= execMins && kMins > bestMins) { bestMins = kMins; best = timeMap[key]; }
+    }
+    return best;
+  }
+
+  // Aggregate 1-minute candles into N-minute bars
+  function aggregateCandles(candles, intervalMins) {
+    if (intervalMins === 1) return candles;
+    const buckets = new Map();
+    for (const c of candles) {
+      const et = tsToET(c.time);
+      const [h, m] = et.split(':').map(Number);
+      const snapped = Math.floor((h * 60 + m) / intervalMins) * intervalMins;
+      const key = `${String(Math.floor(snapped / 60)).padStart(2,'0')}:${String(snapped % 60).padStart(2,'0')}`;
+      if (!buckets.has(key)) {
+        buckets.set(key, { time: c.time, open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume });
+      } else {
+        const b = buckets.get(key);
+        b.high    = Math.max(b.high, c.high);
+        b.low     = Math.min(b.low, c.low);
+        b.close   = c.close;
+        b.volume += c.volume;
+      }
+    }
+    return Array.from(buckets.values());
+  }
+
+  /* ── Trade grouping ─────────────────────────────── */
+  // Groups a flat list of executions into round-trips (position 0→n→0 cycles).
+  function groupExecutionsIntoTrades(execs) {
+    const groups = [];
+    let current = [], position = 0;
+    for (const ex of execs) {
+      current.push(ex);
+      position += ex.side === 'buy' ? ex.qty : -ex.qty;
+      if (Math.abs(position) < 0.001) {
+        groups.push(current);
+        current = [];
+        position = 0;
+      }
+    }
+    if (current.length > 0) groups.push(current); // open/partial trade
+    return groups;
+  }
+
+  // Returns the executions to display based on current trade selection.
+  /* ── SVG execution markers ───────────────────────── */
+  // Draws triangles at exact (time, price) using an SVG overlay.
+  // Compatible with all LW Charts versions — no attachPrimitive needed.
+  function renderExecMarkers(executions, timeMap) {
+    // Teardown previous overlay
+    if (markerCleanup) { markerCleanup(); markerCleanup = null; }
+
+    if (!executions?.length || !chartInstance || !candleSeriesRef) return;
+
+    // Pre-resolve sub-minute timestamps once
+    const resolved = [];
+    for (const ex of executions) {
+      const ts = execToTimestamp(ex.time, timeMap);
+      if (ts == null) continue;
+      resolved.push({ ts, price: ex.price, side: ex.side });
+    }
+    if (!resolved.length) return;
+
+    const container = document.getElementById('chartMain');
+    container.style.position = 'relative';
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'markerOverlay';
+    svg.setAttribute('style',
+      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:5;');
+    container.appendChild(svg);
+
+    // Build a map from execution timestamp+side → trade PnL
+    // so exit circles can be colored by overall trade result.
+    const execTradePnl = new Map();
+    for (const trade of activeTrades) {
+      let buyCost = 0, sellRev = 0;
+      for (const ex of trade) {
+        if (ex.side === 'buy')  buyCost  += ex.qty * ex.price;
+        else                    sellRev  += ex.qty * ex.price;
+      }
+      const pnl = sellRev - buyCost;
+      for (const ex of trade) {
+        const ts = execToTimestamp(ex.time, timeMap);
+        if (ts != null) execTradePnl.set(`${ts}_${ex.side}_${ex.price}`, pnl);
+      }
+    }
+
+    function calcRadius() {
+      try {
+        const spacing = chartInstance.timeScale().options().barSpacing;
+        return Math.min(Math.max(spacing * 0.26, 10), 20);
+      } catch (_) { return 6; }
+    }
+
+    function redraw() {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      if (!chartInstance || !candleSeriesRef) return;
+      const timeScale = chartInstance.timeScale();
+      const r = calcRadius();
+
+      for (const m of resolved) {
+        const x = timeScale.timeToCoordinate(m.ts);
+        const y = candleSeriesRef.priceToCoordinate(m.price);
+        if (x == null || y == null) continue;
+
+        let color;
+        if (m.side === 'buy') {
+          color = 'rgb(34,197,94)';
+        } else {
+          const tradePnl = execTradePnl.get(`${m.ts}_${m.side}_${m.price}`) ?? 0;
+          color = tradePnl >= 0 ? 'rgb(239,68,68)' : 'rgb(249,115,22)';
+        }
+
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', r);
+        dot.setAttribute('fill', color);
+        dot.style.pointerEvents = 'none';
+        svg.appendChild(dot);
+      }
+    }
+
+    redraw();
+    requestAnimationFrame(redraw);
+    chartInstance.timeScale().subscribeVisibleLogicalRangeChange(redraw);
+    try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(redraw); } catch (_) {}
+
+    markerCleanup = () => {
+      try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(redraw); } catch (_) {}
+      try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(redraw); } catch (_) {}
+      svg.remove();
+    };
+  }
+
+  /* ── Simulated trade markers ────────────────────── */
+  function renderSimMarkers(simTrades, bars) {
+    if (simMarkerCleanup) { simMarkerCleanup(); simMarkerCleanup = null; }
+    if (!simTrades?.length || !chartInstance || !candleSeriesRef) return;
+
+    // Use logicalToCoordinate(bar index) instead of timeToCoordinate(timestamp).
+    // timeToCoordinate interpolates by physical time for unmatched timestamps,
+    // placing dots between bars. logicalToCoordinate always snaps to a bar center.
+    const barMins = bars.map((b, i) => {
+      const et = tsToET(b.time);
+      const [h, m] = et.split(':').map(Number);
+      return { mins: h * 60 + m, idx: i, price_ts: b.time };
+    });
+    function nearestBarIdx(timeStr) {
+      const [hh, mm] = timeStr.split(':').map(Number);
+      const target = hh * 60 + mm;
+      // Find the last bar whose open time is <= target (the bar that contains this time).
+      let best = null;
+      for (const b of barMins) {
+        if (b.mins <= target) best = b;
+        else break;
+      }
+      return best;
+    }
+
+    const resolved = [];
+    for (const t of simTrades) {
+      const entry = nearestBarIdx(t.entry_time);
+      const exit  = nearestBarIdx(t.exit_time);
+      if (entry) resolved.push({ idx: entry.idx, price: t.entry_price, side: 'entry' });
+      if (exit)  resolved.push({ idx: exit.idx,  price: t.exit_price,  side: 'exit'  });
+    }
+    if (!resolved.length) return;
+
+    const container = document.getElementById('chartMain');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'simMarkerOverlay';
+    svg.setAttribute('style',
+      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:4;');
+    container.appendChild(svg);
+
+    function calcRadius() {
+      try {
+        const spacing = chartInstance.timeScale().options().barSpacing;
+        return Math.min(Math.max(spacing * 0.26, 10), 20);
+      } catch (_) { return 6; }
+    }
+
+    function redraw() {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      if (!chartInstance || !candleSeriesRef) return;
+      const timeScale = chartInstance.timeScale();
+      const r = calcRadius();
+      for (const m of resolved) {
+        const x = timeScale.logicalToCoordinate(m.idx);
+        const y = candleSeriesRef.priceToCoordinate(m.price);
+        if (x == null || y == null) continue;
+        const color = m.side === 'entry' ? 'rgb(109,40,217)' : 'rgb(196,148,255)';
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', r);
+        dot.setAttribute('fill', color);
+        dot.style.pointerEvents = 'none';
+        svg.appendChild(dot);
+      }
+    }
+
+    redraw();
+    requestAnimationFrame(redraw);
+    chartInstance.timeScale().subscribeVisibleLogicalRangeChange(redraw);
+    try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(redraw); } catch (_) {}
+
+    simMarkerCleanup = () => {
+      try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(redraw); } catch (_) {}
+      try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(redraw); } catch (_) {}
+      svg.remove();
+    };
+  }
+
+  /* ── Near-miss markers ──────────────────────────── */
+  const NEAR_MISS_CONDITION_LABELS = [
+    { label: 'Volume ≥ 25,000',                           key: 'c0' },
+    { label: 'Breakout triggered',                         key: 'c1' },
+    { label: 'MACD ≥ Signal',                              key: 'c2' },
+    { label: 'EMA proximity (high ≤ 7.5% of EMA9 OR EMA9 ≤ 2.5% of EMA20)', key: 'c3' },
+    { label: 'Prev bar high > EMA9',                       key: 'c4' },
+    { label: 'EMA9 > VWAP',                               key: 'c5' },
+  ];
+
+  function showNearMissPanel(nm) {
+    const conditions = nm.conditions || [];
+    const failCount  = conditions.filter(c => c === false).length;
+    const rows = NEAR_MISS_CONDITION_LABELS.map((c, i) => {
+      const met = conditions[i] !== false;
+      return `<div class="nm-row">
+        <span class="nm-icon ${met ? 'met' : 'miss'}">${met ? '✓' : '✗'}</span>
+        <span class="nm-label ${met ? '' : 'miss'}">${c.label}</span>
+      </div>`;
+    }).join('');
+    const panel = document.getElementById('nearMissPanel');
+    panel.innerHTML = `
+      <div class="nm-header">${nm.symbol} — Near Miss</div>
+      <div class="nm-sub">${nm.time} &nbsp;·&nbsp; Breakout $${nm.breakout_level?.toFixed(4) ?? '—'} &nbsp;·&nbsp; ${failCount} failed</div>
+      ${rows}`;
+    panel.classList.add('visible');
+  }
+
+  function hideNearMissPanel() {
+    document.getElementById('nearMissPanel').classList.remove('visible');
+  }
+
+  function renderNearMissMarkers(nearMisses, bars) {
+    if (nearMissMarkerCleanup) { nearMissMarkerCleanup(); nearMissMarkerCleanup = null; }
+    if (!nearMisses?.length || !chartInstance || !candleSeriesRef) return;
+
+    const barMins = bars.map((b, i) => {
+      const et = tsToET(b.time);
+      const [h, m] = et.split(':').map(Number);
+      return { mins: h * 60 + m, idx: i };
+    });
+    function nearestBarIdx(timeStr) {
+      const [hh, mm] = timeStr.split(':').map(Number);
+      const target = hh * 60 + mm;
+      let best = null;
+      for (const b of barMins) {
+        if (b.mins <= target) best = b;
+        else break;
+      }
+      return best;
+    }
+
+    const resolved = [];
+    for (const nm of nearMisses) {
+      const bar = nearestBarIdx(nm.time);
+      if (bar) resolved.push({ idx: bar.idx, price: nm.breakout_level, nm });
+    }
+    if (!resolved.length) return;
+
+    const container = document.getElementById('chartMain');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'nearMissOverlay';
+    // pointer-events:none on svg so chart interactions pass through;
+    // individual triangles override to pointer-events:all for clicks
+    svg.setAttribute('style',
+      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:3;');
+    container.appendChild(svg);
+
+    function calcSize() {
+      try {
+        const spacing = chartInstance.timeScale().options().barSpacing;
+        return Math.min(Math.max(spacing * 0.28, 8), 16);
+      } catch (_) { return 8; }
+    }
+
+    function triPoints(cx, cy, r) {
+      // Upward-pointing equilateral triangle centred at (cx, cy)
+      const h = r * 1.8;
+      return `${cx},${cy - h * 0.65} ${cx - r},${cy + h * 0.35} ${cx + r},${cy + h * 0.35}`;
+    }
+
+    function redraw() {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      if (!chartInstance || !candleSeriesRef) return;
+      const timeScale = chartInstance.timeScale();
+      const r = calcSize();
+      for (const m of resolved) {
+        const x = timeScale.logicalToCoordinate(m.idx);
+        const y = candleSeriesRef.priceToCoordinate(m.price);
+        if (x == null || y == null) continue;
+        const tri = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        tri.setAttribute('points', triPoints(x, y, r));
+        tri.setAttribute('fill', 'rgb(139,92,246)');
+        tri.setAttribute('opacity', '0.85');
+        tri.style.pointerEvents = 'all';
+        tri.style.cursor = 'pointer';
+        tri.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showNearMissPanel(m.nm);
+        });
+        svg.appendChild(tri);
+      }
+    }
+
+    redraw();
+    requestAnimationFrame(redraw);
+    chartInstance.timeScale().subscribeVisibleLogicalRangeChange(redraw);
+    try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(redraw); } catch (_) {}
+
+    nearMissMarkerCleanup = () => {
+      try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(redraw); } catch (_) {}
+      try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(redraw); } catch (_) {}
+      svg.remove();
+    };
+  }
+
+  /* ── Background zone primitive ──────────────────── */
+  // Attaches to a series and draws colored rectangles behind candles
+  // for specified time ranges (pre-market, after-hours).
+  function createBgZonePrimitive(zones) {
+    return {
+      _zones: zones,
+      _chart: null,
+      attached({ chart }) { this._chart = chart; },
+      detached() { this._chart = null; },
+      updateAllViews() {},
+      paneViews() {
+        const self = this;
+        return [{
+          zOrder() { return 'bottom'; },
+          renderer() {
+            return {
+              draw(target) {
+                const chart = self._chart;
+                if (!chart) return;
+                target.useBitmapCoordinateSpace(({ context: ctx, bitmapSize, horizontalPixelRatio }) => {
+                  const ts = chart.timeScale();
+                  const W  = bitmapSize.width;
+                  const H  = bitmapSize.height;
+                  for (const { from, to, color } of self._zones) {
+                    const x1m = ts.timeToCoordinate(from);
+                    const x2m = ts.timeToCoordinate(to);
+                    if (x1m === null && x2m === null) continue;
+                    const x1 = x1m === null ? 0 : x1m * horizontalPixelRatio;
+                    const x2 = x2m === null ? W : x2m * horizontalPixelRatio;
+                    ctx.fillStyle = color;
+                    ctx.fillRect(Math.min(x1, x2), 0, Math.abs(x2 - x1), H);
+                  }
+                });
+              },
+            };
+          },
+        }];
+      },
+    };
+  }
+
+  /* ── Indicator calculations ──────────────────────── */
+  function calcEMA(candles, period) {
+    const k = 2 / (period + 1);
+    const result = [];
+    let ema = null;
+    for (const c of candles) {
+      ema = ema === null ? c.close : c.close * k + ema * (1 - k);
+      result.push({ time: c.time, value: ema });
+    }
+    return result;
+  }
+
+  function calcVWAP(candles) {
+    const result = [];
+    let cumVol = 0, cumTPV = 0;
+    for (const c of candles) {
+      const et   = tsToET(c.time);
+      const [h, m] = et.split(':').map(Number);
+      const mins = h * 60 + m;
+      if (mins === 9 * 60 + 30) { cumVol = 0; cumTPV = 0; }  // reset at open
+      if (mins < 9 * 60 + 30) continue;                       // skip pre-market
+      const tp = (c.high + c.low + c.close) / 3;
+      cumVol  += c.volume;
+      cumTPV  += tp * c.volume;
+      if (cumVol > 0) result.push({ time: c.time, value: cumTPV / cumVol });
+    }
+    return result;
+  }
+
+  /* ── Timeframe switch ────────────────────────────── */
+  function setTimeframe(mins) {
+    activeInterval = mins;
+    document.querySelectorAll('.tf-btn').forEach(b =>
+      b.classList.toggle('active', +b.dataset.tf === mins));
+    if (rawCandles) renderChart(rawCandles, activeExecs, mins);
+  }
+
+  /* ── Chart render ────────────────────────────────── */
+  function renderChart(candles, executions, intervalMins = 1, preserveZoom = false) {
+    const bars = aggregateCandles(candles, intervalMins);
+    // Save zoom before teardown if caller wants to preserve it
+    const savedRange = (preserveZoom && chartInstance)
+      ? chartInstance.timeScale().getVisibleLogicalRange()
+      : null;
+    hideNearMissPanel();
+    // Teardown previous overlays + chart (order matters: unsubscribe before remove)
+    if (markerCleanup)         { markerCleanup();         markerCleanup         = null; }
+    if (simMarkerCleanup)      { simMarkerCleanup();      simMarkerCleanup      = null; }
+    if (nearMissMarkerCleanup) { nearMissMarkerCleanup(); nearMissMarkerCleanup = null; }
+    if (chartInstance) { chartInstance.remove(); chartInstance = null; }
+    candleSeriesRef = null;
+
+    const container = document.getElementById('chartMain');
+    container.innerHTML = '';
+
+    chartInstance = LightweightCharts.createChart(container, {
+      autoSize: true,
+      layout: {
+        background: { type: 'solid', color: '#000000' },
+        textColor: '#9ca3af',
+        fontFamily: "'Inter', -apple-system, sans-serif",
+        fontSize: 12,
+      },
+      grid: {
+        vertLines: { visible: false },
+        horzLines: { visible: false },
+      },
+      rightPriceScale: {
+        borderColor: '#2a2a2a',
+        textColor: '#9ca3af',
+      },
+      timeScale: {
+        borderColor: '#2a2a2a',
+        timeVisible: true,
+        secondsVisible: false,
+        fixLeftEdge: false,
+        fixRightEdge: false,
+        tickMarkFormatter: ts => new Date(ts * 1000).toLocaleTimeString('en-US', {
+          timeZone: 'America/New_York',
+          hour: '2-digit', minute: '2-digit', hour12: false,
+        }),
+      },
+      crosshair: {
+        mode: LightweightCharts.CrosshairMode.Normal,
+        vertLine: {
+          color: '#555', width: 1,
+          style: LightweightCharts.LineStyle.Dashed,
+          labelBackgroundColor: '#2a2a2a',
+        },
+        horzLine: {
+          color: '#555', width: 1,
+          style: LightweightCharts.LineStyle.Dashed,
+          labelBackgroundColor: '#2a2a2a',
+        },
+      },
+      localization: {
+        timeFormatter: ts => new Date(ts * 1000).toLocaleTimeString('en-US', {
+          timeZone: 'America/New_York',
+          hour: '2-digit', minute: '2-digit', hour12: false,
+        }),
+      },
+    });
+
+    /* ── Candlestick series ─────────────────────────── */
+    const candleSeries = chartInstance.addCandlestickSeries({
+      upColor:         'rgb(8,153,129)',
+      downColor:       'rgb(242,54,69)',
+      borderUpColor:   'rgb(8,153,129)',
+      borderDownColor: 'rgb(242,54,69)',
+      wickUpColor:     'rgb(8,153,129)',
+      wickDownColor:   'rgb(242,54,69)',
+    });
+    candleSeries.setData(bars);
+    candleSeriesRef = candleSeries;
+
+    /* ── Pre-market / after-hours background zones ─── */
+    const PRE_COLOR  = 'rgb(26, 28, 36)';
+    const POST_COLOR = 'rgb(26, 28, 36)';
+    let preStart = null, preEnd = null, postStart = null, postEnd = null;
+    for (const c of bars) {
+      const et   = tsToET(c.time);
+      const [h, m] = et.split(':').map(Number);
+      const mins = h * 60 + m;
+      if (mins < 9 * 60 + 30) {
+        if (preStart === null) preStart = c.time;
+        preEnd = c.time + intervalMins * 60;
+      } else if (mins >= 16 * 60) {
+        if (postStart === null) postStart = c.time;
+        postEnd = c.time + intervalMins * 60;
+      }
+    }
+    const bgZones = [];
+    if (preStart  !== null) bgZones.push({ from: preStart,  to: preEnd,  color: PRE_COLOR  });
+    if (postStart !== null) bgZones.push({ from: postStart, to: postEnd, color: POST_COLOR });
+    if (bgZones.length > 0) {
+      try { candleSeries.attachPrimitive(createBgZonePrimitive(bgZones)); }
+      catch (_) {}
+    }
+
+    /* ── Volume histogram ───────────────────────────── */
+    const volumeSeries = chartInstance.addHistogramSeries({
+      priceFormat:   { type: 'volume' },
+      priceScaleId:  'vol',
+    });
+    chartInstance.priceScale('vol').applyOptions({
+      scaleMargins: { top: 0.82, bottom: 0 },
+    });
+    volumeSeries.setData(bars.map(c => ({
+      time:  c.time,
+      value: c.volume,
+      color: c.close >= c.open ? 'rgba(8,153,129,0.35)' : 'rgba(242,54,69,0.35)',
+    })));
+
+    /* ── 9 EMA ──────────────────────────────────────── */
+    const ema9Series = chartInstance.addLineSeries({
+      color:           'rgb(128,255,255)',
+      lineWidth:       1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    });
+    ema9Series.setData(calcEMA(bars, 9));
+
+    /* ── 20 EMA ─────────────────────────────────────── */
+    const ema20Series = chartInstance.addLineSeries({
+      color:           'rgb(0,128,255)',
+      lineWidth:       1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    });
+    ema20Series.setData(calcEMA(bars, 20));
+
+    /* ── VWAP ───────────────────────────────────────── */
+    const vwapSeries = chartInstance.addLineSeries({
+      color:           'rgb(246,197,72)',
+      lineWidth:       1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    });
+    vwapSeries.setData(calcVWAP(bars));
+
+    /* ── Hover tooltip ──────────────────────────────── */
+    const ema9Data  = calcEMA(bars, 9);
+    const ema20Data = calcEMA(bars, 20);
+    const vwapData  = calcVWAP(bars);
+    const barMap  = Object.fromEntries(bars.map(b => [b.time, b]));
+    const ema9Map  = Object.fromEntries(ema9Data.map(p => [p.time, p.value]));
+    const ema20Map = Object.fromEntries(ema20Data.map(p => [p.time, p.value]));
+    const vwapMap  = Object.fromEntries(vwapData.map(p => [p.time, p.value]));
+
+    const tooltip = document.getElementById('hoverTooltip');
+    const fmtP  = v => v != null ? v.toFixed(4) : '—';
+    const fmtVol = v => v >= 1e6 ? (v/1e6).toFixed(2)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : String(v);
+
+    chartInstance.subscribeCrosshairMove(param => {
+      if (!param.time || !param.point) { tooltip.classList.remove('visible'); return; }
+      const bar = barMap[param.time];
+      if (!bar) { tooltip.classList.remove('visible'); return; }
+
+      const e9  = ema9Map[param.time];
+      const e20 = ema20Map[param.time];
+      const vw  = vwapMap[param.time];
+      const time = tsToET(bar.time);
+      const ocColor = bar.close >= bar.open ? 'rgb(8,153,129)' : 'rgb(242,54,69)';
+
+      tooltip.innerHTML = `
+        <div class="tip-time">${time}</div>
+        <div class="tip-row"><span class="tip-label">O</span><span class="tip-val" style="color:${ocColor}">${fmtP(bar.open)}</span></div>
+        <div class="tip-row"><span class="tip-label">H</span><span class="tip-val">${fmtP(bar.high)}</span></div>
+        <div class="tip-row"><span class="tip-label">L</span><span class="tip-val">${fmtP(bar.low)}</span></div>
+        <div class="tip-row"><span class="tip-label">C</span><span class="tip-val" style="color:${ocColor}">${fmtP(bar.close)}</span></div>
+        <div class="tip-row"><span class="tip-label" style="color:#6b7280">Vol</span><span class="tip-val" style="color:#6b7280">${fmtVol(bar.volume)}</span></div>
+        <div class="tip-divider"></div>
+        <div class="tip-row"><span class="tip-label" style="color:rgb(128,255,255)">EMA9</span><span class="tip-val">${fmtP(e9)}</span></div>
+        <div class="tip-row"><span class="tip-label" style="color:rgb(0,128,255)">EMA20</span><span class="tip-val">${fmtP(e20)}</span></div>
+        <div class="tip-row"><span class="tip-label" style="color:rgb(246,197,72)">VWAP</span><span class="tip-val">${fmtP(vw)}</span></div>`;
+      tooltip.classList.add('visible');
+    });
+
+    // Restore previous zoom or fit the full day
+    if (savedRange) {
+      chartInstance.timeScale().setVisibleLogicalRange(savedRange);
+    } else {
+      chartInstance.timeScale().fitContent();
+    }
+
+    /* ── Execution markers at exact price ───────────── */
+    // Called after fitContent() so timeToCoordinate has a valid range on first draw
+    const timeMap = buildTimeMap(bars);
+    if (showRealTrades && executions && executions.length > 0) {
+      renderExecMarkers(executions, timeMap);
+    }
+
+    /* ── Simulated trade markers ─────────────────────── */
+    const dateKey    = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
+    const daySim     = (btCache[dateKey]?.sim_trades  || []).filter(t => t.symbol === activeSymbol);
+    const dayMisses  = (btCache[dateKey]?.near_misses || []).filter(t => t.symbol === activeSymbol);
+    if (showSimTrades) renderSimMarkers(daySim, bars);
+    if (showNearMiss)  renderNearMissMarkers(dayMisses, bars);
+
+    /* ── Volume at first entry ──────────────────────── */
+    const entryVolEl = document.getElementById('entryVolInfo');
+    const firstBuy = executions?.find(e => e.side === 'buy');
+    if (firstBuy) {
+      const [fh, fm] = firstBuy.time.slice(0,5).split(':').map(Number);
+      const entryMins = fh * 60 + fm;
+      let cumVol = 0;
+      for (const c of candles) {
+        const et = tsToET(c.time);
+        const [ch, cm] = et.split(':').map(Number);
+        const cMins = ch * 60 + cm;
+        if (cMins < 7 * 60) continue;
+        if (cMins > entryMins) break;
+        cumVol += c.volume;
+      }
+      const fmtCumVol = cumVol >= 1e6 ? (cumVol/1e6).toFixed(2)+'M' : cumVol >= 1e3 ? (cumVol/1e3).toFixed(0)+'K' : String(cumVol);
+      entryVolEl.textContent = `Vol @ entry: ${fmtCumVol}`;
+      entryVolEl.style.display = '';
+    } else {
+      entryVolEl.style.display = 'none';
+    }
+
+    hideStatus();
+    document.getElementById('chartLegend').style.display = 'flex';
+  }
+
+  /* ── Load chart for symbol ───────────────────────── */
+  async function loadSymbol(symbol, dayData) {
+    activeSymbol = symbol;
+
+    // Update pill active state
+    document.querySelectorAll('.sym-pill').forEach(pill => {
+      pill.classList.remove('active-pos', 'active-neg', 'active-zero');
+      if (pill.dataset.sym === symbol) {
+        const pnl = parseFloat(pill.dataset.pnl || '0');
+        pill.classList.add(pnl > 0 ? 'active-pos' : pnl < 0 ? 'active-neg' : 'active-zero');
+      }
+    });
+
+    showLoading(`Loading 1-min data for ${symbol}…`);
+    document.getElementById('chartLegend').style.display = 'none';
+
+    activeExecs  = (dayData.executions || []).filter(e => e.symbol === symbol);
+    activeTrades = groupExecutionsIntoTrades(activeExecs);
+
+    // ── 1. Try local ohlcv_data.json cache ────────────
+    const dateStr    = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
+    labelStorageKey  = `tcj_labels_${symbol}_${dateStr}`;
+    const localData  = ohlcvCache[dateStr]?.[symbol];
+    if (localData?.length) {
+      rawCandles = localData;
+      renderChart(rawCandles, activeExecs, activeInterval);
+      return;
+    }
+
+    // ── 2. Fetch live from Massive API ────────────────
+    showLoading(`Fetching data for ${symbol}…`);
+    try {
+      const candles = await fetchCandles(symbol, curYear, curMonth, curDay);
+      rawCandles = candles;
+      renderChart(rawCandles, activeExecs, activeInterval);
+    } catch (e) {
+      showError(`Could not load chart: ${e.message}`);
+    }
+  }
+
+  /* ── Render symbol pills ─────────────────────────── */
+  function renderPills(symbols, defaultSym, dayData) {
+    const container = document.getElementById('symPills');
+    container.innerHTML = '';
+    const dateKey  = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
+    const btDay    = btCache[dateKey] || {};
+    const btSyms   = btDay.symbols || {};
+
+    // ── Day PnL pill ────────────────────────────────
+    const dayRealPnl = Object.values(symbols).reduce((s, sd) => s + (sd.pnl || 0), 0);
+    const daySimPnl  = btDay.pnl != null ? btDay.pnl : null;
+    const dayRealCls = dayRealPnl > 0 ? 'pos' : dayRealPnl < 0 ? 'neg' : 'zero';
+    const daySimCls  = daySimPnl != null ? (daySimPnl > 0 ? 'pos' : daySimPnl < 0 ? 'neg' : 'zero') : null;
+    const daySimHtml = daySimCls != null
+      ? `<span class="pill-sub ${daySimCls}"><span class="pill-sub-label">SIM</span>${fmtPnl(daySimPnl)}</span>`
+      : '';
+    const dayPill = document.createElement('div');
+    dayPill.className = 'sym-pill';
+    dayPill.style.cssText = 'cursor:default;border-color:transparent;background:transparent;color:#ffffff;width:fit-content;flex-shrink:0;';
+    dayPill.innerHTML = `
+      <span class="sym-pill-name">Day</span>
+      <span class="sym-pill-stack">
+        <span class="pill-sub ${dayRealCls}"><span class="pill-sub-label">REAL</span>${fmtPnl(dayRealPnl)}</span>
+        ${daySimHtml}
+      </span>`;
+    container.appendChild(dayPill);
+
+    const divider = document.createElement('div');
+    divider.style.cssText = 'width:1px;background:#333;align-self:stretch;margin:2px 0;flex-shrink:0;';
+    container.appendChild(divider);
+
+    const inner = document.createElement('div');
+    inner.className = 'sym-pills-inner';
+
+    for (const [sym, sd] of Object.entries(symbols)) {
+      const pill     = document.createElement('button');
+      pill.className = 'sym-pill';
+      pill.dataset.sym = sym;
+      pill.dataset.pnl = sd.pnl;
+
+      const realCls = sd.pnl > 0 ? 'pos' : sd.pnl < 0 ? 'neg' : 'zero';
+      const simPnl  = btSyms[sym]?.pnl;
+      const simCls  = simPnl != null ? (simPnl > 0 ? 'pos' : simPnl < 0 ? 'neg' : 'zero') : null;
+
+      const simSubHtml = simCls != null
+        ? `<span class="pill-sub ${simCls}"><span class="pill-sub-label">SIM</span>${fmtPnl(simPnl)}</span>`
+        : '';
+
+      pill.innerHTML = `
+        <span class="sym-pill-name">${sym}</span>
+        <span class="sym-pill-stack">
+          <span class="pill-sub ${realCls}"><span class="pill-sub-label">REAL</span>${fmtPnl(sd.pnl)}</span>
+          ${simSubHtml}
+        </span>`;
+      pill.onclick = () => loadSymbol(sym, dayData);
+      inner.appendChild(pill);
+    }
+    container.appendChild(inner);
+    loadSymbol(defaultSym, dayData);
+  }
+
+  /* ── Nav helpers ─────────────────────────────────── */
+  function buildTradingDays(calData) {
+    const days = [];
+    for (const yr of Object.keys(calData).sort((a,b) => a-b)) {
+      for (const mo of Object.keys(calData[yr]).sort((a,b) => a-b)) {
+        for (const dy of Object.keys(calData[yr][mo].days).sort((a,b) => a-b)) {
+          days.push({ year: +yr, month: +mo, day: +dy });
+        }
+      }
+    }
+    return days;
+  }
+
+  function currentIndex() {
+    return tradingDays.findIndex(d => d.year === curYear && d.month === curMonth && d.day === curDay);
+  }
+
+  function updateNavButtons() {
+    const idx = currentIndex();
+    const prev = document.getElementById('btnPrev');
+    const next = document.getElementById('btnNext');
+    prev.classList.toggle('disabled', idx <= 0);
+    next.classList.toggle('disabled', idx < 0 || idx >= tradingDays.length - 1);
+  }
+
+  function navTo(entry) {
+    window.location.href =
+      `candlestick.html?year=${entry.year}&month=${entry.month}&day=${entry.day}`;
+  }
+
+  /* ── Init ────────────────────────────────────────── */
+  const params = new URLSearchParams(window.location.search);
+  curYear  = parseInt(params.get('year')  || new Date().getFullYear());
+  curMonth = parseInt(params.get('month') || new Date().getMonth() + 1);
+  curDay   = parseInt(params.get('day')   || new Date().getDate());
+  const paramSym = params.get('symbol') || null;
+
+  // Dismiss near-miss panel when clicking the chart background
+  document.getElementById('chartMain').addEventListener('click', hideNearMissPanel);
+
+  // Timeframe buttons
+  document.querySelectorAll('.tf-btn[data-tf]').forEach(btn => {
+    btn.onclick = () => setTimeframe(+btn.dataset.tf);
+  });
+
+  // Real / Sim trade toggles
+  document.getElementById('btnShowReal').onclick = () => {
+    showRealTrades = !showRealTrades;
+    document.getElementById('btnShowReal').classList.toggle('on', showRealTrades);
+    if (rawCandles) renderChart(rawCandles, activeExecs, activeInterval, true);
+  };
+  document.getElementById('btnShowSim').onclick = () => {
+    showSimTrades = !showSimTrades;
+    document.getElementById('btnShowSim').classList.toggle('on', showSimTrades);
+    if (rawCandles) renderChart(rawCandles, activeExecs, activeInterval, true);
+  };
+  document.getElementById('btnShowNearMiss').onclick = () => {
+    showNearMiss = !showNearMiss;
+    document.getElementById('btnShowNearMiss').classList.toggle('on', showNearMiss);
+    if (rawCandles) renderChart(rawCandles, activeExecs, activeInterval, true);
+  };
+
+  // Breadcrumb
+  document.getElementById('breadcrumbMonth').href        = `month.html?year=${curYear}&month=${curMonth}`;
+  document.getElementById('breadcrumbMonth').textContent = `${MONTHS[curMonth - 1]} ${curYear}`;
+  document.getElementById('breadcrumbDay').href          = `day.html?year=${curYear}&month=${curMonth}&day=${curDay}`;
+  document.getElementById('breadcrumbDay').textContent   = ordinal(curDay);
+
+  // Title
+  const d = new Date(curYear, curMonth - 1, curDay);
+  const titleStr = `${DAYS_OF_WEEK[d.getDay()]}, ${MONTHS[curMonth - 1]} ${ordinal(curDay)} ${curYear}`;
+  document.getElementById('pageTitle').textContent = titleStr;
+  document.title = `Candlestick — ${titleStr}`;
+
+  // Load calendar_data.json, ohlcv_data.json, and backtest_results.json in parallel
+  Promise.all([
+    fetch('calendar_data.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+    fetch('ohlcv_data.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+    fetch('backtest_results.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+  ])
+    .then(([calData, ohlcv, btData]) => {
+      ohlcvCache   = ohlcv;
+      btCache      = btData || {};
+      tradingDays  = buildTradingDays(calData);
+      updateNavButtons();
+
+      document.getElementById('btnPrev').onclick = () => {
+        const idx = currentIndex();
+        if (idx > 0) navTo(tradingDays[idx - 1]);
+      };
+      document.getElementById('btnNext').onclick = () => {
+        const idx = currentIndex();
+        if (idx >= 0 && idx < tradingDays.length - 1) navTo(tradingDays[idx + 1]);
+      };
+
+      const dayData = calData[curYear]?.[curMonth]?.days?.[curDay] || null;
+
+      if (!dayData?.symbols || Object.keys(dayData.symbols).length === 0) {
+        showError('No trade data for this day.');
+        return;
+      }
+
+      const symbols  = dayData.symbols;
+      const firstSym = (paramSym && symbols[paramSym]) ? paramSym : Object.keys(symbols)[0];
+      renderPills(symbols, firstSym, dayData);
+    })
+    .catch(err => {
+      showError(
+        `Error loading calendar_data.json: ${err.message}`,
+        `Run <code>python calendar_data.py</code> then serve from the dashboard/ folder.`
+      );
+    });
+</script>
+
+</body>
+</html>
