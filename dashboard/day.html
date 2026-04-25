@@ -148,7 +148,7 @@
       border-collapse: collapse;
       table-layout: fixed;
     }
-    .sym-table th, .sym-table td { width: 20%; }
+    .sym-table th, .sym-table td { width: 25%; }
     .sym-table th {
       color: #9ca3af;
       font-size: 15px;
@@ -261,12 +261,47 @@
       gap: 4px;
     }
 
+    .sym-worst-badge {
+      font-size: 10px;
+      color: #fbbf24;
+      margin-left: 4px;
+      cursor: help;
+    }
+
     /* ── Error / empty ───────────────────────────────── */
     .error { color: rgb(220, 38, 38); padding: 20px; }
     .no-data { color: #6b7280; padding: 40px; text-align: center; font-size: 16px; }
+
+    /* ── Auth overlay ───────────────────────────────── */
+    .auth-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
+    }
+    .auth-card {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 10px;
+      padding: 40px; text-align: center; width: 300px;
+    }
+    .auth-title { font-size: 18px; color: #fff; margin-bottom: 6px; }
+    .auth-sub   { color: #9ca3af; font-size: 13px; margin-bottom: 24px; }
+    #authError  { color: #f87171; font-size: 12px; margin-top: 12px; min-height: 16px; }
   </style>
+  <script src="auth.js"></script>
 </head>
 <body>
+
+<div id="authOverlay" class="auth-overlay" style="display:none">
+  <div class="auth-card">
+    <div class="auth-title">TC Trade Journal</div>
+    <div class="auth-sub">Sign in to continue</div>
+    <div id="g_id_onload"
+      data-client_id="413954462899-jcup1smhjuh6londv3tcsmil17cog1vv.apps.googleusercontent.com"
+      data-callback="_verify"
+      data-auto_prompt="false"></div>
+    <div class="g_id_signin" data-type="standard" data-theme="filled_black"
+      data-size="large" data-shape="rectangular"></div>
+    <div id="authError"></div>
+  </div>
+</div>
 
 <div class="breadcrumb">
   <a href="index.html">Calendar</a>
@@ -306,7 +341,6 @@
   const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
   let allData = {};
-  let btResults = {};
   let curYear, curMonth, curDay;
   let chartInstance = null;
   let checkedSymbols = null;
@@ -402,6 +436,12 @@
   }
 
   /* ── Helpers for client-side recomputation ─────── */
+  function fmtWLRatio(ratio) {
+    if (ratio === null || ratio === undefined) return '—';
+    if (!isFinite(ratio)) return '∞';
+    return ratio.toFixed(2) + '×';
+  }
+
   function fmtHold(totalSecs) {
     const mins = Math.floor(totalSecs / 60);
     const secs = totalSecs % 60;
@@ -442,21 +482,20 @@
         losing_trades:     losing.length,
         avg_hold_loss:     fmtHold(avgHold(losing)),
         avg_cents_loss:    avgCents(losing),
+        wl_ratio:          (winning.length && losing.length) ? Math.round((grossProfit / winning.length) / (grossLossAbs / losing.length) * 100) / 100 : (winning.length ? Infinity : 0),
+        longest_win_streak:   (() => { let c=0,m=0; for(const rt of rts){if(rt.pnl>0){c++;if(c>m)m=c;}else if(rt.pnl<0)c=0;} return m; })(),
+        longest_loss_streak:  (() => { let c=0,m=0; for(const rt of rts){if(rt.pnl<0){c++;if(c>m)m=c;}else if(rt.pnl>0)c=0;} return m; })(),
+        profit_concentration: grossProfit > 0 ? (() => { const sw=[...winning].sort((a,b)=>b.pnl-a.pnl); const n=Math.max(1,Math.ceil(sw.length*0.1)); return Math.round(sw.slice(0,n).reduce((s,rt)=>s+rt.pnl,0)/grossProfit*10000)/100; })() : 0,
       },
       chart,
     };
-  }
-
-  function getSimChart() {
-    const dateKey = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
-    return (btResults[dateKey] || {}).chart || null;
   }
 
   function updateFiltered(dayData) {
     // Fall back to pre-computed data if roundtrips not in JSON yet
     if (!dayData.roundtrips || dayData.roundtrips.length === 0) {
       renderStats(dayData);
-      renderChart(dayData.chart || [], getSimChart());
+      renderChart(dayData.chart || []);
       return;
     }
     const rts = dayData.roundtrips.filter(rt => checkedSymbols ? checkedSymbols.has(rt.symbol) : true);
@@ -467,7 +506,7 @@
       pnlEl.textContent = fmtPnl(computed.pnl);
     }
     renderStats(computed);
-    renderChart(computed.chart, getSimChart());
+    renderChart(computed.chart);
   }
 
   function renderLeft(dayData) {
@@ -480,40 +519,26 @@
       checkedSymbols = new Set(Object.keys(symbols));
     }
 
-    const dateKey = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
-    const dayBt   = btResults[dateKey] || {};
-    const symBt   = dayBt.symbols || {};
+    const worstSymPnl = Math.min(...Object.values(symbols).map(sd => sd.pnl));
+    const worstSymbol = worstSymPnl < 0 ? Object.entries(symbols).find(([,sd]) => sd.pnl === worstSymPnl)?.[0] : null;
 
     let rows = '';
     for (const [sym, sd] of Object.entries(symbols)) {
       const pClass  = sd.pnl >= 0 ? 'sym-pos' : 'sym-neg';
       const cbClass = sd.pnl >= 0 ? 'cb-pos' : 'cb-neg';
       const checked = checkedSymbols.has(sym) ? 'checked' : '';
-      const btSym   = symBt[sym];
-      const simCell = btSym != null
-        ? `<td class="${btSym.pnl >= 0 ? 'sym-pos' : 'sym-neg'}">${fmtPnl(btSym.pnl)}</td>`
-        : `<td style="color:#4b5563">—</td>`;
+      const warnBadge = sym === worstSymbol ? `<span class="sym-worst-badge" title="Worst symbol today: ${fmtPnl(sd.pnl)}">⚠</span>` : '';
       rows += `<tr>
-        <td><span class="sym-name"><input type="checkbox" class="sym-cb ${cbClass}" data-sym="${sym}" ${checked} />${sym}</span></td>
+        <td><span class="sym-name"><input type="checkbox" class="sym-cb ${cbClass}" data-sym="${sym}" ${checked} />${sym}${warnBadge}</span></td>
         <td>${sd.trades}</td>
         <td>${sd.shares.toLocaleString('en-US')}</td>
         <td class="${pClass}">${fmtPnl(sd.pnl)}</td>
-        ${simCell}
       </tr>`;
     }
 
-    const simPnl      = dayBt.pnl != null ? dayBt.pnl : null;
-    const simPnlClass = simPnl != null ? (simPnl >= 0 ? 'pnl-pos' : 'pnl-neg') : 'pnl-zero';
-    const simPnlHtml  = simPnl != null
-      ? `<div class="day-pnl ${simPnlClass}" style="font-size:20px;opacity:0.95">${fmtPnl(simPnl)}</div>`
-      : '';
-
     document.getElementById('leftPanel').innerHTML = `
       <div class="pnl-row">
-        <div style="display:flex;align-items:baseline;gap:16px">
-          <div class="day-pnl ${pnlClass}">${fmtPnl(pnl)}</div>
-          ${simPnlHtml}
-        </div>
+        <div class="day-pnl ${pnlClass}">${fmtPnl(pnl)}</div>
         <button class="icon-btn" title="Candlestick view" onclick="window.location.href='candlestick.html?year=${curYear}&month=${curMonth}&day=${curDay}'">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v4"/><rect width="4" height="6" x="7" y="9" rx="1"/><path d="M9 15v2"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v3"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/></svg>
         </button>
@@ -526,7 +551,6 @@
               <th style="text-align:right">Trades</th>
               <th style="text-align:right">Shares</th>
               <th style="text-align:right">Realized</th>
-              <th style="text-align:right">Sim PnL</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -587,6 +611,10 @@
     'Losing Trades':         `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M11 4h4"/><path d="M11 8h7"/><path d="M11 12h10"/></svg>`,
     'Avg Hold Time (Loss)':  `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12.338 21.994A10 10 0 1 1 21.925 13.227"/><path d="M12 6v6l2 1"/><path d="m14 18 4 4 4-4"/><path d="M18 14v8"/></svg>`,
     'Avg Cent / Share (Loss)':`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="M12 7v10"/><path d="M15.4 10a4 4 0 1 0 0 4"/></svg>`,
+    'W/L Ratio':             `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 2v20"/><path d="m8 10-4 4 4 4"/><path d="m16 10 4 4-4 4"/></svg>`,
+    'Longest Win Streak':    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`,
+    'Longest Loss Streak':   `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>`,
+    'Top 10% Contribution':  `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/></svg>`,
   };
 
   function renderStats(dayData) {
@@ -613,6 +641,7 @@
         ${stat('$0.00', 'Fees &amp; Com')}
         ${stat((s.accuracy || 0).toFixed(2) + '%', 'Accuracy')}
         ${stat(s.profit_factor || 0, 'Profit Factor')}
+        ${stat(fmtWLRatio(s.wl_ratio), 'W/L Ratio')}
         ${stat(vol, 'Volume')}
         ${stat(dayData.trades || 0, 'Total Trades')}
         ${stat(fmtPnl(s.avg_trade_pnl || 0), 'Avg Trade PnL')}
@@ -631,15 +660,19 @@
         ${stat(s.losing_trades || 0, 'Losing Trades')}
         ${stat(s.avg_hold_loss || '00:00', 'Avg Hold Time (Loss)')}
         ${stat(s.avg_cents_loss || 0, 'Avg Cent / Share (Loss)')}
+      </div>
+      <div class="stat-row">
+        ${stat(s.longest_win_streak || 0, 'Longest Win Streak')}
+        ${stat(s.longest_loss_streak || 0, 'Longest Loss Streak')}
+        ${stat((s.profit_concentration || 0).toFixed(1) + '%', 'Top 10% Contribution')}
       </div>`;
   }
 
-  function renderChart(chartPoints, simChartPoints) {
+  function renderChart(chartPoints) {
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
     if (!chartPoints || chartPoints.length === 0) return;
 
-    // Insert zero-crossing points so each segment is fully green or fully red
     function insertZeroCrossings(pts) {
       const out = [];
       for (let i = 0; i < pts.length; i++) {
@@ -660,33 +693,14 @@
       return out;
     }
 
-    // Merge real + sim labels into a unified sorted x-axis
     function toMins(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
     const processed = insertZeroCrossings(chartPoints);
-    const allLabels = [...new Set([
-      ...processed.map(p => p.t),
-      ...(simChartPoints || []).map(p => p.t),
-    ])].sort((a, b) => toMins(a) - toMins(b));
-
-    // Map each series to the unified labels (null = gap)
-    function alignToLabels(pts, lbls) {
-      const map = new Map(pts.map(p => [p.t, p.pnl]));
-      let last = null;
-      return lbls.map(l => {
-        if (map.has(l)) { last = map.get(l); return last; }
-        return last; // carry forward so line is continuous
-      });
-    }
-
-    const values    = alignToLabels(processed, allLabels);
-    const simValues = simChartPoints && simChartPoints.length
-      ? alignToLabels(simChartPoints, allLabels)
-      : null;
+    const allLabels = processed.map(p => p.t).sort((a, b) => toMins(a) - toMins(b));
+    const values    = allLabels.map(l => processed.find(p => p.t === l)?.pnl ?? null);
 
     const canvas = document.getElementById('pnlChart');
     const ctx    = canvas.getContext('2d');
 
-    // Plugin: gradient fill that splits at y=0
     const splitFill = {
       id: 'splitFill',
       beforeDatasetDraw(chart) {
@@ -707,50 +721,35 @@
       }
     };
 
-    const datasets = [{
-      label: 'Realized',
-      data: values,
-      fill: 'origin',
-      backgroundColor: 'rgba(26,61,57,0.6)',  // overridden by plugin
-      borderColor: 'rgb(5, 150, 105)',
-      borderWidth: 1.5,
-      pointRadius: 0,
-      tension: 0,
-      segment: {
-        borderColor: ctx => {
-          const y0 = ctx.p0.parsed.y;
-          const y1 = ctx.p1.parsed.y;
-          return (y0 >= 0 && y1 >= 0) ? 'rgb(5, 150, 105)' : 'rgb(220, 38, 38)';
-        }
-      }
-    }];
-
-    if (simValues) {
-      datasets.push({
-        label: 'Simulated',
-        data: simValues,
-        fill: false,
-        borderColor: 'rgba(139,92,246,0.85)',
-        borderWidth: 1.5,
-        borderDash: [5, 4],
-        pointRadius: 0,
-        tension: 0,
-      });
-    }
-
     chartInstance = new Chart(ctx, {
       type: 'line',
-      data: { labels: allLabels, datasets },
+      data: {
+        labels: allLabels,
+        datasets: [{
+          label: 'Realized',
+          data: values,
+          fill: 'origin',
+          backgroundColor: 'rgba(26,61,57,0.6)',
+          borderColor: 'rgb(5, 150, 105)',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          tension: 0,
+          segment: {
+            borderColor: ctx => {
+              const y0 = ctx.p0.parsed.y;
+              const y1 = ctx.p1.parsed.y;
+              return (y0 >= 0 && y1 >= 0) ? 'rgb(5, 150, 105)' : 'rgb(220, 38, 38)';
+            }
+          }
+        }]
+      },
       plugins: [splitFill],
       options: {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: {
-            display: !!simValues,
-            labels: { color: '#9ca3af', font: { size: 12, family: 'Inter' }, boxWidth: 24 },
-          },
+          legend: { display: false },
           tooltip: {
             backgroundColor: '#1e1e1e',
             borderColor: '#333',
@@ -761,10 +760,9 @@
               label: ctx => {
                 const v = ctx.parsed.y;
                 const sign = v < 0 ? '-' : '';
-                return ` ${ctx.dataset.label}: ${sign}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                return ` ${sign}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
               },
               labelColor: ctx => {
-                if (ctx.datasetIndex === 1) return { borderColor: 'rgb(139,92,246)', backgroundColor: 'rgb(139,92,246)' };
                 const color = ctx.parsed.y >= 0 ? 'rgb(5, 150, 105)' : 'rgb(220, 38, 38)';
                 return { borderColor: color, backgroundColor: color };
               }
@@ -798,17 +796,21 @@
   curMonth = parseInt(params.get('month') || new Date().getMonth() + 1);
   curDay   = parseInt(params.get('day')   || new Date().getDate());
 
-  Promise.all([
-    fetch('calendar_data.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
-    fetch('backtest_results.json').then(r => r.ok ? r.json() : {}).catch(() => {}),
-  ]).then(([calData, btData]) => {
-    allData   = calData;
-    btResults = btData || {};
-    render();
-  }).catch(err => {
-    document.getElementById('leftPanel').innerHTML =
-      `<p class="error">Error loading calendar_data.json: ${err.message}</p>`;
-  });
+  async function init() {
+    try {
+      const idx   = await fetch('calendar/calendar_index.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+      const files = await Promise.all(idx.years.map(yr =>
+        fetch(`calendar/calendar_data_${yr}.json`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      ));
+      allData = Object.assign({}, ...files);
+      render();
+    } catch (err) {
+      document.getElementById('leftPanel').innerHTML =
+        `<p class="error">Error loading data: ${err.message}</p>`;
+    }
+  }
+
+  initAuth(() => init());
 </script>
 </body>
 </html>

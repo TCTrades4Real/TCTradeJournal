@@ -83,7 +83,7 @@
       left: 50%;
       transform: translateX(-50%);
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       gap: 8px;
     }
 
@@ -103,30 +103,18 @@
     .badge-neg  { background: rgb(77, 13, 13); border-color: rgb(143, 25, 25); color: #ffffff; }
     .badge-zero { background: #1e1e1e; border-color: #333;    color: #ffffff; }
 
-    .sim-badge {
-      font-size: 20px;
-      font-weight: 400;
-      line-height: 1;
-      letter-spacing: 0.05em;
-      padding: 8px 16px;
-      border-radius: 6px;
-      border: 1px dashed transparent;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      opacity: 0.75;
+    .month-badge-sm {
+      font-size: 14px;
+      padding: 5px 10px;
     }
-    .sim-badge-label {
+
+    .badge-label {
       font-size: 11px;
       font-weight: 500;
       letter-spacing: 0.08em;
       opacity: 0.7;
       text-transform: uppercase;
     }
-    .sim-pos  { background: rgb(1, 30, 21); border-color: rgb(3, 98, 68);   color: #ffffff; }
-    .sim-neg  { background: rgb(44, 8, 8);  border-color: rgb(143, 25, 25); color: #ffffff; }
-    .sim-zero { background: #161616; border-color: #444;    color: #9ca3af; }
-
 
     .nav-btn {
       background: transparent;
@@ -250,26 +238,39 @@
       margin: 4px 0;
     }
 
-    .cell-sim {
+    .cell-stat {
       display: flex;
       flex-direction: column;
       gap: 1px;
       border-radius: 0 0 6px 6px;
       padding: 3px 6px 2px;
     }
-    .cell-sim-green { background: rgb(1, 30, 21); }
-    .cell-sim-red   { background: rgb(44, 8, 8); }
+    .cell-stat-green { background: rgb(1, 30, 21); }
+    .cell-stat-red   { background: rgb(44, 8, 8); }
 
-    .cell-sim-pnl {
+    .cell-stat-primary {
       font-size: 16px;
       font-weight: 400;
       color: rgba(255,255,255,0.55);
     }
 
-    .cell-sim-trades {
+    .cell-stat-secondary {
       font-size: 12px;
       color: rgba(255,255,255,0.4);
       padding-bottom: 3px;
+    }
+
+    .cell-outlier-warn {
+      font-size: 11px;
+      color: #fbbf24;
+      cursor: help;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .th-worst-dow {
+      background: rgba(120, 0, 0, 0.25) !important;
+      color: #f87171 !important;
     }
 
     /* ── Error state ─────────────────────────────────── */
@@ -307,9 +308,9 @@
     }
 
     .mini-badge {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 400;
-      padding: 3px 8px;
+      padding: 5px 10px;
       border-radius: 6px;
       border: 1px solid transparent;
       white-space: nowrap;
@@ -361,9 +362,62 @@
     .ann-nodata.ann-weekend { background: rgb(41, 37, 36); }
     .ann-win  { background: rgb(2, 53, 37);  color: #fafaf9; }
     .ann-loss { background: rgb(77, 13, 13); color: #fafaf9; }
+
+    /* ── Stats bar ───────────────────────────────────── */
+    .stats-bar {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-top: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .stat-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      padding: 12px 0;
+      border-bottom: 1px solid #1e1e1e;
+    }
+    .stat-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .stat-row:first-child { padding-top: 0; }
+    .stat-item { flex: 1 1 120px; min-width: 100px; padding: 4px 12px 4px 0; }
+    .stat-value { font-size: 18px; font-weight: 500; color: #ffffff; line-height: 1.2; }
+    .stat-label { font-size: 14px; color: #9ca3af; margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+
+    /* ── Auth overlay ───────────────────────────────── */
+    .auth-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
+    }
+    .auth-card {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 10px;
+      padding: 40px; text-align: center; width: 300px;
+    }
+    .auth-title { font-size: 18px; color: #fff; margin-bottom: 6px; }
+    .auth-sub   { color: #9ca3af; font-size: 13px; margin-bottom: 24px; }
+    #authError  { color: #f87171; font-size: 12px; margin-top: 12px; min-height: 16px; }
   </style>
+  <script src="auth.js"></script>
 </head>
 <body>
+
+<div id="authOverlay" class="auth-overlay" style="display:none">
+  <div class="auth-card">
+    <div class="auth-title">TC Trade Journal</div>
+    <div class="auth-sub">Sign in to continue</div>
+    <div id="g_id_onload"
+      data-client_id="413954462899-jcup1smhjuh6londv3tcsmil17cog1vv.apps.googleusercontent.com"
+      data-callback="_verify"
+      data-auto_prompt="false"></div>
+    <div class="g_id_signin" data-type="standard" data-theme="filled_black"
+      data-size="large" data-shape="rectangular"></div>
+    <div id="authError"></div>
+  </div>
+</div>
 
 <div class="breadcrumb">
   <a href="index.html">Calendar</a>
@@ -376,7 +430,9 @@
     <h1 id="pageTitle"></h1>
     <div class="badge-group">
       <span class="month-badge" id="pageBadge"></span>
-      <span class="sim-badge"   id="simBadge"></span>
+      <span class="month-badge" id="accBadge"></span>
+      <span class="month-badge" id="pfBadge"></span>
+      <span class="month-badge" id="wlBadge"></span>
     </div>
     <div class="nav-controls">
       <button class="nav-btn" id="prevBtn" title="Previous month">&#8592;</button>
@@ -389,6 +445,8 @@
   <table class="month-cal" id="monthCal"></table>
 </div>
 
+<div class="stats-bar" id="statsBar" style="display:none"></div>
+
 <div class="annual-view" id="annualView"></div>
 
 <script>
@@ -398,8 +456,125 @@
   ];
 
   let allData = {};
-  let btData  = {};   // backtest_results.json  { "YYYY-MM-DD": {trades, pnl} }
   let curYear, curMonth;
+
+  function fmtHold(totalSecs) {
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  }
+  function fmtVolume(v) {
+    if (v >= 1e6) return (v/1e6).toFixed(2)+'M';
+    if (v >= 1000) return (v/1000).toFixed(2).replace(/\.?0+$/,'')+'K';
+    return String(v);
+  }
+
+  function computeStats(roundtrips) {
+    const winning = roundtrips.filter(rt => rt.pnl > 0);
+    const losing  = roundtrips.filter(rt => rt.pnl < 0);
+    const totalPnl     = Math.round(roundtrips.reduce((s, rt) => s + rt.pnl, 0) * 100) / 100;
+    const grossProfit  = winning.reduce((s, rt) => s + rt.pnl, 0);
+    const grossLossAbs = Math.abs(losing.reduce((s, rt) => s + rt.pnl, 0));
+    const oneSidedQty  = roundtrips.reduce((s, rt) => s + rt.qty, 0);
+    const avgHold = arr => arr.length ? Math.round(arr.reduce((s, rt) => s + rt.hold_secs, 0) / arr.length) : 0;
+    const avgCents = arr => {
+      const valid = arr.filter(rt => rt.qty > 0);
+      return valid.length ? Math.round(valid.reduce((s, rt) => s + rt.pnl / rt.qty, 0) / valid.length * 100000) / 100000 : 0;
+    };
+    return {
+      pnl: totalPnl,
+      trades: roundtrips.length,
+      stats: {
+        accuracy:          roundtrips.length ? Math.round(winning.length / roundtrips.length * 10000) / 100 : 0,
+        profit_factor:     grossLossAbs > 0 ? Math.round(grossProfit / grossLossAbs * 100) / 100 : 0,
+        volume:            Math.round(oneSidedQty * 2),
+        avg_trade_pnl:     roundtrips.length ? Math.round(totalPnl / roundtrips.length * 100) / 100 : 0,
+        avg_qty:           roundtrips.length ? Math.round(oneSidedQty / roundtrips.length) : 0,
+        biggest_winner:    winning.length ? Math.round(Math.max(...winning.map(rt => rt.pnl)) * 100) / 100 : 0,
+        avg_winning_trade: winning.length ? Math.round(grossProfit / winning.length * 100) / 100 : 0,
+        winning_trades:    winning.length,
+        avg_hold_win:      fmtHold(avgHold(winning)),
+        avg_cents_win:     avgCents(winning),
+        biggest_loser:     losing.length ? Math.round(Math.min(...losing.map(rt => rt.pnl)) * 100) / 100 : 0,
+        avg_losing_trade:  losing.length ? Math.round(losing.reduce((s, rt) => s + rt.pnl, 0) / losing.length * 100) / 100 : 0,
+        losing_trades:     losing.length,
+        avg_hold_loss:     fmtHold(avgHold(losing)),
+        avg_cents_loss:    avgCents(losing),
+        wl_ratio:          (winning.length && losing.length) ? Math.round((grossProfit / winning.length) / (grossLossAbs / losing.length) * 100) / 100 : (winning.length ? Infinity : 0),
+        longest_win_streak:   (() => { let c=0,m=0; for(const rt of roundtrips){if(rt.pnl>0){c++;if(c>m)m=c;}else if(rt.pnl<0)c=0;} return m; })(),
+        longest_loss_streak:  (() => { let c=0,m=0; for(const rt of roundtrips){if(rt.pnl<0){c++;if(c>m)m=c;}else if(rt.pnl>0)c=0;} return m; })(),
+        profit_concentration: grossProfit > 0 ? (() => { const sw=[...winning].sort((a,b)=>b.pnl-a.pnl); const n=Math.max(1,Math.ceil(sw.length*0.1)); return Math.round(sw.slice(0,n).reduce((s,rt)=>s+rt.pnl,0)/grossProfit*10000)/100; })() : 0,
+      }
+    };
+  }
+
+  const STAT_ICONS = {
+    'PnL':                    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16c.5-2 1.5-7 4-7 2 0 2 3 4 3 2.5 0 4.5-5 5-7"/></svg>`,
+    'Fees &amp; Com':         `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17"/><path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/><path d="m2 16 6 6"/><circle cx="16" cy="9" r="2.9"/><circle cx="6" cy="5" r="3"/></svg>`,
+    'Accuracy':               `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 13V2l8 4-8 4"/><path d="M20.561 10.222a9 9 0 1 1-12.55-5.29"/><path d="M8.002 9.997a5 5 0 1 0 8.9 2.02"/></svg>`,
+    'Profit Factor':          `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="m14.31 8 5.74 9.94"/><path d="M9.69 8h11.48"/><path d="m7.38 12 5.74-9.94"/><path d="M9.69 16 3.95 6.06"/><path d="M14.31 16H2.83"/><path d="m16.62 12-5.74 9.94"/></svg>`,
+    'Volume':                 `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2"/></svg>`,
+    'Total Trades':           `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M2 7v10"/><path d="M6 5v14"/><rect width="12" height="18" x="10" y="3" rx="2"/></svg>`,
+    'Avg Trade PnL':          `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>`,
+    'Avg Quantity':           `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`,
+    'Biggest Winner':         `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>`,
+    'Avg Winning Trade':      `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>`,
+    'Winning Trades':         `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/><path d="M11 12h10"/><path d="M11 16h7"/><path d="M11 20h4"/></svg>`,
+    'Avg Hold Time (Win)':    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M13.228 21.925A10 10 0 1 1 21.994 12.338"/><path d="M12 6v6l1.562.781"/><path d="m14 18 4-4 4 4"/><path d="M18 22v-8"/></svg>`,
+    'Avg Cent / Share (Win)': `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="M12 7v10"/><path d="M15.4 10a4 4 0 1 0 0 4"/></svg>`,
+    'Biggest Loser':          `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 20V10"/><path d="M18 20v-4"/><path d="M6 20V4"/></svg>`,
+    'Avg Losing Trade':       `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>`,
+    'Losing Trades':          `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M11 4h4"/><path d="M11 8h7"/><path d="M11 12h10"/></svg>`,
+    'Avg Hold Time (Loss)':   `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12.338 21.994A10 10 0 1 1 21.925 13.227"/><path d="M12 6v6l2 1"/><path d="m14 18 4 4 4-4"/><path d="M18 14v8"/></svg>`,
+    'Avg Cent / Share (Loss)':`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="M12 7v10"/><path d="M15.4 10a4 4 0 1 0 0 4"/></svg>`,
+    'W/L Ratio':             `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 2v20"/><path d="m8 10-4 4 4 4"/><path d="m16 10 4 4-4 4"/></svg>`,
+    'Longest Win Streak':    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`,
+    'Longest Loss Streak':   `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></svg>`,
+    'Top 10% Contribution':  `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/></svg>`,
+  };
+
+  function renderStats(data) {
+    const el = document.getElementById('statsBar');
+    if (!data || data.trades === 0) { el.style.display = 'none'; return; }
+    el.style.display = 'flex';
+    const s = data.stats || {};
+    const pnl = data.pnl || 0;
+    function stat(value, label) {
+      const icon = STAT_ICONS[label] || '';
+      return `<div class="stat-item"><div class="stat-value">${value}</div><div class="stat-label">${icon}${label}</div></div>`;
+    }
+    el.innerHTML = `
+      <div class="stat-row">
+        ${stat(fmtBadge(pnl), 'PnL')}
+        ${stat('$0.00', 'Fees &amp; Com')}
+        ${stat((s.accuracy || 0).toFixed(2) + '%', 'Accuracy')}
+        ${stat(s.profit_factor || 0, 'Profit Factor')}
+        ${stat(fmtWLRatio(s.wl_ratio), 'W/L Ratio')}
+        ${stat(fmtVolume(s.volume || 0), 'Volume')}
+        ${stat(data.trades || 0, 'Total Trades')}
+        ${stat(fmtBadge(s.avg_trade_pnl || 0), 'Avg Trade PnL')}
+        ${stat((s.avg_qty || 0).toLocaleString('en-US'), 'Avg Quantity')}
+      </div>
+      <div class="stat-row">
+        ${stat(fmtBadge(s.biggest_winner || 0), 'Biggest Winner')}
+        ${stat(fmtBadge(s.avg_winning_trade || 0), 'Avg Winning Trade')}
+        ${stat(s.winning_trades || 0, 'Winning Trades')}
+        ${stat(s.avg_hold_win || '00:00', 'Avg Hold Time (Win)')}
+        ${stat(s.avg_cents_win || 0, 'Avg Cent / Share (Win)')}
+      </div>
+      <div class="stat-row">
+        ${stat(fmtBadge(s.biggest_loser || 0), 'Biggest Loser')}
+        ${stat(fmtBadge(s.avg_losing_trade || 0), 'Avg Losing Trade')}
+        ${stat(s.losing_trades || 0, 'Losing Trades')}
+        ${stat(s.avg_hold_loss || '00:00', 'Avg Hold Time (Loss)')}
+        ${stat(s.avg_cents_loss || 0, 'Avg Cent / Share (Loss)')}
+      </div>
+      <div class="stat-row">
+        ${stat(s.longest_win_streak || 0, 'Longest Win Streak')}
+        ${stat(s.longest_loss_streak || 0, 'Longest Loss Streak')}
+        ${stat((s.profit_concentration || 0).toFixed(1) + '%', 'Top 10% Contribution')}
+      </div>`;
+  }
 
   function fmtDollars(abs) {
     return abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -408,6 +583,55 @@
   function fmtBadge(pnl) {
     const sign = pnl >= 0 ? '' : '-';
     return `${sign}$${fmtDollars(Math.abs(pnl))}`;
+  }
+
+  function fmtAccuracy(acc) {
+    if (acc === null || acc === undefined) return '—';
+    return Math.round(acc) + '%';
+  }
+
+  function fmtPF(pf) {
+    if (pf === null || pf === undefined) return '—';
+    if (!isFinite(pf)) return '∞';
+    return pf.toFixed(2);
+  }
+
+  function fmtWLRatio(ratio) {
+    if (ratio === null || ratio === undefined) return '—';
+    if (!isFinite(ratio)) return '∞';
+    return ratio.toFixed(2) + '×';
+  }
+
+  /* ── Stats helpers ──────────────────────────────── */
+  function computeDayStats(dayData) {
+    if (!dayData) return null;
+    const syms = Object.values(dayData.symbols || {});
+    if (syms.length === 0) return { accuracy: null, pf: null };
+    let wins = 0, grossProfit = 0, grossLoss = 0;
+    for (const s of syms) {
+      if ((s.pnl || 0) > 0) { wins++; grossProfit += s.pnl; }
+      else if ((s.pnl || 0) < 0) { grossLoss += Math.abs(s.pnl); }
+    }
+    return {
+      accuracy: wins / syms.length * 100,
+      pf:       grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? Infinity : null),
+    };
+  }
+
+  function computeMonthStats(days) {
+    const rts = Object.values(days).flatMap(d => d?.roundtrips || []);
+    if (rts.length === 0) return { accuracy: null, pf: null };
+    const wins        = rts.filter(rt => rt.pnl > 0);
+    const losses      = rts.filter(rt => rt.pnl < 0);
+    const grossProfit = wins.reduce((s, rt) => s + rt.pnl, 0);
+    const grossLoss   = Math.abs(losses.reduce((s, rt) => s + rt.pnl, 0));
+    const avgWinAmt  = wins.length   ? grossProfit / wins.length   : 0;
+    const avgLossAmt = losses.length ? grossLoss   / losses.length : 0;
+    return {
+      accuracy: wins.length / rts.length * 100,
+      pf:       grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? Infinity : null),
+      wl_ratio: avgLossAmt > 0 ? Math.round(avgWinAmt / avgLossAmt * 100) / 100 : (avgWinAmt > 0 ? Infinity : 0),
+    };
   }
 
   function navigate(year, month) {
@@ -432,25 +656,44 @@
     document.getElementById('pageTitle').textContent = `${MONTHS[curMonth - 1]}, ${curYear}`;
     document.getElementById('breadcrumbMonth').textContent = `${MONTHS[curMonth - 1]} ${curYear}`;
 
-    const badge = document.getElementById('pageBadge');
-    badge.className = 'month-badge ' + (!hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg');
-    badge.innerHTML = `<span class="sim-badge-label">Real</span>${fmtBadge(total)}`;
+    const colorClass = !hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg';
 
-    // Compute monthly backtest total from btData
-    let simTotal = 0, simHasData = false;
-    const daysInMonthCount = new Date(curYear, curMonth, 0).getDate();
-    for (let d = 1; d <= daysInMonthCount; d++) {
-      const key = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      if (btData[key]) { simTotal += btData[key].pnl; simHasData = true; }
-    }
-    simTotal = Math.round(simTotal * 100) / 100;
-    const simBadge = document.getElementById('simBadge');
-    simBadge.className = 'sim-badge ' + (!simHasData ? 'sim-zero' : simTotal >= 0 ? 'sim-pos' : 'sim-neg');
-    simBadge.innerHTML = `<span class="sim-badge-label">Sim</span>${fmtBadge(simTotal)}`;
+    const badge = document.getElementById('pageBadge');
+    badge.className = 'month-badge ' + colorClass;
+    badge.innerHTML = `<span class="badge-label">Real</span>${fmtBadge(total)}`;
+
+    const monthStats = computeMonthStats(monthData.days);
+
+    const accBadge = document.getElementById('accBadge');
+    accBadge.className = 'month-badge month-badge-sm ' + colorClass;
+    accBadge.innerHTML = `<span class="badge-label">Acc</span>${fmtAccuracy(monthStats.accuracy)}`;
+    accBadge.title = 'Win rate (% of green trading days)';
+
+    const pfBadge = document.getElementById('pfBadge');
+    pfBadge.className = 'month-badge month-badge-sm ' + colorClass;
+    pfBadge.innerHTML = `<span class="badge-label">P/F</span>${fmtPF(monthStats.pf)}`;
+    pfBadge.title = 'Profit factor (gross profit / gross loss)';
+
+    const wlBadge = document.getElementById('wlBadge');
+    const wlColor = !hasTrades ? 'badge-zero' : (isFinite(monthStats.wl_ratio) && monthStats.wl_ratio >= 1.0 ? 'badge-pos' : monthStats.wl_ratio > 0 ? 'badge-neg' : 'badge-zero');
+    wlBadge.className = 'month-badge month-badge-sm ' + wlColor;
+    wlBadge.innerHTML = `<span class="badge-label">W/L</span>${fmtWLRatio(monthStats.wl_ratio)}`;
+    wlBadge.title = 'Win/loss ratio (avg win ÷ avg loss)';
 
     /* Build table */
     const cal = document.getElementById('monthCal');
     cal.innerHTML = '';
+
+    /* Compute worst trading day-of-week for this month */
+    const dowPnl = [0,0,0,0,0,0,0];
+    for (const [dayStr, dd] of Object.entries(monthData.days)) {
+      if (!dd) continue;
+      dowPnl[new Date(curYear, curMonth - 1, parseInt(dayStr)).getDay()] += dd.pnl;
+    }
+    let worstTradingDow = -1, worstDowPnl = 0;
+    for (let dow = 1; dow <= 5; dow++) {
+      if (dowPnl[dow] < worstDowPnl) { worstDowPnl = dowPnl[dow]; worstTradingDow = dow; }
+    }
 
     /* thead */
     const thead = document.createElement('thead');
@@ -459,6 +702,7 @@
       const th = document.createElement('th');
       th.textContent = d;
       if (i === 7) th.className = 'total-col';
+      else if (i === worstTradingDow && worstDowPnl < 0) th.classList.add('th-worst-dow');
       hrow.appendChild(th);
     });
     thead.appendChild(hrow);
@@ -473,10 +717,9 @@
 
     for (let row = 0; row < numRows; row++) {
       const tr = document.createElement('tr');
-      let weekPnl     = 0;
-      let weekTrades  = 0;
-      let weekSimPnl  = 0;
-      let weekSimTrades = 0;
+      let weekPnl          = 0;
+      let weekTrades       = 0;
+      let weekRoundtrips   = [];
 
       for (let col = 0; col < 7; col++) {
         const cellIndex = row * 7 + col;
@@ -497,9 +740,14 @@
             inner.appendChild(numEl);
             td.appendChild(inner);
           } else {
-            td.className = dayData.pnl >= 0 ? 'mc-win' : 'mc-loss';
+            const isWin = dayData.pnl >= 0;
+            td.className = isWin ? 'mc-win' : 'mc-loss';
+            const dayRts = dayData.roundtrips || [];
+            const worstRtPnl = dayRts.length ? Math.min(...dayRts.map(rt => rt.pnl)) : 0;
+            const hasOutlier = worstRtPnl < -150;
             weekPnl    += dayData.pnl;
             weekTrades += dayData.trades;
+            weekRoundtrips.push(...(dayData.roundtrips || []));
 
             const inner = document.createElement('div');
             inner.className = 'cell-inner';
@@ -516,6 +764,13 @@
             iconEl.href = `day.html?year=${curYear}&month=${curMonth}&day=${dayNum}`;
             iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M8 8h8v8"></path><path d="m8 16 8-8"></path></svg>`;
 
+            if (hasOutlier) {
+              const warnEl = document.createElement('span');
+              warnEl.className = 'cell-outlier-warn';
+              warnEl.title = `Outlier loss: ${fmtBadge(worstRtPnl)}`;
+              warnEl.textContent = '⚠';
+              topRow.appendChild(warnEl);
+            }
             topRow.appendChild(numEl);
             topRow.appendChild(iconEl);
 
@@ -531,30 +786,26 @@
             inner.appendChild(pnlEl);
             inner.appendChild(trdEl);
 
-            // ── Sim half ──────────────────────────────────
-            const dateKey = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
-            const bt = btData[dateKey];
-            if (bt) { weekSimPnl += bt.pnl; weekSimTrades += bt.trades; }
-
+            /* Accuracy / PF section */
+            const dayStats = computeDayStats(dayData);
             const divider = document.createElement('hr');
             divider.className = 'cell-divider';
             inner.appendChild(divider);
 
-            const simEl = document.createElement('div');
-            const simColor = bt ? (bt.pnl >= 0 ? 'cell-sim-green' : 'cell-sim-red') : '';
-            simEl.className = ('cell-sim ' + simColor).trim();
+            const statEl = document.createElement('div');
+            statEl.className = 'cell-stat ' + (isWin ? 'cell-stat-green' : 'cell-stat-red');
 
-            const simPnlEl = document.createElement('div');
-            simPnlEl.className = 'cell-sim-pnl';
-            simPnlEl.textContent = bt ? fmtBadge(bt.pnl) : '—';
+            const accEl = document.createElement('div');
+            accEl.className = 'cell-stat-primary';
+            accEl.textContent = dayStats ? fmtAccuracy(dayStats.accuracy) : '—';
 
-            const simTrdEl = document.createElement('div');
-            simTrdEl.className = 'cell-sim-trades';
-            simTrdEl.textContent = bt ? `Sim ${bt.trades}` : 'Sim —';
+            const pfEl = document.createElement('div');
+            pfEl.className = 'cell-stat-secondary';
+            pfEl.textContent = 'PF ' + (dayStats ? fmtPF(dayStats.pf) : '—');
 
-            simEl.appendChild(simPnlEl);
-            simEl.appendChild(simTrdEl);
-            inner.appendChild(simEl);
+            statEl.appendChild(accEl);
+            statEl.appendChild(pfEl);
+            inner.appendChild(statEl);
 
             td.appendChild(inner);
           }
@@ -583,26 +834,32 @@
         inner.appendChild(pnlEl);
         inner.appendChild(trdEl);
 
-        if (weekSimTrades > 0) {
-          const wDivider = document.createElement('hr');
-          wDivider.className = 'cell-divider';
-          inner.appendChild(wDivider);
+        /* Weekly accuracy / PF section */
+        const wDivider = document.createElement('hr');
+        wDivider.className = 'cell-divider';
+        inner.appendChild(wDivider);
 
-          const wSimEl = document.createElement('div');
-          wSimEl.className = 'cell-sim ' + (weekSimPnl >= 0 ? 'cell-sim-green' : 'cell-sim-red');
+        const weekWinRts     = weekRoundtrips.filter(rt => rt.pnl > 0);
+        const weekLoseRts    = weekRoundtrips.filter(rt => rt.pnl < 0);
+        const weekGrossProfit = weekWinRts.reduce((s, rt) => s + rt.pnl, 0);
+        const weekGrossLoss   = Math.abs(weekLoseRts.reduce((s, rt) => s + rt.pnl, 0));
+        const weekAcc    = weekRoundtrips.length > 0 ? (weekWinRts.length / weekRoundtrips.length * 100) : null;
+        const weekPFval  = weekGrossLoss > 0 ? weekGrossProfit / weekGrossLoss
+                         : (weekGrossProfit > 0 ? Infinity : null);
+        const wStatEl = document.createElement('div');
+        wStatEl.className = 'cell-stat ' + (weekPnl >= 0 ? 'cell-stat-green' : 'cell-stat-red');
 
-          const wSimPnlEl = document.createElement('div');
-          wSimPnlEl.className = 'cell-sim-pnl';
-          wSimPnlEl.textContent = fmtBadge(weekSimPnl);
+        const wAccEl = document.createElement('div');
+        wAccEl.className = 'cell-stat-primary';
+        wAccEl.textContent = fmtAccuracy(weekAcc);
 
-          const wSimTrdEl = document.createElement('div');
-          wSimTrdEl.className = 'cell-sim-trades';
-          wSimTrdEl.textContent = `Sim ${weekSimTrades}`;
+        const wPFEl = document.createElement('div');
+        wPFEl.className = 'cell-stat-secondary';
+        wPFEl.textContent = 'PF ' + fmtPF(weekPFval);
 
-          wSimEl.appendChild(wSimPnlEl);
-          wSimEl.appendChild(wSimTrdEl);
-          inner.appendChild(wSimEl);
-        }
+        wStatEl.appendChild(wAccEl);
+        wStatEl.appendChild(wPFEl);
+        inner.appendChild(wStatEl);
 
         totalTd.appendChild(inner);
       }
@@ -611,6 +868,11 @@
     }
 
     cal.appendChild(tbody);
+
+    /* Stats bar */
+    const allRoundtrips = Object.values(monthData.days).flatMap(d => d?.roundtrips || []);
+    renderStats(allRoundtrips.length ? computeStats(allRoundtrips) : { trades: 0 });
+
     buildAnnualView();
   }
 
@@ -725,20 +987,22 @@
   curYear  = parseInt(params.get('year')  || new Date().getFullYear());
   curMonth = parseInt(params.get('month') || new Date().getMonth() + 1);
 
-  Promise.all([
-    fetch('calendar_data.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
-    fetch('backtest_results.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
-  ])
-    .then(([calData, bt]) => {
-      allData = calData;
-      btData  = bt;
+  async function init() {
+    try {
+      const idx   = await fetch('calendar/calendar_index.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+      const files = await Promise.all(idx.years.map(yr =>
+        fetch(`calendar/calendar_data_${yr}.json`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      ));
+      allData = Object.assign({}, ...files);
       render();
-    })
-    .catch(err => {
+    } catch (err) {
       document.getElementById('monthCal').innerHTML =
-        `<tr><td class="error">Error loading calendar_data.json: ${err.message}<br>
-        Run: <code>python calendar_data.py</code> then serve from dashboard/ folder.</td></tr>`;
-    });
+        `<tr><td class="error">Error loading data: ${err.message}<br>
+        Run: <code>python calendar_data.py</code></td></tr>`;
+    }
+  }
+
+  initAuth(() => init());
 </script>
 </body>
 </html>

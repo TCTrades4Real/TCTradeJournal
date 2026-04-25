@@ -1,6 +1,12 @@
+import sys
+import os
+# When running on the server, pick up vendored packages from ~/app/vendor/
+_vendor = os.path.join(os.path.dirname(__file__), 'vendor')
+if os.path.isdir(_vendor):
+    sys.path.insert(0, _vendor)
+
 import csv
 import json
-import os
 import time
 import requests
 from datetime import datetime, timedelta, timezone
@@ -181,7 +187,7 @@ def get_trade_export(client, account_hash, start_date_utc=None, end_date_utc=Non
         # Fallback if no trades
         date_str = datetime.now().strftime("%Y-%m-%d")
 
-    base_folder = config.MR_PROFIT_BASE_FOLDER
+    base_folder = os.environ.get('TRADE_DATA_DIR', config.MR_PROFIT_BASE_FOLDER)
     base_name = f"{date_str}-AccountStatement"
     full_path = get_unique_filename(base_folder, base_name)
 
@@ -457,7 +463,7 @@ if __name__ == "__main__":
             hour=0, minute=0, second=0, tzinfo=_ET
         ).astimezone(timezone.utc)
     else:
-        last_trade = get_last_trade_time(config.MR_PROFIT_BASE_FOLDER)
+        last_trade = get_last_trade_time(os.environ.get('TRADE_DATA_DIR', config.MR_PROFIT_BASE_FOLDER))
         if last_trade:
             start_date_utc = last_trade + timedelta(seconds=1)
             print(f"Last recorded trade: {last_trade.astimezone(_ET).strftime('%m/%d/%Y %H:%M:%S')} ET — fetching from there.")
@@ -483,4 +489,62 @@ if __name__ == "__main__":
 
     import subprocess, sys
     subprocess.run([sys.executable, "calendar_data.py"], check=True)
-    subprocess.run([sys.executable, "backtester.py"], check=True)
+    subprocess.run([sys.executable, "fetch_ohlcv.py"], check=True)
+
+    import ftplib, pathlib
+    from datetime import date as _date
+
+    _sftp_cfg = json.loads(pathlib.Path(".vscode/sftp.json").read_text())
+    _host     = _sftp_cfg["host"]
+    _port     = _sftp_cfg.get("port", 21)
+    _user     = _sftp_cfg["username"]
+    _password = _sftp_cfg["password"]
+    _remote   = _sftp_cfg["remotePath"].rstrip("/")
+    _cal_dir  = pathlib.Path("dashboard/calendar")
+    _ohlcv_dir = pathlib.Path("dashboard/ohlcv")
+    _manifest  = _ohlcv_dir / ".uploaded"
+    _today_ohlcv = f"ohlcv_{_date.today().isoformat()}.json"
+
+    # Load manifest of already-uploaded ohlcv files
+    _uploaded = set()
+    if _manifest.exists():
+        _uploaded = set(_manifest.read_text().splitlines())
+
+    # Determine which ohlcv files to upload
+    _ohlcv_to_upload = [
+        f for f in sorted(_ohlcv_dir.glob("ohlcv_*.json"))
+        if f.name not in _uploaded or f.name == _today_ohlcv
+    ]
+
+    print("\nUploading to FTP...")
+    with ftplib.FTP() as ftp:
+        ftp.connect(_host, _port)
+        ftp.login(_user, _password)
+
+        # Upload calendar files
+        try:
+            ftp.mkd(f"{_remote}/calendar")
+        except ftplib.error_perm:
+            pass
+        for f in sorted(_cal_dir.glob("*.json")):
+            with open(f, "rb") as fh:
+                ftp.storbinary(f"STOR {_remote}/calendar/{f.name}", fh)
+            print(f"  Uploaded: calendar/{f.name}")
+
+        # Upload ohlcv files
+        try:
+            ftp.mkd(f"{_remote}/ohlcv")
+        except ftplib.error_perm:
+            pass
+        newly_uploaded = []
+        for f in _ohlcv_to_upload:
+            with open(f, "rb") as fh:
+                ftp.storbinary(f"STOR {_remote}/ohlcv/{f.name}", fh)
+            print(f"  Uploaded: ohlcv/{f.name}")
+            newly_uploaded.append(f.name)
+
+    # Update manifest
+    _uploaded.update(newly_uploaded)
+    _manifest.write_text("\n".join(sorted(_uploaded)))
+
+    print("FTP upload complete.")

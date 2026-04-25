@@ -90,8 +90,8 @@
     .sym-pills-inner {
       flex: 1;
       min-width: 0;
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      display: flex;
+      flex-wrap: wrap;
       gap: 8px;
     }
 
@@ -110,12 +110,9 @@
       cursor: pointer;
       transition: background 0.15s, color 0.15s, border-color 0.15s;
       white-space: nowrap;
-      width: 100%;
     }
-    .sym-pill:hover { background: #2e2e2e; color: #ffffff; border-color: #666; }
-    .sym-pill.active-pos,
-    .sym-pill.active-neg,
-    .sym-pill.active-zero { background: #3a3a3a; border-color: #999; color: #ffffff; }
+    .sym-pill:hover { background: #2e2e2e; color: #ffffff; border-color: #555; }
+    .sym-pill.active { background: rgb(58,58,58); border-color: rgb(153,153,153); color: #ffffff; }
     .sym-pill-name { font-size: 13px; font-weight: 600; }
     .sym-pill-stack {
       display: flex;
@@ -136,14 +133,13 @@
       border: 1px solid transparent;
       line-height: 1.4;
     }
-    .pill-sub.pos  { background: rgb(11,98,71);   border-color: rgb(11,98,71);   color: #ffffff; opacity: 1; }
-    .pill-sub.neg  { background: rgb(140,31,31);  border-color: rgb(140,31,31);  color: #ffffff; opacity: 1; }
-    .pill-sub.zero { background: #333;            border-color: #555;            color: #9ca3af; opacity: 1; }
-    .pill-sub-label { font-size: 10px; font-weight: 600; opacity: 1; margin-right: 5px; letter-spacing: 0.04em; }
-    .pill-sub.pos .pill-sub-label { color: rgb(134,239,172); }
-    .pill-sub.neg .pill-sub-label { color: rgb(252,165,165); }
+    .pill-sub.pos  { background: rgb(11,98,71);  border-color: rgb(11,98,71);  color: #ffffff; }
+    .pill-sub.neg  { background: rgb(140,31,31); border-color: rgb(140,31,31); color: #ffffff; }
+    .pill-sub.zero { background: #333;           border-color: #555;           color: #9ca3af; }
+    .pill-sub-label { font-size: 10px; font-weight: 600; margin-right: 5px; letter-spacing: 0.04em; }
+    .pill-sub.pos  .pill-sub-label { color: rgb(134,239,172); }
+    .pill-sub.neg  .pill-sub-label { color: rgb(252,165,165); }
     .pill-sub.zero .pill-sub-label { color: #9ca3af; }
-    .pill-pnl { font-size: 13px; font-weight: 500; }
 
     /* ── Timeframe selector ──────────────────────────── */
     .tf-selector {
@@ -165,39 +161,39 @@
     .tf-btn:hover { background: #252525; color: #e0e0e0; }
     .tf-btn.active { background: #252525; color: #ffffff; border-color: #666; }
 
-    /* ── Trade toggles ───────────────────────────────── */
-    .trade-toggle {
-      display: inline-flex;
+
+    /* ── Toggle switch ───────────────────────────────── */
+    .toggle-wrap {
+      display: flex;
       align-items: center;
-      gap: 9px;
+      gap: 7px;
+      margin-left: 8px;
+      font-size: 14px;
+      color: #9ca3af;
       cursor: pointer;
       user-select: none;
-      font-size: 15px;
-      color: #9ca3af;
     }
     .toggle-track {
       position: relative;
-      width: 54px;
-      height: 30px;
-      border-radius: 15px;
+      width: 44px;
+      height: 24px;
       background: #333;
-      border: 1px solid #444;
-      transition: background 0.2s, border-color 0.2s;
+      border-radius: 12px;
+      transition: background 0.2s;
       flex-shrink: 0;
     }
+    .toggle-track.on { background: #4b5563; }
     .toggle-thumb {
       position: absolute;
-      top: 4px;
-      left: 4px;
-      width: 20px;
-      height: 20px;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      background: #6b7280;
       border-radius: 50%;
-      background: #666;
       transition: transform 0.2s, background 0.2s;
     }
-    .trade-toggle.on .toggle-track { background: #252525; border-color: #666; }
-    .trade-toggle.on .toggle-thumb { transform: translateX(24px); background: #ffffff; }
-    .trade-toggle.on { color: #ffffff; }
+    .toggle-track.on .toggle-thumb { transform: translateX(20px); background: #ffffff; }
 
     /* ── Trade selector ──────────────────────────────── */
     /* ── Legend row ──────────────────────────────────── */
@@ -295,37 +291,37 @@
     .status-hint { color: #6b7280; font-size: 12px; max-width: 480px; line-height: 1.6; }
     .status-hint code { background: #1e1e1e; padding: 1px 5px; border-radius: 3px; color: #d1d5db; }
 
-    /* ── Near-miss detail panel ──────────────────────── */
-    #nearMissPanel {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      z-index: 20;
-      background: rgba(15,15,15,0.95);
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 11px 14px;
-      font-size: 12px;
-      color: #e0e0e0;
-      pointer-events: none;
-      display: none;
-      line-height: 1.75;
-      min-width: 260px;
-      max-width: 320px;
+    /* ── Auth overlay ───────────────────────────────── */
+    .auth-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
     }
-    #nearMissPanel.visible { display: block; }
-    .nm-header { color: #ffffff; font-size: 13px; font-weight: 600; margin-bottom: 2px; }
-    .nm-sub    { color: #6b7280; font-size: 11px; margin-bottom: 8px; }
-    .nm-row    { display: flex; align-items: flex-start; gap: 8px; padding: 2px 0; }
-    .nm-icon   { flex-shrink: 0; width: 14px; text-align: center; }
-    .nm-icon.met  { color: rgb(134,239,172); }
-    .nm-icon.miss { color: rgb(252,165,165); }
-    .nm-label     { font-size: 12px; line-height: 1.4; }
-    .nm-label.miss { color: rgb(248,113,113); }
+    .auth-card {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 10px;
+      padding: 40px; text-align: center; width: 300px;
+    }
+    .auth-title { font-size: 18px; color: #fff; margin-bottom: 6px; }
+    .auth-sub   { color: #9ca3af; font-size: 13px; margin-bottom: 24px; }
+    #authError  { color: #f87171; font-size: 12px; margin-top: 12px; min-height: 16px; }
 
   </style>
+  <script src="auth.js"></script>
 </head>
 <body>
+
+<div id="authOverlay" class="auth-overlay" style="display:none">
+  <div class="auth-card">
+    <div class="auth-title">TC Trade Journal</div>
+    <div class="auth-sub">Sign in to continue</div>
+    <div id="g_id_onload"
+      data-client_id="413954462899-jcup1smhjuh6londv3tcsmil17cog1vv.apps.googleusercontent.com"
+      data-callback="_verify"
+      data-auto_prompt="false"></div>
+    <div class="g_id_signin" data-type="standard" data-theme="filled_black"
+      data-size="large" data-shape="rectangular"></div>
+    <div id="authError"></div>
+  </div>
+</div>
 
 <div class="breadcrumb">
   <a href="index.html">Calendar</a>
@@ -353,15 +349,9 @@
   <button class="tf-btn active" data-tf="2">2m</button>
   <button class="tf-btn" data-tf="5">5m</button>
   <button class="tf-btn" data-tf="30">30m</button>
-  <span style="width:1px;background:#333;align-self:stretch;margin:0 12px;"></span>
-  <label class="trade-toggle" id="btnShowReal">
-    <span class="toggle-track"><span class="toggle-thumb"></span></span>Real
-  </label>
-  <label class="trade-toggle on" id="btnShowSim" style="margin-left:10px;">
-    <span class="toggle-track"><span class="toggle-thumb"></span></span>Sim
-  </label>
-  <label class="trade-toggle" id="btnShowNearMiss" style="margin-left:10px;">
-    <span class="toggle-track"><span class="toggle-thumb"></span></span>Near Miss
+  <label class="toggle-wrap" id="btnToggleLabels">
+    <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    Prices
   </label>
 </div>
 
@@ -373,7 +363,6 @@
   <span class="legend-item"><span class="legend-dot" style="background:rgb(128,255,255)"></span> 9 EMA</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(0,128,255)"></span> 20 EMA</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(246,197,72)"></span> VWAP</span>
-  <span class="legend-item"><svg width="11" height="11" style="flex-shrink:0;vertical-align:middle"><polygon points="5.5,1 1,10 10,10" fill="rgb(139,92,246)" opacity="0.85"/></svg> Near Miss</span>
   <span class="legend-item" id="entryVolInfo" style="display:none;margin-left:8px;color:#9ca3af;"></span>
 </div>
 
@@ -386,7 +375,6 @@
     <div id="chartMain"></div>
   </div>
   <div id="hoverTooltip"></div>
-  <div id="nearMissPanel"></div>
 </div>
 
 
@@ -399,22 +387,19 @@
 
   let curYear, curMonth, curDay;
   let chartInstance   = null;
-  let candleSeriesRef = null;   // kept for SVG marker redraws
-  let markerCleanup         = null;   // unsubscribe + remove SVG overlay
-  let simMarkerCleanup      = null;   // unsubscribe + remove sim SVG overlay
-  let nearMissMarkerCleanup = null;   // unsubscribe + remove near-miss SVG overlay
-  let showRealTrades  = false;
-  let showSimTrades   = true;
-  let showNearMiss    = false;
-  let btCache         = {};     // loaded from backtest_results.json
+  let candleSeriesRef = null;
+  let markerCleanup   = null;
   let activeSymbol    = null;
   let activeInterval  = 2;      // current timeframe in minutes
   let rawCandles      = null;   // 1m candles for active symbol
   let activeExecs     = [];     // executions for active symbol
-  let ohlcvCache      = {};     // loaded from ohlcv_data.json
+  let ohlcvCache      = {};     // loaded from ohlcv_YYYY-MM-DD.json
   let tradingDays     = [];     // sorted list of {year,month,day} objects with trade data
   let labelStorageKey = null;   // localStorage key for label offsets (set per symbol/date)
   let activeTrades    = [];     // activeExecs grouped by round-trip
+  let labelOffsets    = {};     // {markerKey: {dx, dy}} — persisted to localStorage
+  let labelsVisible   = false;
+  let labelLayerRef   = null;
 
   /* ── Formatters ──────────────────────────────────── */
   function ordinal(n) {
@@ -601,6 +586,9 @@
       if (!chartInstance || !candleSeriesRef) return;
       const timeScale = chartInstance.timeScale();
       const r = calcRadius();
+      const labelLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      labelLayer.style.display = labelsVisible ? '' : 'none';
+      labelLayerRef = labelLayer;
 
       for (const m of resolved) {
         const x = timeScale.timeToCoordinate(m.ts);
@@ -620,7 +608,108 @@
         dot.setAttribute('fill', color);
         dot.style.pointerEvents = 'none';
         svg.appendChild(dot);
+
+        const mKey = `${m.ts}_${m.side}_${m.price}`;
+        if (!labelOffsets[mKey]) labelOffsets[mKey] = { dx: 0, dy: 0 };
+        const off = labelOffsets[mKey];
+
+        // Measure text to size the pill
+        const measTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        measTxt.setAttribute('font-size', '13');
+        measTxt.setAttribute('font-family', 'Inter, sans-serif');
+        measTxt.setAttribute('font-weight', '500');
+        measTxt.textContent = `$${m.price.toFixed(2)}`;
+        svg.appendChild(measTxt);
+        const tw = measTxt.getBBox().width;
+        svg.removeChild(measTxt);
+
+        const padX = 10, padY = 5;
+        const bw = tw + padX * 2;
+        const bh = 26;
+
+        const svgW     = svg.clientWidth || svg.getBoundingClientRect().width || 800;
+        const flipLeft = x + r + 8 + bw > svgW;
+        const baseX    = flipLeft ? x - r - 8 - bw : x + r + 8;
+
+        // Connector line
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('stroke', color);
+        line.setAttribute('stroke-width', '1');
+        line.setAttribute('opacity', '0.5');
+        line.style.pointerEvents = 'none';
+        labelLayer.appendChild(line);
+
+        // Label group: pill rect + text
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+        const pill = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        pill.setAttribute('x', 0);
+        pill.setAttribute('y', -bh / 2);
+        pill.setAttribute('width', bw);
+        pill.setAttribute('height', bh);
+        pill.setAttribute('rx', 4);
+        const darkColor = color.replace('rgb(', 'rgba(').replace(')', ', 0.35)');
+        pill.setAttribute('fill', darkColor);
+        pill.setAttribute('stroke', color);
+        pill.setAttribute('stroke-width', '1');
+        g.appendChild(pill);
+
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.setAttribute('x', padX);
+        txt.setAttribute('y', 0);
+        txt.setAttribute('dominant-baseline', 'middle');
+        txt.setAttribute('text-anchor', 'start');
+        txt.setAttribute('fill', '#ffffff');
+        txt.setAttribute('font-size', '13');
+        txt.setAttribute('font-family', 'Inter, sans-serif');
+        txt.setAttribute('font-weight', '500');
+        txt.textContent = `$${m.price.toFixed(2)}`;
+        g.appendChild(txt);
+
+        g.style.cursor = 'grab';
+        g.style.userSelect = 'none';
+        g.setAttribute('pointer-events', 'all');
+
+        function applyPos(dx, dy) {
+          g.setAttribute('transform', `translate(${baseX + dx}, ${y + dy})`);
+          line.setAttribute('x1', x);
+          line.setAttribute('y1', y);
+          line.setAttribute('x2', baseX + dx + bw / 2);
+          line.setAttribute('y2', y + dy);
+        }
+        applyPos(off.dx, off.dy);
+
+        g.addEventListener('mousedown', e => {
+          e.stopPropagation();
+          e.preventDefault();
+          g.style.cursor = 'grabbing';
+          const startX = e.clientX, startY = e.clientY;
+          const origDx = off.dx, origDy = off.dy;
+          const onMove = ev => {
+            off.dx = origDx + ev.clientX - startX;
+            off.dy = origDy + ev.clientY - startY;
+            applyPos(off.dx, off.dy);
+          };
+          const onUp = () => {
+            g.style.cursor = 'grab';
+            try { localStorage.setItem(labelStorageKey, JSON.stringify(labelOffsets)); } catch (_) {}
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+          };
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+
+        g.addEventListener('dblclick', e => {
+          e.stopPropagation();
+          delete labelOffsets[mKey];
+          try { localStorage.setItem(labelStorageKey, JSON.stringify(labelOffsets)); } catch (_) {}
+          redraw();
+        });
+
+        labelLayer.appendChild(g);
       }
+      svg.appendChild(labelLayer);
     }
 
     redraw();
@@ -629,200 +718,6 @@
     try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(redraw); } catch (_) {}
 
     markerCleanup = () => {
-      try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(redraw); } catch (_) {}
-      try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(redraw); } catch (_) {}
-      svg.remove();
-    };
-  }
-
-  /* ── Simulated trade markers ────────────────────── */
-  function renderSimMarkers(simTrades, bars) {
-    if (simMarkerCleanup) { simMarkerCleanup(); simMarkerCleanup = null; }
-    if (!simTrades?.length || !chartInstance || !candleSeriesRef) return;
-
-    // Use logicalToCoordinate(bar index) instead of timeToCoordinate(timestamp).
-    // timeToCoordinate interpolates by physical time for unmatched timestamps,
-    // placing dots between bars. logicalToCoordinate always snaps to a bar center.
-    const barMins = bars.map((b, i) => {
-      const et = tsToET(b.time);
-      const [h, m] = et.split(':').map(Number);
-      return { mins: h * 60 + m, idx: i, price_ts: b.time };
-    });
-    function nearestBarIdx(timeStr) {
-      const [hh, mm] = timeStr.split(':').map(Number);
-      const target = hh * 60 + mm;
-      // Find the last bar whose open time is <= target (the bar that contains this time).
-      let best = null;
-      for (const b of barMins) {
-        if (b.mins <= target) best = b;
-        else break;
-      }
-      return best;
-    }
-
-    const resolved = [];
-    for (const t of simTrades) {
-      const entry = nearestBarIdx(t.entry_time);
-      const exit  = nearestBarIdx(t.exit_time);
-      if (entry) resolved.push({ idx: entry.idx, price: t.entry_price, side: 'entry' });
-      if (exit)  resolved.push({ idx: exit.idx,  price: t.exit_price,  side: 'exit'  });
-    }
-    if (!resolved.length) return;
-
-    const container = document.getElementById('chartMain');
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.id = 'simMarkerOverlay';
-    svg.setAttribute('style',
-      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:4;');
-    container.appendChild(svg);
-
-    function calcRadius() {
-      try {
-        const spacing = chartInstance.timeScale().options().barSpacing;
-        return Math.min(Math.max(spacing * 0.26, 10), 20);
-      } catch (_) { return 6; }
-    }
-
-    function redraw() {
-      while (svg.firstChild) svg.removeChild(svg.firstChild);
-      if (!chartInstance || !candleSeriesRef) return;
-      const timeScale = chartInstance.timeScale();
-      const r = calcRadius();
-      for (const m of resolved) {
-        const x = timeScale.logicalToCoordinate(m.idx);
-        const y = candleSeriesRef.priceToCoordinate(m.price);
-        if (x == null || y == null) continue;
-        const color = m.side === 'entry' ? 'rgb(109,40,217)' : 'rgb(196,148,255)';
-        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', r);
-        dot.setAttribute('fill', color);
-        dot.style.pointerEvents = 'none';
-        svg.appendChild(dot);
-      }
-    }
-
-    redraw();
-    requestAnimationFrame(redraw);
-    chartInstance.timeScale().subscribeVisibleLogicalRangeChange(redraw);
-    try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(redraw); } catch (_) {}
-
-    simMarkerCleanup = () => {
-      try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(redraw); } catch (_) {}
-      try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(redraw); } catch (_) {}
-      svg.remove();
-    };
-  }
-
-  /* ── Near-miss markers ──────────────────────────── */
-  const NEAR_MISS_CONDITION_LABELS = [
-    { label: 'Volume ≥ 25,000',                           key: 'c0' },
-    { label: 'Breakout triggered',                         key: 'c1' },
-    { label: 'MACD ≥ Signal',                              key: 'c2' },
-    { label: 'EMA proximity (high ≤ 7.5% of EMA9 OR EMA9 ≤ 2.5% of EMA20)', key: 'c3' },
-    { label: 'Prev bar high > EMA9',                       key: 'c4' },
-    { label: 'EMA9 > VWAP',                               key: 'c5' },
-  ];
-
-  function showNearMissPanel(nm) {
-    const conditions = nm.conditions || [];
-    const failCount  = conditions.filter(c => c === false).length;
-    const rows = NEAR_MISS_CONDITION_LABELS.map((c, i) => {
-      const met = conditions[i] !== false;
-      return `<div class="nm-row">
-        <span class="nm-icon ${met ? 'met' : 'miss'}">${met ? '✓' : '✗'}</span>
-        <span class="nm-label ${met ? '' : 'miss'}">${c.label}</span>
-      </div>`;
-    }).join('');
-    const panel = document.getElementById('nearMissPanel');
-    panel.innerHTML = `
-      <div class="nm-header">${nm.symbol} — Near Miss</div>
-      <div class="nm-sub">${nm.time} &nbsp;·&nbsp; Breakout $${nm.breakout_level?.toFixed(4) ?? '—'} &nbsp;·&nbsp; ${failCount} failed</div>
-      ${rows}`;
-    panel.classList.add('visible');
-  }
-
-  function hideNearMissPanel() {
-    document.getElementById('nearMissPanel').classList.remove('visible');
-  }
-
-  function renderNearMissMarkers(nearMisses, bars) {
-    if (nearMissMarkerCleanup) { nearMissMarkerCleanup(); nearMissMarkerCleanup = null; }
-    if (!nearMisses?.length || !chartInstance || !candleSeriesRef) return;
-
-    const barMins = bars.map((b, i) => {
-      const et = tsToET(b.time);
-      const [h, m] = et.split(':').map(Number);
-      return { mins: h * 60 + m, idx: i };
-    });
-    function nearestBarIdx(timeStr) {
-      const [hh, mm] = timeStr.split(':').map(Number);
-      const target = hh * 60 + mm;
-      let best = null;
-      for (const b of barMins) {
-        if (b.mins <= target) best = b;
-        else break;
-      }
-      return best;
-    }
-
-    const resolved = [];
-    for (const nm of nearMisses) {
-      const bar = nearestBarIdx(nm.time);
-      if (bar) resolved.push({ idx: bar.idx, price: nm.breakout_level, nm });
-    }
-    if (!resolved.length) return;
-
-    const container = document.getElementById('chartMain');
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.id = 'nearMissOverlay';
-    // pointer-events:none on svg so chart interactions pass through;
-    // individual triangles override to pointer-events:all for clicks
-    svg.setAttribute('style',
-      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:3;');
-    container.appendChild(svg);
-
-    function calcSize() {
-      try {
-        const spacing = chartInstance.timeScale().options().barSpacing;
-        return Math.min(Math.max(spacing * 0.28, 8), 16);
-      } catch (_) { return 8; }
-    }
-
-    function triPoints(cx, cy, r) {
-      // Upward-pointing equilateral triangle centred at (cx, cy)
-      const h = r * 1.8;
-      return `${cx},${cy - h * 0.65} ${cx - r},${cy + h * 0.35} ${cx + r},${cy + h * 0.35}`;
-    }
-
-    function redraw() {
-      while (svg.firstChild) svg.removeChild(svg.firstChild);
-      if (!chartInstance || !candleSeriesRef) return;
-      const timeScale = chartInstance.timeScale();
-      const r = calcSize();
-      for (const m of resolved) {
-        const x = timeScale.logicalToCoordinate(m.idx);
-        const y = candleSeriesRef.priceToCoordinate(m.price);
-        if (x == null || y == null) continue;
-        const tri = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        tri.setAttribute('points', triPoints(x, y, r));
-        tri.setAttribute('fill', 'rgb(139,92,246)');
-        tri.setAttribute('opacity', '0.85');
-        tri.style.pointerEvents = 'all';
-        tri.style.cursor = 'pointer';
-        tri.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showNearMissPanel(m.nm);
-        });
-        svg.appendChild(tri);
-      }
-    }
-
-    redraw();
-    requestAnimationFrame(redraw);
-    chartInstance.timeScale().subscribeVisibleLogicalRangeChange(redraw);
-    try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(redraw); } catch (_) {}
-
-    nearMissMarkerCleanup = () => {
       try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(redraw); } catch (_) {}
       try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(redraw); } catch (_) {}
       svg.remove();
@@ -914,11 +809,8 @@
     const savedRange = (preserveZoom && chartInstance)
       ? chartInstance.timeScale().getVisibleLogicalRange()
       : null;
-    hideNearMissPanel();
     // Teardown previous overlays + chart (order matters: unsubscribe before remove)
-    if (markerCleanup)         { markerCleanup();         markerCleanup         = null; }
-    if (simMarkerCleanup)      { simMarkerCleanup();      simMarkerCleanup      = null; }
-    if (nearMissMarkerCleanup) { nearMissMarkerCleanup(); nearMissMarkerCleanup = null; }
+    if (markerCleanup) { markerCleanup(); markerCleanup = null; }
     if (chartInstance) { chartInstance.remove(); chartInstance = null; }
     candleSeriesRef = null;
 
@@ -1101,16 +993,9 @@
     /* ── Execution markers at exact price ───────────── */
     // Called after fitContent() so timeToCoordinate has a valid range on first draw
     const timeMap = buildTimeMap(bars);
-    if (showRealTrades && executions && executions.length > 0) {
+    if (executions && executions.length > 0) {
       renderExecMarkers(executions, timeMap);
     }
-
-    /* ── Simulated trade markers ─────────────────────── */
-    const dateKey    = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
-    const daySim     = (btCache[dateKey]?.sim_trades  || []).filter(t => t.symbol === activeSymbol);
-    const dayMisses  = (btCache[dateKey]?.near_misses || []).filter(t => t.symbol === activeSymbol);
-    if (showSimTrades) renderSimMarkers(daySim, bars);
-    if (showNearMiss)  renderNearMissMarkers(dayMisses, bars);
 
     /* ── Volume at first entry ──────────────────────── */
     const entryVolEl = document.getElementById('entryVolInfo');
@@ -1144,11 +1029,7 @@
 
     // Update pill active state
     document.querySelectorAll('.sym-pill').forEach(pill => {
-      pill.classList.remove('active-pos', 'active-neg', 'active-zero');
-      if (pill.dataset.sym === symbol) {
-        const pnl = parseFloat(pill.dataset.pnl || '0');
-        pill.classList.add(pnl > 0 ? 'active-pos' : pnl < 0 ? 'active-neg' : 'active-zero');
-      }
+      pill.classList.toggle('active', pill.dataset.sym === symbol);
     });
 
     showLoading(`Loading 1-min data for ${symbol}…`);
@@ -1157,10 +1038,11 @@
     activeExecs  = (dayData.executions || []).filter(e => e.symbol === symbol);
     activeTrades = groupExecutionsIntoTrades(activeExecs);
 
-    // ── 1. Try local ohlcv_data.json cache ────────────
+    // ── 1. Try local ohlcv_YYYY-MM-DD.json cache ─────
     const dateStr    = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
     labelStorageKey  = `tcj_labels_${symbol}_${dateStr}`;
-    const localData  = ohlcvCache[dateStr]?.[symbol];
+    try { labelOffsets = JSON.parse(localStorage.getItem(labelStorageKey) || '{}'); } catch (_) { labelOffsets = {}; }
+    const localData  = ohlcvCache[symbol];
     if (localData?.length) {
       rawCandles = localData;
       renderChart(rawCandles, activeExecs, activeInterval);
@@ -1182,26 +1064,16 @@
   function renderPills(symbols, defaultSym, dayData) {
     const container = document.getElementById('symPills');
     container.innerHTML = '';
-    const dateKey  = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
-    const btDay    = btCache[dateKey] || {};
-    const btSyms   = btDay.symbols || {};
 
-    // ── Day PnL pill ────────────────────────────────
-    const dayRealPnl = Object.values(symbols).reduce((s, sd) => s + (sd.pnl || 0), 0);
-    const daySimPnl  = btDay.pnl != null ? btDay.pnl : null;
-    const dayRealCls = dayRealPnl > 0 ? 'pos' : dayRealPnl < 0 ? 'neg' : 'zero';
-    const daySimCls  = daySimPnl != null ? (daySimPnl > 0 ? 'pos' : daySimPnl < 0 ? 'neg' : 'zero') : null;
-    const daySimHtml = daySimCls != null
-      ? `<span class="pill-sub ${daySimCls}"><span class="pill-sub-label">SIM</span>${fmtPnl(daySimPnl)}</span>`
-      : '';
+    const dayPnl = Object.values(symbols).reduce((s, sd) => s + (sd.pnl || 0), 0);
+    const dayCls = dayPnl > 0 ? 'pos' : dayPnl < 0 ? 'neg' : 'zero';
     const dayPill = document.createElement('div');
     dayPill.className = 'sym-pill';
-    dayPill.style.cssText = 'cursor:default;border-color:transparent;background:transparent;color:#ffffff;width:fit-content;flex-shrink:0;';
+    dayPill.style.cssText = 'cursor:default;flex-shrink:0;border-color:transparent;background:transparent;';
     dayPill.innerHTML = `
       <span class="sym-pill-name">Day</span>
       <span class="sym-pill-stack">
-        <span class="pill-sub ${dayRealCls}"><span class="pill-sub-label">REAL</span>${fmtPnl(dayRealPnl)}</span>
-        ${daySimHtml}
+        <span class="pill-sub ${dayCls}" style="font-size:20px;padding:4px 10px;">${fmtPnl(dayPnl)}</span>
       </span>`;
     container.appendChild(dayPill);
 
@@ -1213,24 +1085,16 @@
     inner.className = 'sym-pills-inner';
 
     for (const [sym, sd] of Object.entries(symbols)) {
-      const pill     = document.createElement('button');
+      const pill = document.createElement('button');
+      const cls = sd.pnl > 0 ? 'pos' : sd.pnl < 0 ? 'neg' : 'zero';
       pill.className = 'sym-pill';
       pill.dataset.sym = sym;
       pill.dataset.pnl = sd.pnl;
-
-      const realCls = sd.pnl > 0 ? 'pos' : sd.pnl < 0 ? 'neg' : 'zero';
-      const simPnl  = btSyms[sym]?.pnl;
-      const simCls  = simPnl != null ? (simPnl > 0 ? 'pos' : simPnl < 0 ? 'neg' : 'zero') : null;
-
-      const simSubHtml = simCls != null
-        ? `<span class="pill-sub ${simCls}"><span class="pill-sub-label">SIM</span>${fmtPnl(simPnl)}</span>`
-        : '';
-
+      const nameColor = '#ffffff';
       pill.innerHTML = `
-        <span class="sym-pill-name">${sym}</span>
+        <span class="sym-pill-name" style="color:${nameColor}">${sym}</span>
         <span class="sym-pill-stack">
-          <span class="pill-sub ${realCls}"><span class="pill-sub-label">REAL</span>${fmtPnl(sd.pnl)}</span>
-          ${simSubHtml}
+          <span class="pill-sub ${cls}">${fmtPnl(sd.pnl)}</span>
         </span>`;
       pill.onclick = () => loadSymbol(sym, dayData);
       inner.appendChild(pill);
@@ -1276,30 +1140,18 @@
   curDay   = parseInt(params.get('day')   || new Date().getDate());
   const paramSym = params.get('symbol') || null;
 
-  // Dismiss near-miss panel when clicking the chart background
-  document.getElementById('chartMain').addEventListener('click', hideNearMissPanel);
-
   // Timeframe buttons
   document.querySelectorAll('.tf-btn[data-tf]').forEach(btn => {
     btn.onclick = () => setTimeframe(+btn.dataset.tf);
   });
 
-  // Real / Sim trade toggles
-  document.getElementById('btnShowReal').onclick = () => {
-    showRealTrades = !showRealTrades;
-    document.getElementById('btnShowReal').classList.toggle('on', showRealTrades);
-    if (rawCandles) renderChart(rawCandles, activeExecs, activeInterval, true);
+  // Price label toggle
+  document.getElementById('btnToggleLabels').onclick = function() {
+    labelsVisible = !labelsVisible;
+    this.querySelector('.toggle-track').classList.toggle('on', labelsVisible);
+    if (labelLayerRef) labelLayerRef.style.display = labelsVisible ? '' : 'none';
   };
-  document.getElementById('btnShowSim').onclick = () => {
-    showSimTrades = !showSimTrades;
-    document.getElementById('btnShowSim').classList.toggle('on', showSimTrades);
-    if (rawCandles) renderChart(rawCandles, activeExecs, activeInterval, true);
-  };
-  document.getElementById('btnShowNearMiss').onclick = () => {
-    showNearMiss = !showNearMiss;
-    document.getElementById('btnShowNearMiss').classList.toggle('on', showNearMiss);
-    if (rawCandles) renderChart(rawCandles, activeExecs, activeInterval, true);
-  };
+
 
   // Breadcrumb
   document.getElementById('breadcrumbMonth').href        = `month.html?year=${curYear}&month=${curMonth}`;
@@ -1313,25 +1165,30 @@
   document.getElementById('pageTitle').textContent = titleStr;
   document.title = `Candlestick — ${titleStr}`;
 
-  // Load calendar_data.json, ohlcv_data.json, and backtest_results.json in parallel
-  Promise.all([
-    fetch('calendar_data.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
-    fetch('ohlcv_data.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
-    fetch('backtest_results.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
-  ])
-    .then(([calData, ohlcv, btData]) => {
-      ohlcvCache   = ohlcv;
-      btCache      = btData || {};
-      tradingDays  = buildTradingDays(calData);
+  async function init() {
+    try {
+      const ohlcvFile = `ohlcv/ohlcv_${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}.json`;
+      const [idx, ohlcv] = await Promise.all([
+        fetch('calendar/calendar_index.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+        fetch(ohlcvFile).then(r => r.ok ? r.json() : {}).catch(() => ({})),
+      ]);
+      ohlcvCache = ohlcv;
+
+      const files = await Promise.all(idx.years.map(yr =>
+        fetch(`calendar/calendar_data_${yr}.json`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      ));
+      const calData = Object.assign({}, ...files);
+
+      tradingDays = buildTradingDays(calData);
       updateNavButtons();
 
       document.getElementById('btnPrev').onclick = () => {
-        const idx = currentIndex();
-        if (idx > 0) navTo(tradingDays[idx - 1]);
+        const i = currentIndex();
+        if (i > 0) navTo(tradingDays[i - 1]);
       };
       document.getElementById('btnNext').onclick = () => {
-        const idx = currentIndex();
-        if (idx >= 0 && idx < tradingDays.length - 1) navTo(tradingDays[idx + 1]);
+        const i = currentIndex();
+        if (i >= 0 && i < tradingDays.length - 1) navTo(tradingDays[i + 1]);
       };
 
       const dayData = calData[curYear]?.[curMonth]?.days?.[curDay] || null;
@@ -1344,13 +1201,15 @@
       const symbols  = dayData.symbols;
       const firstSym = (paramSym && symbols[paramSym]) ? paramSym : Object.keys(symbols)[0];
       renderPills(symbols, firstSym, dayData);
-    })
-    .catch(err => {
+    } catch (err) {
       showError(
-        `Error loading calendar_data.json: ${err.message}`,
-        `Run <code>python calendar_data.py</code> then serve from the dashboard/ folder.`
+        `Error loading data: ${err.message}`,
+        `Run <code>python calendar_data.py</code>`
       );
-    });
+    }
+  }
+
+  initAuth(() => init());
 </script>
 
 </body>

@@ -13,8 +13,9 @@ import argparse
 from datetime import datetime
 from collections import defaultdict
 
-CSV_FOLDER = os.path.join(os.path.dirname(__file__), 'trade_data')
-OUTPUT_PATH = os.path.join(os.path.dirname(__file__), 'dashboard', 'calendar_data.json')
+_HERE       = os.path.dirname(__file__)
+CSV_FOLDER  = os.environ.get('TRADE_DATA_DIR',  os.path.join(_HERE, 'trade_data'))
+OUTPUT_DIR  = os.environ.get('OUTPUT_DIR',       os.path.join(_HERE, 'dashboard'))
 
 
 def fmt_hold(total_secs):
@@ -143,6 +144,10 @@ def compute_daily_details(executions):
         running_cost = 0.0
         entry_dt     = None
         rt_open_qty  = 0.0
+        entry_value  = 0.0
+        entry_qty_s  = 0.0
+        exit_value   = 0.0
+        exit_qty_s   = 0.0
 
         for t in trades:
             qty   = t['qty']
@@ -152,21 +157,35 @@ def compute_daily_details(executions):
             if abs(position) < 1e-9:
                 entry_dt    = t['dt']
                 rt_open_qty = 0.0
+                entry_value = 0.0
+                entry_qty_s = 0.0
+                exit_value  = 0.0
+                exit_qty_s  = 0.0
 
             position     += qty
             running_cost += cost
 
             if t['pos_effect'] == 'TO OPEN':
                 rt_open_qty += abs(qty)
+                entry_value += price * abs(qty)
+                entry_qty_s += abs(qty)
+            elif t['pos_effect'] == 'TO CLOSE':
+                exit_value  += price * abs(qty)
+                exit_qty_s  += abs(qty)
 
             if abs(position) < 1e-9 and entry_dt is not None:
-                hold_secs = int((t['dt'] - entry_dt).total_seconds())
+                hold_secs   = int((t['dt'] - entry_dt).total_seconds())
+                avg_entry   = round(entry_value / entry_qty_s, 4) if entry_qty_s > 0 else 0
+                avg_exit    = round(exit_value  / exit_qty_s,  4) if exit_qty_s  > 0 else 0
                 daily_roundtrips[t['date']].append({
-                    'symbol':    symbol,
-                    'pnl':       round(running_cost, 2),
-                    'qty':       rt_open_qty,
-                    'exit_time': t['dt'].strftime('%H:%M'),
-                    'hold_secs': hold_secs,
+                    'symbol':      symbol,
+                    'pnl':         round(running_cost, 2),
+                    'qty':         rt_open_qty,
+                    'entry_time':  entry_dt.strftime('%H:%M'),
+                    'exit_time':   t['dt'].strftime('%H:%M'),
+                    'hold_secs':   hold_secs,
+                    'entry_price': avg_entry,
+                    'exit_price':  avg_exit,
                 })
                 position     = 0.0
                 running_cost = 0.0
@@ -246,11 +265,14 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
             'symbols': sym_map,
             'roundtrips': [
                 {
-                    'symbol':    rt['symbol'],
-                    'pnl':       rt['pnl'],
-                    'qty':       rt['qty'],
-                    'exit_time': rt['exit_time'],
-                    'hold_secs': rt['hold_secs'],
+                    'symbol':      rt['symbol'],
+                    'pnl':         rt['pnl'],
+                    'qty':         rt['qty'],
+                    'entry_time':  rt['entry_time'],
+                    'exit_time':   rt['exit_time'],
+                    'hold_secs':   rt['hold_secs'],
+                    'entry_price': rt['entry_price'],
+                    'exit_price':  rt['exit_price'],
                 }
                 for rt in roundtrips
             ],
@@ -294,11 +316,21 @@ def main():
 
     data = build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=args.year)
 
-    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    with open(OUTPUT_PATH, 'w') as f:
-        json.dump(data, f, indent=2)
+    cal_dir = os.path.join(OUTPUT_DIR, 'calendar')
+    os.makedirs(cal_dir, exist_ok=True)
 
-    print(f'Written: {OUTPUT_PATH}')
+    available_years = []
+    for year, year_data in data.items():
+        out_path = os.path.join(cal_dir, f'calendar_data_{year}.json')
+        with open(out_path, 'w') as f:
+            json.dump({year: year_data}, f, indent=2)
+        available_years.append(int(year))
+        print(f'Written: {out_path}')
+
+    index_path = os.path.join(cal_dir, 'calendar_index.json')
+    with open(index_path, 'w') as f:
+        json.dump({'years': sorted(available_years)}, f)
+    print(f'Written: {index_path}')
 
     for year in sorted(data):
         for month in sorted(data[year], key=int):
