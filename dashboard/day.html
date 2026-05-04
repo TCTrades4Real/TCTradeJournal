@@ -148,7 +148,7 @@
       border-collapse: collapse;
       table-layout: fixed;
     }
-    .sym-table th, .sym-table td { width: 25%; }
+    .sym-table th, .sym-table td { width: 20%; }
     .sym-table th {
       color: #9ca3af;
       font-size: 15px;
@@ -260,6 +260,10 @@
       align-items: center;
       gap: 4px;
     }
+    .stats-tab-bar { display: flex; gap: 4px; margin-bottom: 14px; }
+    .stats-tab { padding: 5px 14px; font-size: 12px; font-weight: 600; color: #6b7280; cursor: pointer; border: 1px solid #2a2a2a; border-radius: 6px; background: transparent; letter-spacing: 0.04em; text-transform: uppercase; transition: all 0.15s; }
+    .stats-tab:hover { color: #e0e0e0; border-color: #444; }
+    .stats-tab.active { color: #ffffff; background: #1e1e2e; border-color: #6366f1; }
 
     .sym-worst-badge {
       font-size: 10px;
@@ -288,6 +292,7 @@
   <script src="auth.js"></script>
 </head>
 <body>
+<script src="nav.js"></script>
 
 <div id="authOverlay" class="auth-overlay" style="display:none">
   <div class="auth-card">
@@ -425,7 +430,7 @@
 
     if (!dayData) {
       document.getElementById('leftPanel').innerHTML = '<p class="no-data">No trade data for this day.</p>';
-      document.getElementById('statsBar').innerHTML = '';
+      renderStats({ trades: 0, pnl: 0, stats: {} });
       renderChart(null, null);
       return;
     }
@@ -618,8 +623,13 @@
   };
 
   function renderStats(dayData) {
-    const s = dayData.stats || {};
-    const pnl = dayData.pnl || 0;
+    const el = document.getElementById('statsBar');
+    if (!el) return;
+    const hasData = !!(dayData && (dayData.trades > 0 || (dayData.stats && dayData.pnl)));
+    if (!hasData) { el.innerHTML = ''; return; }
+
+    const s   = dayData?.stats || {};
+    const pnl = dayData?.pnl || 0;
 
     function stat(value, label) {
       let cls = '';
@@ -627,22 +637,17 @@
       if (label === 'Biggest Loser'  || label === 'Avg Losing Trade')  cls = 'neg';
       if (label === 'PnL') cls = pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : '';
       const icon = STAT_ICONS[label] || '';
-      return `<div class="stat-item">
-        <div class="stat-value ${cls}">${value}</div>
-        <div class="stat-label">${icon}${label}</div>
-      </div>`;
+      return `<div class="stat-item"><div class="stat-value ${cls}">${value}</div><div class="stat-label">${icon}${label}</div></div>`;
     }
 
-    const vol = fmtVolume(s.volume || 0);
-
-    document.getElementById('statsBar').innerHTML = `
+    el.innerHTML = `
       <div class="stat-row">
         ${stat(fmtPnl(pnl), 'PnL')}
         ${stat('$0.00', 'Fees &amp; Com')}
         ${stat((s.accuracy || 0).toFixed(2) + '%', 'Accuracy')}
         ${stat(s.profit_factor || 0, 'Profit Factor')}
         ${stat(fmtWLRatio(s.wl_ratio), 'W/L Ratio')}
-        ${stat(vol, 'Volume')}
+        ${stat(fmtVolume(s.volume || 0), 'Volume')}
         ${stat(dayData.trades || 0, 'Total Trades')}
         ${stat(fmtPnl(s.avg_trade_pnl || 0), 'Avg Trade PnL')}
         ${stat((s.avg_qty || 0).toLocaleString('en-US'), 'Avg Quantity')}
@@ -703,19 +708,19 @@
 
     const splitFill = {
       id: 'splitFill',
-      beforeDatasetDraw(chart) {
+      beforeDatasetsDraw(chart) {
         const { ctx: c, chartArea, scales: { y } } = chart;
         if (!chartArea) return;
         const { top, bottom } = chartArea;
-        const zeroY = y.getPixelForValue(0);
+        const zeroY   = y.getPixelForValue(0);
         const clamped = Math.max(top, Math.min(bottom, zeroY));
         const ratio   = (clamped - top) / (bottom - top);
 
         const grad = c.createLinearGradient(0, top, 0, bottom);
-        grad.addColorStop(0,                         'rgba(5, 150, 105, 0.6)');
-        grad.addColorStop(Math.max(0, ratio - 0.001), 'rgba(5, 150, 105, 0.6)');
-        grad.addColorStop(Math.min(1, ratio + 0.001), 'rgba(220, 38, 38, 0.6)');
-        grad.addColorStop(1,                          'rgba(220, 38, 38, 0.6)');
+        grad.addColorStop(0,                          'rgba(5, 150, 105, 0.45)');
+        grad.addColorStop(Math.max(0, ratio - 0.001), 'rgba(5, 150, 105, 0.45)');
+        grad.addColorStop(Math.min(1, ratio + 0.001), 'rgba(220, 38, 38, 0.45)');
+        grad.addColorStop(1,                          'rgba(220, 38, 38, 0.45)');
 
         chart.data.datasets[0].backgroundColor = grad;
       }
@@ -792,6 +797,7 @@
 
   /* ── Load data ──────────────────────────────────── */
   const params = new URLSearchParams(window.location.search);
+  const hasDateParams = params.has('year') && params.has('month') && params.has('day');
   curYear  = parseInt(params.get('year')  || new Date().getFullYear());
   curMonth = parseInt(params.get('month') || new Date().getMonth() + 1);
   curDay   = parseInt(params.get('day')   || new Date().getDate());
@@ -803,6 +809,17 @@
         fetch(`calendar/calendar_data_${yr}.json`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       ));
       allData = Object.assign({}, ...files);
+
+      // No date in URL → navigate to the most recent trading day
+      if (!hasDateParams) {
+        const allDays = getAllTradingDays();
+        if (allDays.length > 0) {
+          const last = allDays[allDays.length - 1];
+          navigate(last.year, last.month, last.day);
+          return;
+        }
+      }
+
       render();
     } catch (err) {
       document.getElementById('leftPanel').innerHTML =

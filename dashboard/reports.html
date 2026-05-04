@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reports</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0f0f;
+      color: #e0e0e0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      min-height: 100vh;
+      padding: 16px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    @media (min-width: 640px)  { body { padding: 24px; } }
+    @media (min-width: 1024px) { body { padding: 28px 32px; } }
+
+    /* ── Auth ── */
+    .auth-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
+    }
+    .auth-card {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 10px;
+      padding: 40px; text-align: center; width: 300px;
+    }
+    .auth-title { font-size: 18px; color: #fff; margin-bottom: 6px; }
+    .auth-sub   { color: #9ca3af; font-size: 13px; margin-bottom: 24px; }
+    #authError  { color: #f87171; font-size: 12px; margin-top: 12px; min-height: 16px; }
+
+    /* ── Breadcrumb ── */
+    .breadcrumb { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; font-size: 13px; color: #9ca3af; }
+    .breadcrumb a { color: #9ca3af; text-decoration: none; transition: color 0.15s; }
+    .breadcrumb a:hover { color: #e0e0e0; }
+    .breadcrumb-sep { opacity: 0.4; }
+
+    /* ── Page header ── */
+    .header { margin-bottom: 20px; }
+    h1 { font-size: 20px; font-weight: 400; color: #ffffff; }
+
+    /* ── Tabs ── */
+    .tab-bar {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid #222;
+      padding-bottom: 0;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: #6b7280;
+      font-size: 14.5px;
+      font-family: inherit;
+      font-weight: 500;
+      padding: 8px 16px;
+      margin-bottom: -1px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: #e0e0e0; }
+    .tab-btn.active { color: #ffffff; border-bottom-color: #22c55e; }
+
+    /* ── Loading / spinner ── */
+    #statusMsg { color: #6b7280; font-size: 14px; margin-bottom: 16px; min-height: 18px; }
+    .loading-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 380px; gap: 12px; color: #6b7280;
+    }
+    .spinner {
+      width: 28px; height: 28px; border: 2px solid #2a2a2a;
+      border-top-color: #555; border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ══════════════════════════════════════
+       TAB 1 — PnL vs Entry Volume
+    ══════════════════════════════════════ */
+    .stats-row { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat-card { background: #141414; border: 1px solid #222; border-radius: 8px; padding: 12px 18px; min-width: 120px; }
+    .stat-label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .stat-value { font-size: 19px; font-weight: 500; color: #ffffff; }
+
+    .chart-wrap {
+      background: #141414; border: 1px solid #222; border-radius: 10px;
+      padding: 20px; margin-bottom: 28px; position: relative; height: 420px;
+    }
+
+    .table-wrap { background: #141414; border: 1px solid #222; border-radius: 10px; overflow: hidden; }
+    .table-header {
+      padding: 14px 16px; border-bottom: 1px solid #222;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .table-title { font-size: 15px; font-weight: 600; color: #ffffff; }
+    .table-count { font-size: 13px; color: #6b7280; }
+
+    .filter-row {
+      display: flex; gap: 10px; padding: 10px 16px;
+      border-bottom: 1px solid #1a1a1a; flex-wrap: wrap;
+    }
+    .filter-btn {
+      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
+      color: #9ca3af; font-size: 13px; padding: 4px 12px; cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s; font-family: inherit;
+    }
+    .filter-btn:hover, .filter-btn.active { background: #252525; color: #ffffff; border-color: #3a3a3a; }
+    .filter-btn.active { border-color: #555; }
+
+    .vol-filter-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px; border-bottom: 1px solid #1a1a1a; flex-wrap: wrap;
+    }
+    .vol-label { font-size: 13px; color: #6b7280; white-space: nowrap; }
+    .vol-input {
+      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
+      color: #ffffff; font-size: 13px; padding: 4px 10px; width: 96px;
+      font-family: inherit; outline: none; transition: border-color 0.15s;
+    }
+    .vol-input:focus { border-color: #555; }
+    .vol-input.active { border-color: #22c55e; color: #22c55e; }
+    .vol-sep { color: #3a3a3a; font-size: 13px; }
+    .vol-preset {
+      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
+      color: #6b7280; font-size: 12px; padding: 3px 8px; cursor: pointer;
+      font-family: inherit; transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .vol-preset:hover { background: #252525; color: #e0e0e0; border-color: #3a3a3a; }
+    .vol-preset.active { border-color: #22c55e; color: #22c55e; }
+    .vol-clear {
+      background: none; border: none; color: #4b5563; font-size: 12px;
+      cursor: pointer; padding: 3px 6px; font-family: inherit; transition: color 0.15s;
+    }
+    .vol-clear:hover { color: #9ca3af; }
+
+    .table-scroll { max-height: 400px; overflow-y: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th {
+      text-align: left; padding: 8px 12px; color: #6b7280; font-weight: 500;
+      border-bottom: 1px solid #222; cursor: pointer; user-select: none; white-space: nowrap;
+    }
+    thead th:hover { color: #9ca3af; }
+    thead th.sorted { color: #e0e0e0; }
+    thead th .sort-arrow { margin-left: 4px; opacity: 0.5; }
+    thead th.sorted .sort-arrow { opacity: 1; }
+    tbody tr { border-bottom: 1px solid #1a1a1a; }
+    tbody tr:hover { background: #1a1a1a; }
+    tbody td { padding: 7px 12px; color: #e0e0e0; }
+    .sym-cell { font-weight: 600; color: #ffffff; }
+    .win-bright  { color: #22c55e; font-weight: 600; }
+    .loss-bright { color: #ef4444; font-weight: 600; }
+
+    /* ══════════════════════════════════════
+       TAB 2 — Trading Stats
+    ══════════════════════════════════════ */
+    /* ── Date Picker ── */
+    .picker-wrap { position: relative; display: inline-block; margin-bottom: 20px; }
+
+    .picker-trigger {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
+      color: #9ca3af; font-size: 13.5px; font-family: inherit;
+      padding: 8px 16px; cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .picker-trigger:hover { border-color: #3a3a3a; color: #e0e0e0; }
+    .picker-trigger.has-range { color: #ffffff; }
+
+    .picker-dropdown {
+      position: absolute; top: calc(100% + 6px); left: 0;
+      background: #141414; border: 1px solid #2a2a2a; border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+      display: flex; z-index: 1000;
+    }
+
+    .picker-presets {
+      width: 170px; flex-shrink: 0;
+      border-right: 1px solid #1e1e1e;
+      padding: 8px 0;
+    }
+    .preset-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 14px; font-size: 13px; color: #9ca3af;
+      cursor: pointer; transition: background 0.12s, color 0.12s;
+      user-select: none;
+    }
+    .preset-item:hover { background: #1e1e1e; color: #e0e0e0; }
+    .preset-item.active { color: #ffffff; }
+    .preset-check { color: #22c55e; }
+
+    .picker-right { flex: 1; display: flex; flex-direction: column; min-width: 480px; }
+
+    .picker-cals {
+      display: flex; gap: 24px; padding: 16px 20px;
+      border-bottom: 1px solid #1e1e1e;
+    }
+    .cal { flex: 1; }
+
+    .cal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .cal-nav {
+      background: none; border: none; color: #6b7280; cursor: pointer;
+      font-size: 16px; padding: 2px 6px; border-radius: 4px; line-height: 1;
+      transition: color 0.12s, background 0.12s;
+    }
+    .cal-nav:hover { color: #e0e0e0; background: #1e1e1e; }
+    .cal-nav[style*="hidden"] { visibility: hidden; }
+    .cal-month-label { font-size: 13.5px; font-weight: 600; color: #ffffff; }
+
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+    .cal-dow { text-align: center; font-size: 11px; color: #4b5563; padding: 4px 0; font-weight: 500; }
+    .cal-day {
+      text-align: center; font-size: 13px; color: #9ca3af;
+      padding: 5px 0; cursor: pointer; border-radius: 4px;
+      transition: background 0.1s, color 0.1s; user-select: none;
+    }
+    .cal-day:hover:not(.other-month) { background: #2a2a2a; color: #ffffff; }
+    .cal-day.other-month { color: #252525; cursor: default; pointer-events: none; }
+    .cal-day.is-today { color: #ffffff; font-weight: 600; }
+    .cal-day.in-range { background: rgba(34,197,94,0.12); color: #bbf7d0; border-radius: 0; }
+    .cal-day.range-start { background: #22c55e !important; color: #000 !important; font-weight: 700; border-radius: 4px 0 0 4px; }
+    .cal-day.range-end   { background: #22c55e !important; color: #000 !important; font-weight: 700; border-radius: 0 4px 4px 0; }
+    .cal-day.range-start.range-end { border-radius: 4px; }
+
+    .picker-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px;
+    }
+    .picker-footer-label { font-size: 13px; color: #6b7280; }
+    .picker-actions { display: flex; gap: 8px; }
+    .picker-cancel {
+      background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px;
+      color: #9ca3af; font-size: 13px; font-family: inherit;
+      padding: 6px 14px; cursor: pointer; transition: background 0.12s, color 0.12s;
+    }
+    .picker-cancel:hover { background: #222; color: #e0e0e0; }
+    .picker-apply {
+      background: #22c55e; border: none; border-radius: 6px;
+      color: #000; font-size: 13px; font-weight: 600; font-family: inherit;
+      padding: 6px 14px; cursor: pointer; transition: background 0.12s;
+    }
+    .picker-apply:hover { background: #16a34a; }
+
+    .stats-section {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .stats-section-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 14px 20px; border-bottom: 1px solid #222;
+      font-size: 15px; font-weight: 600; color: #ffffff;
+    }
+    .info-icon {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 1px solid #4b5563; color: #6b7280;
+      font-size: 11px; display: flex; align-items: center; justify-content: center;
+      cursor: default;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .stat-cell {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 20px;
+      border-bottom: 1px solid #1a1a1a;
+      border-right: 1px solid #1a1a1a;
+      gap: 12px;
+    }
+    .stat-cell:nth-child(3n) { border-right: none; }
+    .stat-cell:nth-last-child(-n+3) { border-bottom: none; }
+    .stat-cell-name {
+      font-size: 13.5px;
+      color: #9ca3af;
+      white-space: nowrap;
+    }
+    .stat-cell-val {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      text-align: right;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .stat-cell-val.pos { color: #22c55e; }
+    .stat-cell-val.neg { color: #ef4444; }
+    .stat-cell-val.na  { color: #4b5563; font-weight: 400; }
+    .arrow-link {
+      color: #6b7280; font-size: 12px; cursor: pointer;
+      transition: color 0.15s; text-decoration: none;
+    }
+    .arrow-link:hover { color: #9ca3af; }
+
+    /* ── Window stats panel (screenshot style) ── */
+    .win-stats-wrap {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-top: 24px;
+    }
+    .win-stats-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 16px;
+    }
+    .ws-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      border-bottom: 1px solid #1e1e1e;
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+    }
+    .ws-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .ws-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 0 24px 0 0;
+      min-width: 110px;
+    }
+    .ws-val {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      white-space: nowrap;
+    }
+    .ws-val.pos { color: #22c55e; }
+    .ws-val.neg { color: #ef4444; }
+    .ws-lbl {
+      font-size: 12px;
+      color: #6b7280;
+      white-space: nowrap;
+    }
+
+    /* ── Equity charts ── */
+    .equity-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 20px;
+    }
+    @media (max-width: 700px) { .equity-row { grid-template-columns: 1fr; } }
+    .equity-card {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 16px 20px;
+    }
+    .equity-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #ffffff;
+      margin-bottom: 12px;
+    }
+    .equity-chart-wrap {
+      position: relative;
+      height: 260px;
+    }
+  </style>
+  <script src="auth.js"></script>
+</head>
+<body>
+<script src="nav.js"></script>
+
+<div id="authOverlay" class="auth-overlay" style="display:none">
+  <div class="auth-card">
+    <div class="auth-title">TC Trade Journal</div>
+    <div class="auth-sub">Sign in to continue</div>
+    <div id="g_id_onload"
+      data-client_id="413954462899-jcup1smhjuh6londv3tcsmil17cog1vv.apps.googleusercontent.com"
+      data-callback="_verify"
+      data-auto_prompt="false"></div>
+    <div class="g_id_signin" data-type="standard" data-theme="filled_black"
+      data-size="large" data-shape="rectangular"></div>
+    <div id="authError"></div>
+  </div>
+</div>
+
+<div class="breadcrumb">
+  <a href="index.html">Dashboard</a>
+  <span class="breadcrumb-sep">›</span>
+  <span>Reports</span>
+</div>
+
+<div class="header">
+  <h1>Reports</h1>
+</div>
+
+
+<div id="statusMsg">Loading trade data…</div>
+
+<!-- ══ TAB: Trading Stats ══ -->
+<div id="tab-stats">
+  <div class="picker-wrap" id="pickerWrap">
+    <button class="picker-trigger" id="pickerTrigger">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span id="pickerLabel">From – To</span>
+    </button>
+    <div class="picker-dropdown" id="pickerDropdown" style="display:none">
+      <div class="picker-presets" id="pickerPresets"></div>
+      <div class="picker-right">
+        <div class="picker-cals">
+          <div class="cal" id="cal1"></div>
+          <div class="cal" id="cal2"></div>
+        </div>
+        <div class="picker-footer">
+          <span class="picker-footer-label" id="pickerFooterLabel">—</span>
+          <div class="picker-actions">
+            <button class="picker-cancel" id="pickerCancel">Cancel</button>
+            <button class="picker-apply" id="pickerApply">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-section" id="statsSection" style="display:none">
+    <div class="stats-section-header">
+      Stats
+      <span class="info-icon" title="Computed from all roundtrip trades in selected date range">i</span>
+    </div>
+    <div class="stat-grid" id="statGrid"></div>
+  </div>
+
+  <div class="equity-row" id="equityRow" style="display:none">
+    <div class="equity-card">
+      <div class="equity-title">Cumulative Drawdown</div>
+      <div class="equity-chart-wrap"><canvas id="drawdownChart"></canvas></div>
+    </div>
+    <div class="equity-card">
+      <div class="equity-title">Cumulative P&amp;L</div>
+      <div class="equity-chart-wrap"><canvas id="cumulChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════
+   Shared state & utils
+═══════════════════════════════════════════ */
+let rawRoundtrips = [];
+let rawDayStats   = [];
+
+function mean(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0; }
+function stddev(arr) {
+  if (arr.length < 2) return 0;
+  const m = mean(arr);
+  return Math.sqrt(arr.reduce((s, x) => s + (x - m) ** 2, 0) / (arr.length - 1));
+}
+function fmtSecs(s) {
+  if (s == null || isNaN(s)) return '—';
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
+  if (h > 0) return `${h}h ${String(m).padStart(2,'0')}m`;
+  return `${m}:${String(sec).padStart(2,'0')}`;
+}
+
+/* ═══════════════════════════════════════════
+   Data loading
+═══════════════════════════════════════════ */
+async function loadAllData() {
+  const idx = await fetch('calendar/calendar_index.json').then(r => r.json());
+  rawRoundtrips = [];
+  rawDayStats   = [];
+
+  for (const year of idx.years) {
+    let raw;
+    try { raw = await fetch(`calendar/calendar_data_${year}.json`).then(r => r.json()); }
+    catch { continue; }
+    const months = raw[String(year)] ?? raw;
+    for (const [month, mdata] of Object.entries(months)) {
+      if (!mdata?.days) continue;
+      for (const [day, ddata] of Object.entries(mdata.days)) {
+        if (!ddata.roundtrips?.length) continue;
+        const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        rawDayStats.push({ date: dateStr, pnl: ddata.pnl ?? 0, volume: ddata.stats?.volume ?? 0 });
+        for (const rt of ddata.roundtrips) {
+          rawRoundtrips.push({ date: dateStr, ...rt });
+        }
+      }
+    }
+  }
+
+}
+
+/* ═══════════════════════════════════════════
+   TAB 2: Trading Stats
+═══════════════════════════════════════════ */
+const SCRATCH_THRESH = 0.05;
+
+function computeStats(rts, days) {
+  if (!rts.length) return null;
+
+  const WINS = rts.filter(r => r.pnl >  SCRATCH_THRESH);
+  const LOSS = rts.filter(r => r.pnl < -SCRATCH_THRESH);
+  const SCRT = rts.filter(r => Math.abs(r.pnl) <= SCRATCH_THRESH);
+
+  const totalPnl   = rts.reduce((s, r) => s + r.pnl, 0);
+  const grossWin   = WINS.reduce((s, r) => s + r.pnl, 0);
+  const grossLoss  = Math.abs(LOSS.reduce((s, r) => s + r.pnl, 0));
+  const totalShares = rts.reduce((s, r) => s + (r.qty ?? 0), 0);
+
+  const largestGain = rts.reduce((a, r) => r.pnl > a.pnl ? r : a, rts[0]);
+  const largestLoss = rts.reduce((a, r) => r.pnl < a.pnl ? r : a, rts[0]);
+
+  const dayPnls = days.map(d => d.pnl);
+  const dayVols = days.map(d => d.volume).filter(v => v > 0);
+
+  const avgWin  = WINS.length ? mean(WINS.map(r => r.pnl)) : 0;
+  const avgLoss = LOSS.length ? mean(LOSS.map(r => r.pnl)) : 0;
+  const avgTrade = mean(rts.map(r => r.pnl));
+  const pnlStd  = stddev(rts.map(r => r.pnl));
+
+  const winRate = rts.length ? WINS.length / rts.length : 0;
+  const lossRate = rts.length ? LOSS.length / rts.length : 0;
+  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : null;
+  const kelly = avgLoss !== 0 ? winRate - lossRate / Math.abs(avgLoss / avgWin) : null;
+
+  // SQN = (E(R) / StdDev(R)) * sqrt(n)   where R = pnl per trade
+  const sqn = pnlStd > 0 ? (avgTrade / pnlStd) * Math.sqrt(rts.length) : null;
+
+  // Probability of random chance: simplified t-stat p-value
+  // t = avgPnl / (stddev / sqrt(n))
+  const tStat = pnlStd > 0 ? avgTrade / (pnlStd / Math.sqrt(rts.length)) : null;
+  // Two-tailed p-value approximation
+  let pValue = null;
+  if (tStat !== null) {
+    const x = Math.abs(tStat), df = rts.length - 1;
+    // Simple approximation using normal distribution for large n
+    if (df > 30) {
+      pValue = 2 * (1 - erf(x / Math.SQRT2) / 2 - 0.5) * 100;
+      pValue = Math.max(0, pValue);
+    }
+  }
+
+  // Consecutive wins/losses (sort by date then entry_time)
+  const sorted = [...rts].sort((a, b) => {
+    const dk = a.date.localeCompare(b.date);
+    return dk !== 0 ? dk : a.entry_time.localeCompare(b.entry_time);
+  });
+  let maxW = 0, maxL = 0, curW = 0, curL = 0;
+  for (const r of sorted) {
+    if (r.pnl > SCRATCH_THRESH)  { curW++; curL = 0; maxW = Math.max(maxW, curW); }
+    else if (r.pnl < -SCRATCH_THRESH) { curL++; curW = 0; maxL = Math.max(maxL, curL); }
+    else { curW = 0; curL = 0; }
+  }
+
+  // K-Ratio: linear regression on equity curve
+  const equity = [];
+  let cum = 0;
+  for (const r of sorted) { cum += r.pnl; equity.push(cum); }
+  const n = equity.length;
+  const xs = Array.from({length: n}, (_, i) => i + 1);
+  const my = mean(equity), mx = mean(xs);
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) {
+    sxy += (xs[i] - mx) * (equity[i] - my);
+    sxx += (xs[i] - mx) ** 2;
+    syy += (equity[i] - my) ** 2;
+  }
+  const slope = sxx > 0 ? sxy / sxx : 0;
+  const sse = equity.reduce((s, y, i) => s + (y - (slope * xs[i] + (my - slope * mx))) ** 2, 0);
+  const se = n > 2 ? Math.sqrt(sse / (n - 2) / sxx) : 0;
+  const kRatio = se > 0 ? slope / (se * Math.sqrt(n)) : null;
+
+  return {
+    totalPnl, grossWin, grossLoss, totalShares,
+    largestGain, largestLoss,
+    avgDailyPnl: dayPnls.length ? mean(dayPnls) : 0,
+    avgDailyVol: dayVols.length ? Math.round(mean(dayVols)) : 0,
+    avgPerShare: totalShares > 0 ? totalPnl / totalShares : 0,
+    avgTrade, avgWin, avgLoss,
+    n: rts.length, nWins: WINS.length, nLoss: LOSS.length, nDays: days.length,
+    nScrat: SCRT.length, scratchPct: rts.length ? SCRT.length / rts.length * 100 : 0,
+    winPct: winRate * 100,
+    holdScrat: SCRT.length ? mean(SCRT.map(r => r.hold_secs ?? 0)) : null,
+    holdWin:   WINS.length ? mean(WINS.map(r => r.hold_secs ?? 0)) : null,
+    holdLoss:  LOSS.length ? mean(LOSS.map(r => r.hold_secs ?? 0)) : null,
+    maxW, maxL,
+    pnlStd, sqn, pValue, tStat, kelly, kRatio, profitFactor,
+  };
+}
+
+// Simple erf approximation (for p-value)
+function erf(x) {
+  const t = 1 / (1 + 0.3275911 * Math.abs(x));
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return x >= 0 ? y : -y;
+}
+
+function dollar(v, sign = true) {
+  const abs = Math.abs(v).toFixed(2);
+  if (!sign) return '$' + abs;
+  return (v >= 0 ? '+$' : '-$') + abs;
+}
+
+function renderStatsTable(s) {
+  const grid = document.getElementById('statGrid');
+  grid.innerHTML = '';
+
+  const cell = (name, val, cls = '') => {
+    const div = document.createElement('div');
+    div.className = 'stat-cell';
+    div.innerHTML = `<span class="stat-cell-name">${name}</span><span class="stat-cell-val ${cls}">${val}</span>`;
+    return div;
+  };
+
+  const pnlClass = v => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+
+  // Row 1
+  grid.appendChild(cell('Total Gain/Loss', dollar(s.totalPnl), pnlClass(s.totalPnl)));
+  grid.appendChild(cell('Largest Gain', dollar(s.largestGain.pnl, false), 'pos'));
+  grid.appendChild(cell('Largest Loss', dollar(s.largestLoss.pnl), 'neg'));
+
+  // Row 2
+  grid.appendChild(cell('Average Daily Gain/Loss', dollar(s.avgDailyPnl), pnlClass(s.avgDailyPnl)));
+  grid.appendChild(cell('Average Daily Volume', s.avgDailyVol.toLocaleString()));
+  grid.appendChild(cell('Average Per-share Gain/Loss', dollar(s.avgPerShare), pnlClass(s.avgPerShare)));
+
+  // Row 3
+  grid.appendChild(cell('Average Trade Gain/Loss', dollar(s.avgTrade), pnlClass(s.avgTrade)));
+  grid.appendChild(cell('Average Winning Trade', dollar(s.avgWin, false), 'pos'));
+  grid.appendChild(cell('Average Losing Trade', dollar(s.avgLoss), 'neg'));
+
+  // Row 4
+  grid.appendChild(cell('Total Number of Trades', s.n.toLocaleString()));
+  grid.appendChild(cell('Number of Winning Trades', `${s.nWins.toLocaleString()} (${s.winPct.toFixed(1)}%)`, 'pos'));
+  grid.appendChild(cell('Number of Losing Trades',  `${s.nLoss.toLocaleString()} (${(s.nLoss/s.n*100).toFixed(1)}%)`, 'neg'));
+
+  // Row 5
+  grid.appendChild(cell('Avg Hold Time (scratch trades)', s.holdScrat != null ? fmtSecs(s.holdScrat) : '—'));
+  grid.appendChild(cell('Avg Hold Time (winning trades)', s.holdWin  != null ? fmtSecs(s.holdWin)  : '—'));
+  grid.appendChild(cell('Avg Hold Time (losing trades)',  s.holdLoss != null ? fmtSecs(s.holdLoss) : '—'));
+
+  // Row 6
+  grid.appendChild(cell('Number of Scratch Trades', `${s.nScrat} (${s.scratchPct.toFixed(1)}%)`));
+  grid.appendChild(cell('Max Consecutive Wins',   String(s.maxW), 'pos'));
+  grid.appendChild(cell('Max Consecutive Losses', String(s.maxL), 'neg'));
+
+  // Row 7
+  grid.appendChild(cell('Trade P&amp;L Std Deviation', '$' + s.pnlStd.toFixed(2)));
+  grid.appendChild(cell('System Quality Number (SQN)', s.sqn != null ? s.sqn.toFixed(2) : 'n/a', s.sqn != null ? pnlClass(s.sqn) : 'na'));
+  grid.appendChild(cell('Probability of Random Chance', s.pValue != null ? s.pValue.toFixed(1) + '%' : 'n/a'));
+
+  // Row 8
+  const kellyStr = s.kelly != null ? (s.kelly * 100).toFixed(1) + '%' : '&lt; 0%';
+  const kellyCls = s.kelly != null ? pnlClass(s.kelly) : 'neg';
+  grid.appendChild(cell('Kelly Percentage', kellyStr, kellyCls));
+  grid.appendChild(cell('K-Ratio', s.kRatio != null ? s.kRatio.toFixed(2) : 'n/a', s.kRatio != null ? pnlClass(s.kRatio) : 'na'));
+  grid.appendChild(cell('Profit Factor', s.profitFactor != null ? s.profitFactor.toFixed(2) : 'n/a', s.profitFactor != null ? pnlClass(s.profitFactor - 1) : 'na'));
+
+  // Row 9
+  grid.appendChild(cell('Total Commissions', '$0.00'));
+  grid.appendChild(cell('Total Fees', 'n/a', 'na'));
+  grid.appendChild(cell('Trading Days', String(s.nDays)));
+
+  // Row 10
+  grid.appendChild(cell('Gross Profit', '+$' + s.grossWin.toFixed(2), 'pos'));
+  grid.appendChild(cell('Gross Loss',   '-$' + s.grossLoss.toFixed(2), 'neg'));
+  grid.appendChild(cell('Total Shares Traded', s.totalShares.toLocaleString()));
+
+  document.getElementById('statsSection').style.display = 'block';
+}
+
+let _ddChart = null, _cumChart = null;
+
+function renderEquityCharts(rts) {
+  const sorted = [...rts].sort((a, b) =>
+    a.date.localeCompare(b.date) || a.entry_time.localeCompare(b.entry_time)
+  );
+
+  let cum = 0, peak = 0;
+  const labels = [], cumData = [], ddData = [];
+  for (const r of sorted) {
+    cum  += r.pnl;
+    peak  = Math.max(peak, cum);
+    labels.push(r.date);
+    cumData.push(+cum.toFixed(2));
+    ddData.push(+(cum - peak).toFixed(2));
+  }
+
+  const chartOpts = (color, labelText) => ({
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: color === '#ef4444' ? ddData : cumData,
+        borderColor: color,
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.35,
+        fill: false,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a1a',
+          borderColor: '#333',
+          borderWidth: 1,
+          titleColor: '#ffffff',
+          bodyColor: '#9ca3af',
+          padding: 10,
+          callbacks: {
+            title: items => items[0].label,
+            label: item => `${labelText}: ${item.raw >= 0 ? '+' : ''}$${item.raw.toFixed(2)}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#6b7280',
+            font: { size: 11 },
+            maxTicksLimit: 8,
+            maxRotation: 0,
+          },
+          grid: { color: '#1e1e1e' },
+        },
+        y: {
+          ticks: {
+            color: '#6b7280',
+            font: { size: 11 },
+            callback: v => (v >= 0 ? '' : '-') + '$' + Math.abs(v).toFixed(0),
+          },
+          grid: { color: '#1e1e1e' },
+        },
+      },
+    },
+  });
+
+  if (_ddChart)  _ddChart.destroy();
+  if (_cumChart) _cumChart.destroy();
+  _ddChart  = new Chart(document.getElementById('drawdownChart'), chartOpts('#ef4444', 'Drawdown'));
+  _cumChart = new Chart(document.getElementById('cumulChart'),    chartOpts('#22c55e', 'Cum P&L'));
+  document.getElementById('equityRow').style.display = '';
+}
+
+
+/* ═══════════════════════════════════════════
+   Date Picker
+═══════════════════════════════════════════ */
+const PRESETS = [
+  { key: 'today',      label: 'Today' },
+  { key: 'yesterday',  label: 'Yesterday' },
+  { key: 'last-7',     label: 'Last 7 Days' },
+  { key: 'last-30',    label: 'Last 30 Days' },
+  { key: 'this-month', label: 'This Month' },
+  { key: 'last-month', label: 'Last Month' },
+  { key: 'last-12mo',  label: 'Last 12 Months' },
+  { key: 'ytd',        label: 'YTD' },
+  { key: 'last-year',  label: 'Last Year' },
+  { key: 'all-time',   label: 'All Time' },
+  { key: 'custom',     label: 'Custom Range' },
+];
+
+let _pOpen        = false;
+let _pendFrom     = null;
+let _pendTo       = null;
+let _appliedFrom  = null;
+let _appliedTo    = null;
+let _clickStage   = 0;
+let _activePreset = 'this-month';
+let _calBase      = (() => { const d = new Date(); d.setDate(1); return d; })();
+
+function _getPresetRange(key) {
+  const tradingDays = [...new Set(rawDayStats.map(d => d.date))].sort();
+  const latestTrade = tradingDays[tradingDays.length - 1] ?? '';
+  const prevTrade   = tradingDays[tradingDays.length - 2] ?? latestTrade;
+
+  const now = new Date();
+  const y = now.getFullYear(), mo = now.getMonth(), d = now.getDate();
+  const fmt = dt => dt.toISOString().slice(0, 10);
+  const ymd = (yr, m, dy) => fmt(new Date(yr, m, dy));
+
+  switch (key) {
+    case 'today':      return { from: latestTrade, to: latestTrade };
+    case 'yesterday':  return { from: prevTrade,   to: prevTrade };
+    case 'last-7':     return { from: fmt(new Date(y, mo, d - 6)),  to: ymd(y, mo, d) };
+    case 'last-30':    return { from: fmt(new Date(y, mo, d - 29)), to: ymd(y, mo, d) };
+    case 'this-month': return { from: ymd(y, mo, 1), to: ymd(y, mo, d) };
+    case 'last-month': { const lm = mo === 0 ? 11 : mo - 1, ly = mo === 0 ? y - 1 : y; return { from: ymd(ly, lm, 1), to: ymd(ly, lm, new Date(y, mo, 0).getDate()) }; }
+    case 'last-12mo':  { const f = new Date(y, mo, d); f.setFullYear(y - 1); return { from: fmt(f), to: ymd(y, mo, d) }; }
+    case 'ytd':        return { from: ymd(y, 0, 1), to: ymd(y, mo, d) };
+    case 'last-year':  return { from: ymd(y - 1, 0, 1), to: ymd(y - 1, 11, 31) };
+    default:           return { from: '', to: '' };
+  }
+}
+
+function _fmtShort(s) {
+  if (!s) return '—';
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function _fmtRange(from, to) {
+  if (!from && !to) return '—';
+  if (!to || from === to) return _fmtShort(from);
+  return `${_fmtShort(from)} – ${_fmtShort(to)}`;
+}
+
+function _renderPresets() {
+  const el = document.getElementById('pickerPresets');
+  el.innerHTML = '';
+  for (const p of PRESETS) {
+    const div = document.createElement('div');
+    const isActive = p.key === _activePreset;
+    div.className = 'preset-item' + (isActive ? ' active' : '');
+    div.innerHTML = `${p.label}${isActive ? '<span class="preset-check">✓</span>' : ''}`;
+    div.addEventListener('click', () => {
+      _activePreset = p.key;
+      if (p.key !== 'custom') {
+        const r = _getPresetRange(p.key);
+        _pendFrom = r.from || null;
+        _pendTo   = r.to   || null;
+        _clickStage = 0;
+        if (_pendFrom) { const [cy, cm] = _pendFrom.split('-').map(Number); _calBase = new Date(cy, cm - 1, 1); }
+      } else {
+        _pendFrom = null; _pendTo = null; _clickStage = 0;
+      }
+      _renderPresets();
+      _renderCals();
+      _updateFooter();
+    });
+    el.appendChild(div);
+  }
+}
+
+const _DOW    = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+const _MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function _renderCalMonth(container, year, month, showPrev, showNext) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  container.innerHTML = '';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'cal-header';
+  const pBtn = document.createElement('button');
+  pBtn.className = 'cal-nav'; pBtn.textContent = '‹';
+  if (!showPrev) pBtn.style.visibility = 'hidden';
+  pBtn.addEventListener('click', () => { _calBase = new Date(_calBase.getFullYear(), _calBase.getMonth() - 1, 1); _renderCals(); });
+  const nBtn = document.createElement('button');
+  nBtn.className = 'cal-nav'; nBtn.textContent = '›';
+  if (!showNext) nBtn.style.visibility = 'hidden';
+  nBtn.addEventListener('click', () => { _calBase = new Date(_calBase.getFullYear(), _calBase.getMonth() + 1, 1); _renderCals(); });
+  const lbl = document.createElement('span');
+  lbl.className = 'cal-month-label';
+  lbl.textContent = `${_MONTHS[month]} ${year}`;
+  hdr.append(pBtn, lbl, nBtn);
+  container.appendChild(hdr);
+
+  const grid = document.createElement('div');
+  grid.className = 'cal-grid';
+  for (const d of _DOW) { const dh = document.createElement('div'); dh.className = 'cal-dow'; dh.textContent = d; grid.appendChild(dh); }
+
+  const firstDow   = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrev  = new Date(year, month, 0).getDate();
+
+  for (let i = firstDow - 1; i >= 0; i--) {
+    const c = document.createElement('div'); c.className = 'cal-day other-month'; c.textContent = daysInPrev - i; grid.appendChild(c);
+  }
+
+  for (let dy = 1; dy <= daysInMonth; dy++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2,'0')}-${String(dy).padStart(2,'0')}`;
+    const c = document.createElement('div');
+    c.className = 'cal-day';
+    c.textContent = dy;
+    if (dateStr === todayStr) c.classList.add('is-today');
+
+    const lo = _pendFrom && _pendTo ? (_pendFrom <= _pendTo ? _pendFrom : _pendTo) : _pendFrom;
+    const hi = _pendFrom && _pendTo ? (_pendFrom <= _pendTo ? _pendTo : _pendFrom) : _pendFrom;
+    if (lo && hi) {
+      if (dateStr === lo && dateStr === hi) c.classList.add('range-start', 'range-end');
+      else if (dateStr === lo) c.classList.add('range-start');
+      else if (dateStr === hi) c.classList.add('range-end');
+      else if (dateStr > lo && dateStr < hi) c.classList.add('in-range');
+    } else if (lo && dateStr === lo) {
+      c.classList.add('range-start', 'range-end');
+    }
+
+    c.addEventListener('click', () => {
+      if (_clickStage === 0) {
+        _pendFrom = dateStr; _pendTo = null; _clickStage = 1;
+      } else {
+        if (dateStr >= _pendFrom) { _pendTo = dateStr; }
+        else { _pendTo = _pendFrom; _pendFrom = dateStr; }
+        _clickStage = 0;
+      }
+      _activePreset = 'custom';
+      _renderPresets();
+      _renderCals();
+      _updateFooter();
+    });
+    grid.appendChild(c);
+  }
+
+  const filled = firstDow + daysInMonth;
+  const tail = filled % 7 === 0 ? 0 : 7 - (filled % 7);
+  for (let dy = 1; dy <= tail; dy++) {
+    const c = document.createElement('div'); c.className = 'cal-day other-month'; c.textContent = dy; grid.appendChild(c);
+  }
+  container.appendChild(grid);
+}
+
+function _renderCals() {
+  const m1y = _calBase.getFullYear(), m1m = _calBase.getMonth();
+  const m2 = new Date(m1y, m1m + 1, 1);
+  _renderCalMonth(document.getElementById('cal1'), m1y, m1m, true, false);
+  _renderCalMonth(document.getElementById('cal2'), m2.getFullYear(), m2.getMonth(), false, true);
+}
+
+function _updateFooter() {
+  document.getElementById('pickerFooterLabel').textContent = _fmtRange(_pendFrom, _pendTo);
+}
+
+function _updateTriggerLabel() {
+  const from = _appliedFrom, to = _appliedTo;
+  let lo = from, hi = to;
+  if (!lo || !hi) {
+    const dates = [...new Set(rawRoundtrips.map(r => r.date))].sort();
+    if (!lo && dates.length) lo = dates[0];
+    if (!hi && dates.length) hi = dates[dates.length - 1];
+  }
+  document.getElementById('pickerLabel').textContent = _fmtRange(lo, hi);
+  document.getElementById('pickerTrigger').classList.toggle('has-range', !!(lo || hi));
+}
+
+function _openPicker() {
+  _pOpen = true;
+  _pendFrom = _appliedFrom; _pendTo = _appliedTo; _clickStage = 0;
+  if (_pendFrom) { const [cy, cm] = _pendFrom.split('-').map(Number); _calBase = new Date(cy, cm - 1, 1); }
+  _renderPresets();
+  _renderCals();
+  _updateFooter();
+  document.getElementById('pickerDropdown').style.display = 'flex';
+}
+
+function _closePicker() {
+  _pOpen = false;
+  document.getElementById('pickerDropdown').style.display = 'none';
+}
+
+function _applyPicker() {
+  _appliedFrom = _pendFrom;
+  _appliedTo   = _pendTo;
+  _closePicker();
+  _updateTriggerLabel();
+  applyStatsDateFilter();
+}
+
+function applyStatsDateFilter() {
+  let rts  = rawRoundtrips;
+  let days = rawDayStats;
+  const from = _appliedFrom, to = _appliedTo;
+  if (from) { rts = rts.filter(r => r.date >= from); days = days.filter(d => d.date >= from); }
+  if (to)   { rts = rts.filter(r => r.date <= to);   days = days.filter(d => d.date <= to);   }
+  const s = computeStats(rts, days);
+  if (s) renderStatsTable(s);
+  if (rts.length) renderEquityCharts(rts);
+}
+
+document.getElementById('pickerTrigger').addEventListener('click', e => { e.stopPropagation(); _pOpen ? _closePicker() : _openPicker(); });
+document.getElementById('pickerCancel').addEventListener('click', _closePicker);
+document.getElementById('pickerApply').addEventListener('click', _applyPicker);
+document.addEventListener('click', e => { if (_pOpen && !document.getElementById('pickerWrap').contains(e.target)) _closePicker(); });
+
+/* ═══════════════════════════════════════════
+   Init
+═══════════════════════════════════════════ */
+initAuth(async () => {
+  try {
+    await loadAllData();
+    if (!rawRoundtrips.length) {
+      document.getElementById('statusMsg').textContent = 'No data found.';
+      return;
+    }
+    document.getElementById('statusMsg').textContent = '';
+
+    // Apply default preset (this-month)
+    const _defR = _getPresetRange(_activePreset);
+    _appliedFrom = _defR.from || null;
+    _appliedTo   = _defR.to   || null;
+    _updateTriggerLabel();
+    applyStatsDateFilter();
+  } catch (e) {
+    document.getElementById('statusMsg').textContent = 'Error: ' + e.message;
+    console.error(e);
+  }
+});
+</script>
+</body>
+</html>

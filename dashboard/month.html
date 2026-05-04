@@ -272,6 +272,10 @@
       background: rgba(120, 0, 0, 0.25) !important;
       color: #f87171 !important;
     }
+    .th-best-dow {
+      background: rgba(0, 120, 60, 0.25) !important;
+      color: #4ade80 !important;
+    }
 
     /* ── Error state ─────────────────────────────────── */
     .error { color: #f87171; padding: 20px; }
@@ -387,6 +391,10 @@
     .stat-item { flex: 1 1 120px; min-width: 100px; padding: 4px 12px 4px 0; }
     .stat-value { font-size: 18px; font-weight: 500; color: #ffffff; line-height: 1.2; }
     .stat-label { font-size: 14px; color: #9ca3af; margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+    .stats-tab-bar { display: flex; gap: 4px; margin-bottom: 14px; }
+    .stats-tab { padding: 5px 14px; font-size: 12px; font-weight: 600; color: #6b7280; cursor: pointer; border: 1px solid #2a2a2a; border-radius: 6px; background: transparent; letter-spacing: 0.04em; text-transform: uppercase; transition: all 0.15s; }
+    .stats-tab:hover { color: #e0e0e0; border-color: #444; }
+    .stats-tab.active { color: #ffffff; background: #1e1e2e; border-color: #6366f1; }
 
     /* ── Auth overlay ───────────────────────────────── */
     .auth-overlay {
@@ -404,6 +412,7 @@
   <script src="auth.js"></script>
 </head>
 <body>
+<script src="nav.js"></script>
 
 <div id="authOverlay" class="auth-overlay" style="display:none">
   <div class="auth-card">
@@ -431,8 +440,6 @@
     <div class="badge-group">
       <span class="month-badge" id="pageBadge"></span>
       <span class="month-badge" id="accBadge"></span>
-      <span class="month-badge" id="pfBadge"></span>
-      <span class="month-badge" id="wlBadge"></span>
     </div>
     <div class="nav-controls">
       <button class="nav-btn" id="prevBtn" title="Previous month">&#8592;</button>
@@ -511,8 +518,6 @@
   const STAT_ICONS = {
     'PnL':                    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16c.5-2 1.5-7 4-7 2 0 2 3 4 3 2.5 0 4.5-5 5-7"/></svg>`,
     'Fees &amp; Com':         `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17"/><path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/><path d="m2 16 6 6"/><circle cx="16" cy="9" r="2.9"/><circle cx="6" cy="5" r="3"/></svg>`,
-    'Accuracy':               `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 13V2l8 4-8 4"/><path d="M20.561 10.222a9 9 0 1 1-12.55-5.29"/><path d="M8.002 9.997a5 5 0 1 0 8.9 2.02"/></svg>`,
-    'Profit Factor':          `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="m14.31 8 5.74 9.94"/><path d="M9.69 8h11.48"/><path d="m7.38 12 5.74-9.94"/><path d="M9.69 16 3.95 6.06"/><path d="M14.31 16H2.83"/><path d="m16.62 12-5.74 9.94"/></svg>`,
     'Volume':                 `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2"/></svg>`,
     'Total Trades':           `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M2 7v10"/><path d="M6 5v14"/><rect width="12" height="18" x="10" y="3" rx="2"/></svg>`,
     'Avg Trade PnL':          `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>`,
@@ -535,10 +540,11 @@
 
   function renderStats(data) {
     const el = document.getElementById('statsBar');
-    if (!data || data.trades === 0) { el.style.display = 'none'; return; }
+    const hasData = data && data.trades > 0;
+    if (!hasData) { el.style.display = 'none'; return; }
     el.style.display = 'flex';
-    const s = data.stats || {};
-    const pnl = data.pnl || 0;
+    const s   = data?.stats || {};
+    const pnl = data?.pnl || 0;
     function stat(value, label) {
       const icon = STAT_ICONS[label] || '';
       return `<div class="stat-item"><div class="stat-value">${value}</div><div class="stat-label">${icon}${label}</div></div>`;
@@ -547,9 +553,9 @@
       <div class="stat-row">
         ${stat(fmtBadge(pnl), 'PnL')}
         ${stat('$0.00', 'Fees &amp; Com')}
+        ${stat(fmtWLRatio(s.wl_ratio), 'W/L Ratio')}
         ${stat((s.accuracy || 0).toFixed(2) + '%', 'Accuracy')}
         ${stat(s.profit_factor || 0, 'Profit Factor')}
-        ${stat(fmtWLRatio(s.wl_ratio), 'W/L Ratio')}
         ${stat(fmtVolume(s.volume || 0), 'Volume')}
         ${stat(data.trades || 0, 'Total Trades')}
         ${stat(fmtBadge(s.avg_trade_pnl || 0), 'Avg Trade PnL')}
@@ -660,25 +666,13 @@
 
     const badge = document.getElementById('pageBadge');
     badge.className = 'month-badge ' + colorClass;
-    badge.innerHTML = `<span class="badge-label">Real</span>${fmtBadge(total)}`;
+    badge.innerHTML = fmtBadge(total);
 
     const monthStats = computeMonthStats(monthData.days);
 
     const accBadge = document.getElementById('accBadge');
-    accBadge.className = 'month-badge month-badge-sm ' + colorClass;
-    accBadge.innerHTML = `<span class="badge-label">Acc</span>${fmtAccuracy(monthStats.accuracy)}`;
-    accBadge.title = 'Win rate (% of green trading days)';
+    accBadge.style.display = 'none';
 
-    const pfBadge = document.getElementById('pfBadge');
-    pfBadge.className = 'month-badge month-badge-sm ' + colorClass;
-    pfBadge.innerHTML = `<span class="badge-label">P/F</span>${fmtPF(monthStats.pf)}`;
-    pfBadge.title = 'Profit factor (gross profit / gross loss)';
-
-    const wlBadge = document.getElementById('wlBadge');
-    const wlColor = !hasTrades ? 'badge-zero' : (isFinite(monthStats.wl_ratio) && monthStats.wl_ratio >= 1.0 ? 'badge-pos' : monthStats.wl_ratio > 0 ? 'badge-neg' : 'badge-zero');
-    wlBadge.className = 'month-badge month-badge-sm ' + wlColor;
-    wlBadge.innerHTML = `<span class="badge-label">W/L</span>${fmtWLRatio(monthStats.wl_ratio)}`;
-    wlBadge.title = 'Win/loss ratio (avg win ÷ avg loss)';
 
     /* Build table */
     const cal = document.getElementById('monthCal');
@@ -691,8 +685,10 @@
       dowPnl[new Date(curYear, curMonth - 1, parseInt(dayStr)).getDay()] += dd.pnl;
     }
     let worstTradingDow = -1, worstDowPnl = 0;
+    let bestTradingDow  = -1, bestDowPnl  = 0;
     for (let dow = 1; dow <= 5; dow++) {
       if (dowPnl[dow] < worstDowPnl) { worstDowPnl = dowPnl[dow]; worstTradingDow = dow; }
+      if (dowPnl[dow] > bestDowPnl)  { bestDowPnl  = dowPnl[dow]; bestTradingDow  = dow; }
     }
 
     /* thead */
@@ -703,6 +699,7 @@
       th.textContent = d;
       if (i === 7) th.className = 'total-col';
       else if (i === worstTradingDow && worstDowPnl < 0) th.classList.add('th-worst-dow');
+      else if (i === bestTradingDow  && bestDowPnl  > 0) th.classList.add('th-best-dow');
       hrow.appendChild(th);
     });
     thead.appendChild(hrow);
@@ -717,9 +714,9 @@
 
     for (let row = 0; row < numRows; row++) {
       const tr = document.createElement('tr');
-      let weekPnl          = 0;
-      let weekTrades       = 0;
-      let weekRoundtrips   = [];
+      let weekPnl        = 0;
+      let weekTrades     = 0;
+      let weekRoundtrips = [];
 
       for (let col = 0; col < 7; col++) {
         const cellIndex = row * 7 + col;
@@ -786,26 +783,34 @@
             inner.appendChild(pnlEl);
             inner.appendChild(trdEl);
 
-            /* Accuracy / PF section */
-            const dayStats = computeDayStats(dayData);
-            const divider = document.createElement('hr');
-            divider.className = 'cell-divider';
-            inner.appendChild(divider);
+            if (dayRts.length > 0) {
+              const dayWins       = dayRts.filter(rt => rt.pnl > 0);
+              const dayLosses     = dayRts.filter(rt => rt.pnl < 0);
+              const dayAcc        = Math.round(dayWins.length / dayRts.length * 100);
+              const avgWin        = dayWins.length  ? dayWins.reduce((s, rt) => s + rt.pnl, 0) / dayWins.length : 0;
+              const avgLoss       = dayLosses.length ? Math.abs(dayLosses.reduce((s, rt) => s + rt.pnl, 0)) / dayLosses.length : 0;
+              const dayWL         = avgLoss > 0 ? avgWin / avgLoss : (avgWin > 0 ? Infinity : 0);
+              const pfStr         = isFinite(dayWL) ? dayWL.toFixed(2) : '∞';
 
-            const statEl = document.createElement('div');
-            statEl.className = 'cell-stat ' + (isWin ? 'cell-stat-green' : 'cell-stat-red');
+              const divider = document.createElement('hr');
+              divider.className = 'cell-divider';
+              inner.appendChild(divider);
 
-            const accEl = document.createElement('div');
-            accEl.className = 'cell-stat-primary';
-            accEl.textContent = dayStats ? fmtAccuracy(dayStats.accuracy) : '—';
+              const statEl = document.createElement('div');
+              statEl.className = 'cell-stat ' + (isWin ? 'cell-stat-green' : 'cell-stat-red');
 
-            const pfEl = document.createElement('div');
-            pfEl.className = 'cell-stat-secondary';
-            pfEl.textContent = 'PF ' + (dayStats ? fmtPF(dayStats.pf) : '—');
+              const accEl = document.createElement('div');
+              accEl.className = 'cell-stat-primary';
+              accEl.textContent = `Acc ${dayAcc}%`;
 
-            statEl.appendChild(accEl);
-            statEl.appendChild(pfEl);
-            inner.appendChild(statEl);
+              const pfEl = document.createElement('div');
+              pfEl.className = 'cell-stat-secondary';
+              pfEl.textContent = `W/L ${pfStr}`;
+
+              statEl.appendChild(accEl);
+              statEl.appendChild(pfEl);
+              inner.appendChild(statEl);
+            }
 
             td.appendChild(inner);
           }
@@ -834,32 +839,34 @@
         inner.appendChild(pnlEl);
         inner.appendChild(trdEl);
 
-        /* Weekly accuracy / PF section */
-        const wDivider = document.createElement('hr');
-        wDivider.className = 'cell-divider';
-        inner.appendChild(wDivider);
+        if (weekRoundtrips.length > 0) {
+          const wWins    = weekRoundtrips.filter(rt => rt.pnl > 0);
+          const wLosses  = weekRoundtrips.filter(rt => rt.pnl < 0);
+          const wAcc     = Math.round(wWins.length / weekRoundtrips.length * 100);
+          const wAvgWin  = wWins.length   ? wWins.reduce((s, rt) => s + rt.pnl, 0) / wWins.length : 0;
+          const wAvgLoss = wLosses.length ? Math.abs(wLosses.reduce((s, rt) => s + rt.pnl, 0)) / wLosses.length : 0;
+          const wWL      = wAvgLoss > 0 ? wAvgWin / wAvgLoss : (wAvgWin > 0 ? Infinity : 0);
+          const wPFStr   = isFinite(wWL) ? wWL.toFixed(2) : '∞';
 
-        const weekWinRts     = weekRoundtrips.filter(rt => rt.pnl > 0);
-        const weekLoseRts    = weekRoundtrips.filter(rt => rt.pnl < 0);
-        const weekGrossProfit = weekWinRts.reduce((s, rt) => s + rt.pnl, 0);
-        const weekGrossLoss   = Math.abs(weekLoseRts.reduce((s, rt) => s + rt.pnl, 0));
-        const weekAcc    = weekRoundtrips.length > 0 ? (weekWinRts.length / weekRoundtrips.length * 100) : null;
-        const weekPFval  = weekGrossLoss > 0 ? weekGrossProfit / weekGrossLoss
-                         : (weekGrossProfit > 0 ? Infinity : null);
-        const wStatEl = document.createElement('div');
-        wStatEl.className = 'cell-stat ' + (weekPnl >= 0 ? 'cell-stat-green' : 'cell-stat-red');
+          const wDivider = document.createElement('hr');
+          wDivider.className = 'cell-divider';
+          inner.appendChild(wDivider);
 
-        const wAccEl = document.createElement('div');
-        wAccEl.className = 'cell-stat-primary';
-        wAccEl.textContent = fmtAccuracy(weekAcc);
+          const wStatEl = document.createElement('div');
+          wStatEl.className = 'cell-stat ' + (weekPnl >= 0 ? 'cell-stat-green' : 'cell-stat-red');
 
-        const wPFEl = document.createElement('div');
-        wPFEl.className = 'cell-stat-secondary';
-        wPFEl.textContent = 'PF ' + fmtPF(weekPFval);
+          const wAccEl = document.createElement('div');
+          wAccEl.className = 'cell-stat-primary';
+          wAccEl.textContent = `Acc ${wAcc}%`;
 
-        wStatEl.appendChild(wAccEl);
-        wStatEl.appendChild(wPFEl);
-        inner.appendChild(wStatEl);
+          const wPFEl = document.createElement('div');
+          wPFEl.className = 'cell-stat-secondary';
+          wPFEl.textContent = `W/L ${wPFStr}`;
+
+          wStatEl.appendChild(wAccEl);
+          wStatEl.appendChild(wPFEl);
+          inner.appendChild(wStatEl);
+        }
 
         totalTd.appendChild(inner);
       }

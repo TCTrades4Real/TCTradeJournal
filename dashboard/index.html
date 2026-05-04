@@ -126,7 +126,7 @@
 
     .month-header {
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: space-between;
       margin-bottom: 6px;
       gap: 6px;
@@ -148,8 +148,10 @@
       border: 1px solid transparent;
       white-space: nowrap;
       cursor: pointer;
-      display: inline-flex;
+      display: flex;
       align-items: center;
+      justify-content: space-between;
+      gap: 8px;
       line-height: 1;
       transition: opacity 0.15s;
     }
@@ -157,6 +159,14 @@
     .badge-pos  { background: rgb(2, 53, 37);  color: #fafaf9; border-color: rgb(3, 98, 68); }
     .badge-neg  { background: rgb(77, 13, 13); color: #fafaf9; border-color: rgb(143, 25, 25); }
     .badge-zero { background: #2a2a2a; color: #6b7280; border-color: #3f3f3f; }
+    .badge-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; opacity: 0.7; text-transform: uppercase; }
+
+    .pill-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: stretch;
+    }
 
 
     .expand-btn {
@@ -227,6 +237,10 @@
     .stat-item { flex: 1 1 120px; min-width: 100px; padding: 4px 12px 4px 0; }
     .stat-value { font-size: 18px; font-weight: 500; color: #ffffff; line-height: 1.2; }
     .stat-label { font-size: 14px; color: #9ca3af; margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+    .stats-tab-bar { display: flex; gap: 4px; margin-bottom: 14px; }
+    .stats-tab { padding: 5px 14px; font-size: 12px; font-weight: 600; color: #6b7280; cursor: pointer; border: 1px solid #2a2a2a; border-radius: 6px; background: transparent; letter-spacing: 0.04em; text-transform: uppercase; transition: all 0.15s; }
+    .stats-tab:hover { color: #e0e0e0; border-color: #444; }
+    .stats-tab.active { color: #ffffff; background: #1e1e2e; border-color: #6366f1; }
 
     /* ── Auth overlay ───────────────────────────────── */
     .auth-overlay {
@@ -246,6 +260,7 @@
   <script src="auth.js"></script>
 </head>
 <body>
+<script src="nav.js"></script>
 
 <div id="authOverlay" class="auth-overlay" style="display:none">
   <div class="auth-card">
@@ -284,8 +299,8 @@
     'July','August','September','October','November','December'
   ];
 
-  let allData       = {};
-  let selectedYear  = null;
+  let allData        = {};
+  let selectedYear   = null;
   let availableYears = [];
 
   function fmtHold(totalSecs) {
@@ -357,10 +372,11 @@
 
   function renderStats(data) {
     const el = document.getElementById('statsBar');
-    if (!data || data.trades === 0) { el.style.display = 'none'; return; }
+    const hasData = data && data.trades > 0;
+    if (!hasData) { el.style.display = 'none'; return; }
     el.style.display = 'flex';
-    const s = data.stats || {};
-    const pnl = data.pnl || 0;
+    const s   = data?.stats || {};
+    const pnl = data?.pnl || 0;
     function stat(value, label) {
       const icon = STAT_ICONS[label] || '';
       return `<div class="stat-item"><div class="stat-value">${value}</div><div class="stat-label">${icon}${label}</div></div>`;
@@ -426,7 +442,7 @@
     const hasTrades = Object.values(yearData).some(m => Object.keys(m.days || {}).length > 0);
     const badge = document.getElementById('yearBadge');
     badge.className = 'year-badge ' + (!hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg');
-    badge.textContent = fmtBadge(total);
+    badge.innerHTML = fmtBadge(total);
   }
 
   async function selectYear(year) {
@@ -478,7 +494,7 @@
     const total = monthData.total || 0;
     const badge = document.createElement('span');
     badge.className = 'month-badge ' + (!hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg');
-    badge.textContent = hasTrades ? fmtBadge(total) : '$0.00';
+    badge.innerHTML = hasTrades ? fmtBadge(total) : '$0.00';
     badge.title = 'View month detail';
     badge.onclick = () => { window.location.href = `month.html?year=${year}&month=${month}`; };
 

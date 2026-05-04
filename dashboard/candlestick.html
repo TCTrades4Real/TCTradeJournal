@@ -90,8 +90,8 @@
     .sym-pills-inner {
       flex: 1;
       min-width: 0;
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
       gap: 8px;
     }
 
@@ -110,9 +110,12 @@
       cursor: pointer;
       transition: background 0.15s, color 0.15s, border-color 0.15s;
       white-space: nowrap;
+      width: 100%;
     }
-    .sym-pill:hover { background: #2e2e2e; color: #ffffff; border-color: #555; }
-    .sym-pill.active { background: rgb(58,58,58); border-color: rgb(153,153,153); color: #ffffff; }
+    .sym-pill:hover { background: #2e2e2e; color: #ffffff; border-color: #666; }
+    .sym-pill.active-pos,
+    .sym-pill.active-neg,
+    .sym-pill.active-zero { background: #3a3a3a; border-color: #999; color: #ffffff; }
     .sym-pill-name { font-size: 13px; font-weight: 600; }
     .sym-pill-stack {
       display: flex;
@@ -133,10 +136,10 @@
       border: 1px solid transparent;
       line-height: 1.4;
     }
-    .pill-sub.pos  { background: rgb(11,98,71);  border-color: rgb(11,98,71);  color: #ffffff; }
-    .pill-sub.neg  { background: rgb(140,31,31); border-color: rgb(140,31,31); color: #ffffff; }
-    .pill-sub.zero { background: #333;           border-color: #555;           color: #9ca3af; }
-    .pill-sub-label { font-size: 10px; font-weight: 600; margin-right: 5px; letter-spacing: 0.04em; }
+    .pill-sub.pos  { background: rgb(11,98,71);   border-color: rgb(11,98,71);   color: #ffffff; opacity: 1; }
+    .pill-sub.neg  { background: rgb(140,31,31);  border-color: rgb(140,31,31);  color: #ffffff; opacity: 1; }
+    .pill-sub.zero { background: #333;            border-color: #555;            color: #9ca3af; opacity: 1; }
+    .pill-sub-label { font-size: 10px; font-weight: 600; opacity: 1; margin-right: 5px; letter-spacing: 0.04em; }
     .pill-sub.pos  .pill-sub-label { color: rgb(134,239,172); }
     .pill-sub.neg  .pill-sub-label { color: rgb(252,165,165); }
     .pill-sub.zero .pill-sub-label { color: #9ca3af; }
@@ -254,6 +257,20 @@
       min-width: 130px;
     }
     #hoverTooltip.visible { display: block; }
+    #dotTooltip {
+      position: fixed;
+      z-index: 9100;
+      background: rgba(15,15,15,0.92);
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: #e0e0e0;
+      pointer-events: none;
+      display: none;
+      line-height: 1.6;
+      white-space: nowrap;
+    }
     .tip-time { color: #6b7280; font-size: 11px; margin-bottom: 2px; }
     .tip-row { display: flex; justify-content: space-between; gap: 14px; }
     .tip-label { font-variant-numeric: tabular-nums; }
@@ -291,6 +308,59 @@
     .status-hint { color: #6b7280; font-size: 12px; max-width: 480px; line-height: 1.6; }
     .status-hint code { background: #1e1e1e; padding: 1px 5px; border-radius: 3px; color: #d1d5db; }
 
+    /* ── Long Position Tool ─────────────────────────── */
+    .tool-btn {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #9ca3af;
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .tool-btn:hover { background: #252525; color: #e0e0e0; }
+    .tool-btn.active { background: #172554; color: #93c5fd; border-color: #3b82f6; }
+
+    #longPosPanel {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    #longPosPanel.visible { display: flex; }
+    #longPosShares {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 4px;
+      color: #f0f0f0;
+      font-size: 12px;
+      font-family: inherit;
+      padding: 3px 7px;
+      width: 72px;
+      text-align: right;
+    }
+    #longPosShares:focus { outline: none; border-color: #555; }
+    #longPosRR { color: #d1d5db; font-weight: 500; }
+    .lp-clear {
+      background: none;
+      border: 1px solid #333;
+      color: #6b7280;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .lp-clear:hover { color: #e0e0e0; border-color: #555; }
+
     /* ── Auth overlay ───────────────────────────────── */
     .auth-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.88);
@@ -308,6 +378,7 @@
   <script src="auth.js"></script>
 </head>
 <body>
+<script src="nav.js"></script>
 
 <div id="authOverlay" class="auth-overlay" style="display:none">
   <div class="auth-card">
@@ -344,25 +415,56 @@
 <div class="sym-pills" id="symPills"></div>
 
 
-<div class="tf-selector" id="tfSelector">
-  <button class="tf-btn" data-tf="1">1m</button>
-  <button class="tf-btn active" data-tf="2">2m</button>
-  <button class="tf-btn" data-tf="5">5m</button>
-  <button class="tf-btn" data-tf="30">30m</button>
-  <label class="toggle-wrap" id="btnToggleLabels">
-    <div class="toggle-track"><div class="toggle-thumb"></div></div>
-    Prices
-  </label>
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+  <div class="tf-selector" id="tfSelector" style="margin-bottom:0">
+    <button class="tf-btn" data-tf="1">1m</button>
+    <button class="tf-btn active" data-tf="2">2m</button>
+    <button class="tf-btn" data-tf="5">5m</button>
+    <button class="tf-btn" data-tf="15">15m</button>
+    <button class="tf-btn" data-tf="30">30m</button>
+  </div>
+  <div style="width:1px;height:22px;background:#333;flex-shrink:0;"></div>
+  <button class="tool-btn" id="btnLongPos" onclick="toggleLongPosTool()" title="Long Position (Esc to cancel)">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+      <line x1="1" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="4" y1="10" x2="4" y2="3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="10" y1="10" x2="10" y2="6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="4" cy="3.5" r="1.5" fill="currentColor"/>
+      <circle cx="10" cy="6.5" r="1.5" fill="currentColor"/>
+    </svg>
+    Long position
+  </button>
+  <div style="width:1px;height:22px;background:#333;flex-shrink:0;"></div>
+  <button class="tool-btn" id="btnRuler" onclick="toggleRulerTool()" title="Ruler — measure price &amp; time (Esc to cancel)">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+      <line x1="2" y1="12" x2="12" y2="2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="2" y1="12" x2="5.5" y2="12" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+      <line x1="12" y1="2" x2="12" y2="5.5" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+    </svg>
+    Ruler
+  </button>
+</div>
+<div id="longPosPanel">
+  <span style="color:#6b7280">Qty</span>
+  <input type="number" id="longPosShares" value="100" min="1" step="1">
+  <span id="longPosRR"></span>
+  <button class="lp-clear" onclick="clearLongPosTool()">✕ Clear</button>
 </div>
 
 <div class="chart-legend" id="chartLegend" style="display:none">
   <span class="legend-item"><span class="legend-dot" style="background:#089981"></span> Buy</span>
   <span class="legend-item"><span class="legend-dot" style="background:#f23645"></span> Sell</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(34,31,26);border:1px solid #3a3530"></span> Pre-market</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(26,28,36);border:1px solid #2e3248"></span> After-hours</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(239,68,68)"></span> Hard Stop</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(250,204,21)"></span> Trail Slow</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(148,163,184)"></span> EOD</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(156,163,175)"></span> Manual</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(50,43,30);border:1px solid #3a3530"></span> Pre-market</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(22,26,52);border:1px solid #2e3248"></span> After-hours</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(128,255,255)"></span> 9 EMA</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(0,128,255)"></span> 20 EMA</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(246,197,72)"></span> VWAP</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(33,150,243)"></span> MACD</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(255,152,0)"></span> Signal</span>
   <span class="legend-item" id="entryVolInfo" style="display:none;margin-left:8px;color:#9ca3af;"></span>
 </div>
 
@@ -376,6 +478,7 @@
   </div>
   <div id="hoverTooltip"></div>
 </div>
+<div id="dotTooltip"></div>
 
 
 <script>
@@ -392,14 +495,22 @@
   let activeSymbol    = null;
   let activeInterval  = 2;      // current timeframe in minutes
   let rawCandles      = null;   // 1m candles for active symbol
-  let activeExecs     = [];     // executions for active symbol
-  let ohlcvCache      = {};     // loaded from ohlcv_YYYY-MM-DD.json
-  let tradingDays     = [];     // sorted list of {year,month,day} objects with trade data
-  let labelStorageKey = null;   // localStorage key for label offsets (set per symbol/date)
-  let activeTrades    = [];     // activeExecs grouped by round-trip
-  let labelOffsets    = {};     // {markerKey: {dx, dy}} — persisted to localStorage
-  let labelsVisible   = false;
-  let labelLayerRef   = null;
+  let activeExecs       = [];     // executions for active symbol
+  let ohlcvCache        = {};     // loaded from ohlcv_YYYY-MM-DD.json
+  let tradingDays       = [];     // sorted list of {year,month,day} objects with trade data
+  let activeTrades      = [];     // activeExecs grouped by round-trip
+  let longPosMode  = false;       // long position tool toggled on
+  let longPos      = null;        // { entry, target, stop } or null when not placed
+  let lpSvg        = null;        // SVG overlay element
+  let lpSubCleanup = null;        // fn to unsubscribe chart events
+
+  let rulerMode    = false;       // ruler tool active
+  let ruler        = null;        // { t0, p0, t1, p1 } — t1/p1 null = preview phase
+  let rulerSvg     = null;
+  let rulerSubCleanup = null;
+  let rulerLiveX   = 0;           // current mouse X (pixels) for live preview
+  let rulerLiveY   = 0;
+  let activeBars   = null;        // aggregated bars at current timeframe (for snap)
 
   /* ── Formatters ──────────────────────────────────── */
   function ordinal(n) {
@@ -530,22 +641,607 @@
     return groups;
   }
 
-  // Returns the executions to display based on current trade selection.
+  /* ── Long Position Tool ──────────────────────────── */
+  function getLpShares() {
+    return Math.max(1, parseInt(document.getElementById('longPosShares')?.value || '100', 10) || 100);
+  }
+
+  function clearLongPosTool() {
+    longPos = null;
+    if (lpSubCleanup) { lpSubCleanup(); lpSubCleanup = null; }
+    if (lpSvg)        { lpSvg.remove(); lpSvg = null; }
+    document.getElementById('longPosPanel')?.classList.remove('visible');
+  }
+
+  function toggleLongPosTool() {
+    longPosMode = !longPosMode;
+    document.getElementById('btnLongPos').classList.toggle('active', longPosMode);
+    const chartMain = document.getElementById('chartMain');
+    if (longPosMode) {
+      chartMain.style.cursor = 'crosshair';
+      chartMain.title = 'Click to place entry price';
+    } else {
+      chartMain.style.cursor = '';
+      chartMain.title = '';
+      clearLongPosTool();
+    }
+  }
+
+  function updateLpInfo() {
+    if (!longPos) return;
+    const profitPct = ((longPos.target - longPos.entry) / longPos.entry * 100).toFixed(2);
+    const lossPct   = ((longPos.entry  - longPos.stop)  / longPos.entry * 100).toFixed(2);
+    const rr = parseFloat(lossPct) > 0
+      ? (parseFloat(profitPct) / parseFloat(lossPct)).toFixed(2) : '∞';
+    const el = document.getElementById('longPosRR');
+    if (el) el.textContent = `R:R ${rr}  (+${profitPct}% / −${lossPct}%)`;
+  }
+
+  function renderLongPosOverlay() {
+    if (!longPos || !chartInstance || !candleSeriesRef) return;
+
+    const container = document.getElementById('chartMain');
+    container.style.position = 'relative';
+
+    if (lpSubCleanup) { lpSubCleanup(); lpSubCleanup = null; }
+    if (lpSvg)        { lpSvg.remove(); lpSvg = null; }
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'lpOverlay';
+    svg.setAttribute('style',
+      'position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:6;pointer-events:none;');
+    container.appendChild(svg);
+    lpSvg = svg;
+
+    function draw() {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      if (!chartInstance || !candleSeriesRef || !longPos) return;
+
+      const W      = container.offsetWidth;
+      const PSCALE = 72;
+      const CW     = W - PSCALE;
+      const shares = getLpShares();
+      const timeScale = chartInstance.timeScale();
+
+      // t0/t1 are chart timestamps → zone tracks candles during pan/zoom
+      let lineX0 = timeScale.timeToCoordinate(longPos.t0);
+      let lineX1 = timeScale.timeToCoordinate(longPos.t1);
+      if (lineX0 == null) lineX0 = 0;
+      if (lineX1 == null) lineX1 = CW;
+      const lineW  = lineX1 - lineX0;
+
+      const yEntry  = candleSeriesRef.priceToCoordinate(longPos.entry);
+      const yTarget = candleSeriesRef.priceToCoordinate(longPos.target);
+      const yStop   = candleSeriesRef.priceToCoordinate(longPos.stop);
+      if (yEntry == null || yTarget == null || yStop == null) return;
+
+      const profitAmt = (longPos.target - longPos.entry) * shares;
+      const lossAmt   = (longPos.entry  - longPos.stop)  * shares;
+      const profitPct = (longPos.target - longPos.entry) / longPos.entry * 100;
+      const lossPct   = (longPos.entry  - longPos.stop)  / longPos.entry * 100;
+      const rr        = lossPct > 0 ? (profitPct / lossPct).toFixed(2) : '∞';
+      const fmtP      = v => Math.abs(v) < 10 ? v.toFixed(4) : v.toFixed(2);
+      const fmtD      = v => v.toFixed(2);
+
+      // ── Outcome: scan raw 1-min candles from lineX0 time forward ── //
+      // Whichever level (target or stop) is touched first determines the badge color
+      let outcome = null;
+      if (rawCandles?.length) {
+        for (const c of rawCandles) {
+          if (c.time < longPos.t0) continue;
+          if (c.high >= longPos.target) { outcome = 'target'; break; }
+          if (c.low  <= longPos.stop)   { outcome = 'stop';   break; }
+        }
+      }
+
+      // ── Shaded zones ──────────────────────────────── //
+      function fillZone(y1, y2, fill) {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        el.setAttribute('x', lineX0); el.setAttribute('y', Math.min(y1, y2));
+        el.setAttribute('width', lineW); el.setAttribute('height', Math.abs(y2 - y1));
+        el.setAttribute('fill', fill);
+        svg.appendChild(el);
+      }
+      fillZone(yEntry, yTarget, 'rgba(8,153,129,0.18)');
+      fillZone(yStop,  yEntry,  'rgba(242,54,69,0.18)');
+
+      // ── Horizontal lines ──────────────────────────── //
+      function hLine(y, color, dash) {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        el.setAttribute('x1', lineX0); el.setAttribute('y1', y);
+        el.setAttribute('x2', lineX1); el.setAttribute('y2', y);
+        el.setAttribute('stroke', color); el.setAttribute('stroke-width', 1.5);
+        if (dash) el.setAttribute('stroke-dasharray', dash);
+        svg.appendChild(el);
+      }
+      hLine(yTarget, 'rgb(8,153,129)');
+      hLine(yEntry,  '#6b7280', '5,3');
+      hLine(yStop,   'rgb(242,54,69)');
+
+      // ── Whole-tool move area (drawn before handles so they stay on top) ── //
+      const moveArea = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      moveArea.setAttribute('x', lineX0);
+      moveArea.setAttribute('y', Math.min(yTarget, yStop));
+      moveArea.setAttribute('width', lineW);
+      moveArea.setAttribute('height', Math.abs(yTarget - yStop));
+      moveArea.setAttribute('fill', 'transparent');
+      moveArea.style.pointerEvents = 'all';
+      moveArea.style.cursor = 'move';
+      moveArea.addEventListener('mousedown', ev => {
+        if (ev.button !== 0) return;
+        ev.preventDefault(); ev.stopPropagation();
+        const cap = document.createElement('div');
+        cap.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:move;';
+        document.body.appendChild(cap);
+        const startClientX  = ev.clientX;
+        const startClientY  = ev.clientY;
+        const snapEntry     = longPos.entry;
+        const snapTarget    = longPos.target;
+        const snapStop      = longPos.stop;
+        const snapT0        = longPos.t0;
+        const snapT1        = longPos.t1;
+        const bRect0        = container.getBoundingClientRect();
+        const startPrice    = candleSeriesRef.coordinateToPrice(startClientY - bRect0.top);
+        function onMove(mv) {
+          const bRect = container.getBoundingClientRect();
+          const curPrice = candleSeriesRef.coordinateToPrice(mv.clientY - bRect.top);
+          if (startPrice != null && curPrice != null) {
+            const dp = curPrice - startPrice;
+            longPos.entry  = snapEntry  + dp;
+            longPos.target = snapTarget + dp;
+            longPos.stop   = snapStop   + dp;
+          }
+          const dx = mv.clientX - startClientX;
+          const snapX0 = timeScale.timeToCoordinate(snapT0);
+          const snapX1 = timeScale.timeToCoordinate(snapT1);
+          if (snapX0 != null && snapX1 != null) {
+            const newX0 = snapX0 + dx;
+            const newX1 = snapX1 + dx;
+            longPos.t0 = timeScale.coordinateToTime(newX0) ?? longPos.t0;
+            longPos.t1 = timeScale.coordinateToTime(newX1) ?? longPos.t1;
+          }
+          draw(); updateLpInfo();
+        }
+        function onUp() {
+          cap.remove();
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+      svg.appendChild(moveArea);
+
+      // ── Inline line labels ─────────────────────────── //
+      function lineLabel(y, bgColor, text) {
+        const FH = 11, PX = 7, PY = 4;
+        const BH = FH + PY * 2;
+        const BW = Math.min(text.length * 6.1 + PX * 2, lineW - 8);
+        if (BW < 20) return;
+        const BX = lineX0 + 4, BY = y - BH / 2;
+        const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bg.setAttribute('x', BX); bg.setAttribute('y', BY);
+        bg.setAttribute('width', BW); bg.setAttribute('height', BH);
+        bg.setAttribute('rx', 3); bg.setAttribute('fill', bgColor);
+        svg.appendChild(bg);
+        const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        t.setAttribute('x', BX + PX); t.setAttribute('y', BY + PY + FH - 1);
+        t.setAttribute('fill', '#fff'); t.setAttribute('font-size', FH);
+        t.setAttribute('font-family', 'Inter,-apple-system,sans-serif');
+        t.setAttribute('font-weight', '500');
+        t.textContent = text;
+        svg.appendChild(t);
+      }
+
+      lineLabel(yTarget, 'rgba(8,153,129,0.95)',
+        `${fmtP(longPos.target)}  (+${profitPct.toFixed(3)}%)  ${shares}  +$${fmtD(profitAmt)}`);
+      lineLabel(yEntry,  'rgba(30,41,59,0.95)',
+        `${fmtP(longPos.entry)}  ×${shares} shares`);
+      lineLabel(yStop,   'rgba(140,31,31,0.95)',
+        `${fmtP(longPos.stop)}  (${lossPct.toFixed(3)}%)  ${shares}  −$${fmtD(lossAmt)}`);
+
+      // ── Centre badge in the loss zone ─────────────── //
+      const lossH = Math.abs(yEntry - yStop);
+      if (lossH > 30 && lineW > 80) {
+        const midY = (yEntry + yStop) / 2;
+        const txt  = `−$${fmtD(lossAmt)}  ~  ${shares}  R:R ${rr}`;
+        const FH = 11, PX = 9, PY = 5;
+        const BW = Math.min(txt.length * 6.1 + PX * 2, lineW - 16);
+        const BH = FH + PY * 2;
+        const BX = lineX0 + lineW / 2 - BW / 2;
+        const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bg.setAttribute('x', BX); bg.setAttribute('y', midY - BH / 2);
+        bg.setAttribute('width', BW); bg.setAttribute('height', BH);
+        const badgeFill = outcome === 'target' ? 'rgba(8,153,129,0.90)'
+                        : outcome === 'stop'   ? 'rgba(140,31,31,0.90)'
+                        : 'rgba(55,65,81,0.85)';
+        bg.setAttribute('rx', 4); bg.setAttribute('fill', badgeFill);
+        svg.appendChild(bg);
+        const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        t.setAttribute('x', BX + PX); t.setAttribute('y', midY + FH / 2 - 1);
+        t.setAttribute('fill', '#fff'); t.setAttribute('font-size', FH);
+        t.setAttribute('font-family', 'Inter,-apple-system,sans-serif');
+        t.setAttribute('font-weight', '600');
+        t.textContent = txt;
+        svg.appendChild(t);
+      }
+
+      // ── Blue square corner handles with horizontal drag ── //
+      // xEdge: 'left' drags x0, 'right' drags x1
+      function square(x, y, xEdge) {
+        const SZ = 8;
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        el.setAttribute('x', x - SZ / 2); el.setAttribute('y', y - SZ / 2);
+        el.setAttribute('width', SZ); el.setAttribute('height', SZ);
+        el.setAttribute('fill', '#1d4ed8');
+        el.setAttribute('stroke', '#93c5fd'); el.setAttribute('stroke-width', 1);
+        el.style.pointerEvents = 'all';
+        el.style.cursor = 'ew-resize';
+        el.addEventListener('mousedown', ev => {
+          if (ev.button !== 0) return;
+          ev.preventDefault(); ev.stopPropagation();
+          const cap = document.createElement('div');
+          cap.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:ew-resize;';
+          document.body.appendChild(cap);
+          function onMove(mv) {
+            const bRect = container.getBoundingClientRect();
+            const px = mv.clientX - bRect.left;
+            const t = timeScale.coordinateToTime(px);
+            if (t == null) return;
+            if (xEdge === 'left') {
+              if (t !== longPos.t1) longPos.t0 = t;
+            } else {
+              if (t !== longPos.t0) longPos.t1 = t;
+            }
+            draw();
+          }
+          function onUp() {
+            cap.remove();
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+          }
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+        svg.appendChild(el);
+      }
+      square(lineX0, yTarget, 'left');  square(lineX1, yTarget, 'right');
+      square(lineX0, yEntry,  'left');  square(lineX1, yEntry,  'right');
+      square(lineX0, yStop,   'left');  square(lineX1, yStop,   'right');
+
+      // ── Invisible vertical drag strips (drawn last = on top) ── //
+      function dragHandle(y, role) {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        // inset 10px from each edge so the corner squares handle edge drags
+        el.setAttribute('x', lineX0 + 10); el.setAttribute('y', y - 7);
+        el.setAttribute('width', Math.max(0, lineW - 20)); el.setAttribute('height', 14);
+        el.setAttribute('fill', 'transparent');
+        el.style.pointerEvents = 'all';
+        el.style.cursor = 'ns-resize';
+        el.addEventListener('mousedown', ev => {
+          if (ev.button !== 0) return;
+          ev.preventDefault(); ev.stopPropagation();
+          const cap = document.createElement('div');
+          cap.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:ns-resize;';
+          document.body.appendChild(cap);
+          function onMove(mv) {
+            const bRect = container.getBoundingClientRect();
+            const p = candleSeriesRef.coordinateToPrice(mv.clientY - bRect.top);
+            if (p == null) return;
+            if (role === 'target') {
+              longPos.target = Math.max(p, longPos.entry + 0.005);
+            } else if (role === 'stop') {
+              longPos.stop = Math.min(p, longPos.entry - 0.005);
+            } else {
+              const d = p - longPos.entry;
+              longPos.entry += d; longPos.target += d; longPos.stop += d;
+            }
+            draw(); updateLpInfo();
+          }
+          function onUp() {
+            cap.remove();
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+          }
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+        svg.appendChild(el);
+      }
+      dragHandle(yTarget, 'target');
+      dragHandle(yEntry,  'entry');
+      dragHandle(yStop,   'stop');
+    }
+
+    draw();
+    chartInstance.timeScale().subscribeVisibleLogicalRangeChange(draw);
+    try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(draw); } catch (_) {}
+    lpSubCleanup = () => {
+      try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(draw); } catch (_) {}
+      try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(draw); } catch (_) {}
+    };
+  }
+
+  /* ── Ruler snap helper ───────────────────────────── */
+  // Returns { x, y, price, time } of nearest candle high/low within SNAP_PX,
+  // or null if nothing is close enough.
+  function snapToCandle(px, py) {
+    if (!activeBars?.length || !chartInstance || !candleSeriesRef) return null;
+    const SNAP_PX = 14;
+    const timeScale = chartInstance.timeScale();
+    let bestDist = SNAP_PX;
+    let result = null;
+    for (const bar of activeBars) {
+      const bx = timeScale.timeToCoordinate(bar.time);
+      if (bx == null || Math.abs(bx - px) > SNAP_PX * 2) continue;
+      for (const [price] of [[bar.high], [bar.low]]) {
+        const by = candleSeriesRef.priceToCoordinate(price);
+        if (by == null) continue;
+        const dist = Math.hypot(bx - px, by - py);
+        if (dist < bestDist) {
+          bestDist = dist;
+          result = { x: bx, y: by, price, time: bar.time };
+        }
+      }
+    }
+    return result;
+  }
+
+  /* ── Ruler Tool ─────────────────────────────────── */
+  function clearRulerTool() {
+    ruler = null;
+    if (rulerSubCleanup) { rulerSubCleanup(); rulerSubCleanup = null; }
+    if (rulerSvg)        { rulerSvg.remove(); rulerSvg = null; }
+  }
+
+  function toggleRulerTool() {
+    rulerMode = !rulerMode;
+    document.getElementById('btnRuler').classList.toggle('active', rulerMode);
+    const chartMain = document.getElementById('chartMain');
+    if (rulerMode) {
+      chartMain.style.cursor = 'crosshair';
+    } else {
+      chartMain.style.cursor = '';
+      clearRulerTool();
+    }
+  }
+
+  function renderRulerOverlay() {
+    if (!ruler || !chartInstance || !candleSeriesRef) return;
+
+    const container = document.getElementById('chartMain');
+    container.style.position = 'relative';
+
+    if (rulerSubCleanup) { rulerSubCleanup(); rulerSubCleanup = null; }
+    if (rulerSvg)        { rulerSvg.remove(); rulerSvg = null; }
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'rulerOverlay';
+    svg.setAttribute('style',
+      'position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:7;pointer-events:none;');
+    container.appendChild(svg);
+    rulerSvg = svg;
+
+    function draw() {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      if (!chartInstance || !candleSeriesRef || !ruler) return;
+
+      const timeScale = chartInstance.timeScale();
+      const x0 = timeScale.timeToCoordinate(ruler.t0);
+      const y0 = candleSeriesRef.priceToCoordinate(ruler.p0);
+      if (x0 == null || y0 == null) return;
+
+      // Use locked second point or live mouse position
+      let x1, y1, p1, t1;
+      if (ruler.t1 != null) {
+        x1 = timeScale.timeToCoordinate(ruler.t1);
+        y1 = candleSeriesRef.priceToCoordinate(ruler.p1);
+        p1 = ruler.p1;
+        t1 = ruler.t1;
+      } else {
+        x1 = rulerLiveX;
+        y1 = rulerLiveY;
+        t1 = timeScale.coordinateToTime(x1) ?? ruler.t0;
+        p1 = candleSeriesRef.coordinateToPrice(y1) ?? ruler.p0;
+      }
+      if (x1 == null || y1 == null) return;
+
+      const priceDelta = p1 - ruler.p0;
+      const pctDelta   = (priceDelta / ruler.p0) * 100;
+      const sign       = priceDelta >= 0 ? '+' : '';
+      const lineColor  = priceDelta >= 0 ? 'rgb(8,153,129)' : 'rgb(242,54,69)';
+      const fillColor  = priceDelta >= 0 ? 'rgba(8,153,129,0.10)' : 'rgba(242,54,69,0.10)';
+
+      // Count 1-min candles in range
+      const tMin = Math.min(ruler.t0, t1);
+      const tMax = Math.max(ruler.t0, t1);
+      let barCount = 0;
+      for (const c of (rawCandles || [])) {
+        if (c.time >= tMin && c.time <= tMax) barCount++;
+      }
+      const timeMins = Math.round(Math.abs(t1 - ruler.t0) / 60);
+
+      // Shaded rect
+      const rectEl = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rectEl.setAttribute('x', Math.min(x0, x1));
+      rectEl.setAttribute('y', Math.min(y0, y1));
+      rectEl.setAttribute('width', Math.abs(x1 - x0));
+      rectEl.setAttribute('height', Math.abs(y1 - y0));
+      rectEl.setAttribute('fill', fillColor);
+      if (ruler.t1 != null) {
+        rectEl.style.pointerEvents = 'all';
+        rectEl.style.cursor = 'move';
+      }
+      svg.appendChild(rectEl);
+
+      // Horizontal dashed leg at y1
+      const hLeg = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      hLeg.setAttribute('x1', x0); hLeg.setAttribute('y1', y1);
+      hLeg.setAttribute('x2', x1); hLeg.setAttribute('y2', y1);
+      hLeg.setAttribute('stroke', '#4b5563'); hLeg.setAttribute('stroke-width', 1);
+      hLeg.setAttribute('stroke-dasharray', '4,3');
+      svg.appendChild(hLeg);
+
+      // Vertical dashed leg at x1
+      const vLeg = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      vLeg.setAttribute('x1', x1); vLeg.setAttribute('y1', y0);
+      vLeg.setAttribute('x2', x1); vLeg.setAttribute('y2', y1);
+      vLeg.setAttribute('stroke', '#4b5563'); vLeg.setAttribute('stroke-width', 1);
+      vLeg.setAttribute('stroke-dasharray', '4,3');
+      svg.appendChild(vLeg);
+
+      // Diagonal line
+      const diagLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      diagLine.setAttribute('x1', x0); diagLine.setAttribute('y1', y0);
+      diagLine.setAttribute('x2', x1); diagLine.setAttribute('y2', y1);
+      diagLine.setAttribute('stroke', lineColor); diagLine.setAttribute('stroke-width', 1.5);
+      svg.appendChild(diagLine);
+
+      // Mid-point label
+      const midX = (x0 + x1) / 2;
+      const midY = (y0 + y1) / 2;
+      const absPriceFmt = Math.abs(priceDelta) < 10
+        ? Math.abs(priceDelta).toFixed(4)
+        : Math.abs(priceDelta).toFixed(2);
+      const label = `${sign}$${absPriceFmt}  ${sign}${pctDelta.toFixed(2)}%  ${barCount} bars  ${timeMins}m`;
+      const FH = 11, PX = 8, PY = 4;
+      const BW = label.length * 6.1 + PX * 2;
+      const BH = FH + PY * 2;
+      const badgeFill = priceDelta >= 0 ? 'rgba(8,153,129,0.92)' : 'rgba(140,31,31,0.92)';
+      const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      bg.setAttribute('x', midX - BW / 2); bg.setAttribute('y', midY - BH / 2);
+      bg.setAttribute('width', BW); bg.setAttribute('height', BH);
+      bg.setAttribute('rx', 4); bg.setAttribute('fill', badgeFill);
+      svg.appendChild(bg);
+      const labelEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      labelEl.setAttribute('x', midX - BW / 2 + PX);
+      labelEl.setAttribute('y', midY + FH / 2 - 1);
+      labelEl.setAttribute('fill', '#fff'); labelEl.setAttribute('font-size', FH);
+      labelEl.setAttribute('font-family', 'Inter,-apple-system,sans-serif');
+      labelEl.setAttribute('font-weight', '600');
+      labelEl.textContent = label;
+      svg.appendChild(labelEl);
+
+      if (ruler.t1 == null) {
+        // Preview mode: draw snap indicator ring at the live endpoint
+        const snapHit = snapToCandle(rulerLiveX, rulerLiveY);
+        if (snapHit) {
+          const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          ring.setAttribute('cx', x1); ring.setAttribute('cy', y1); ring.setAttribute('r', 8);
+          ring.setAttribute('fill', 'none');
+          ring.setAttribute('stroke', '#fbbf24'); ring.setAttribute('stroke-width', 1.5);
+          svg.appendChild(ring);
+        }
+        return; // no handles/drag in preview mode
+      }
+
+      // Endpoint circles
+      function endCircle(cx, cy, isFirst) {
+        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', 5);
+        c.setAttribute('fill', lineColor);
+        c.setAttribute('stroke', '#ffffff'); c.setAttribute('stroke-width', 1.5);
+        c.style.pointerEvents = 'all';
+        c.style.cursor = 'grab';
+        c.addEventListener('mousedown', ev => {
+          if (ev.button !== 0) return;
+          ev.preventDefault(); ev.stopPropagation();
+          const cap = document.createElement('div');
+          cap.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:grabbing;';
+          document.body.appendChild(cap);
+          function onMove(mv) {
+            const bRect = container.getBoundingClientRect();
+            const px = mv.clientX - bRect.left;
+            const py = mv.clientY - bRect.top;
+            const snap = snapToCandle(px, py);
+            const t = snap ? snap.time : timeScale.coordinateToTime(px);
+            const p = snap ? snap.price : candleSeriesRef.coordinateToPrice(py);
+            if (t == null || p == null) return;
+            if (isFirst) { ruler.t0 = t; ruler.p0 = p; }
+            else         { ruler.t1 = t; ruler.p1 = p; }
+            draw();
+          }
+          function onUp() {
+            cap.remove();
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+          }
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+        svg.appendChild(c);
+      }
+      endCircle(x0, y0, true);
+      endCircle(x1, y1, false);
+
+      // Move whole ruler via rect drag
+      rectEl.addEventListener('mousedown', ev => {
+        if (ev.button !== 0) return;
+        ev.preventDefault(); ev.stopPropagation();
+        const cap = document.createElement('div');
+        cap.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:move;';
+        document.body.appendChild(cap);
+        const bRect0      = container.getBoundingClientRect();
+        const startPrice  = candleSeriesRef.coordinateToPrice(ev.clientY - bRect0.top);
+        const startCX     = ev.clientX;
+        const snapT0 = ruler.t0, snapP0 = ruler.p0;
+        const snapT1 = ruler.t1, snapP1 = ruler.p1;
+        function onMove(mv) {
+          const bRect    = container.getBoundingClientRect();
+          const curPrice = candleSeriesRef.coordinateToPrice(mv.clientY - bRect.top);
+          if (startPrice != null && curPrice != null) {
+            const dp = curPrice - startPrice;
+            ruler.p0 = snapP0 + dp;
+            ruler.p1 = snapP1 + dp;
+          }
+          const dx   = mv.clientX - startCX;
+          const sx0  = timeScale.timeToCoordinate(snapT0);
+          const sx1  = timeScale.timeToCoordinate(snapT1);
+          if (sx0 != null && sx1 != null) {
+            ruler.t0 = timeScale.coordinateToTime(sx0 + dx) ?? ruler.t0;
+            ruler.t1 = timeScale.coordinateToTime(sx1 + dx) ?? ruler.t1;
+          }
+          draw();
+        }
+        function onUp() {
+          cap.remove();
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    }
+
+    draw();
+    chartInstance.timeScale().subscribeVisibleLogicalRangeChange(draw);
+    try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(draw); } catch (_) {}
+    rulerSubCleanup = () => {
+      try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(draw); } catch (_) {}
+      try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(draw); } catch (_) {}
+    };
+
+    // Expose draw for mousemove updates during preview phase
+    rulerSvg._draw = draw;
+  }
+
   /* ── SVG execution markers ───────────────────────── */
-  // Draws triangles at exact (time, price) using an SVG overlay.
-  // Compatible with all LW Charts versions — no attachPrimitive needed.
-  function renderExecMarkers(executions, timeMap) {
+  function renderExecMarkers(executions, timeMap, barsTimeMap) {
     // Teardown previous overlay
     if (markerCleanup) { markerCleanup(); markerCleanup = null; }
 
     if (!executions?.length || !chartInstance || !candleSeriesRef) return;
 
-    // Pre-resolve sub-minute timestamps once
+    // Pre-resolve timestamps once.
+    // ts     = 1-min stable timestamp → used for mKeys (localStorage survives TF switches)
+    // tsBar  = aggregated-bar timestamp → used for timeToCoordinate (must match chart data)
+    const posMap = barsTimeMap || timeMap;
     const resolved = [];
     for (const ex of executions) {
-      const ts = execToTimestamp(ex.time, timeMap);
-      if (ts == null) continue;
-      resolved.push({ ts, price: ex.price, side: ex.side });
+      const ts    = execToTimestamp(ex.time, timeMap);
+      const tsBar = execToTimestamp(ex.time, posMap);
+      if (ts == null || tsBar == null) continue;
+      resolved.push({ ts, tsBar, price: ex.price, side: ex.side });
     }
     if (!resolved.length) return;
 
@@ -559,7 +1255,6 @@
     container.appendChild(svg);
 
     // Build a map from execution timestamp+side → trade PnL
-    // so exit circles can be colored by overall trade result.
     const execTradePnl = new Map();
     for (const trade of activeTrades) {
       let buyCost = 0, sellRev = 0;
@@ -581,17 +1276,16 @@
       } catch (_) { return 6; }
     }
 
+    const dotTooltip = document.getElementById('dotTooltip');
+
     function redraw() {
       while (svg.firstChild) svg.removeChild(svg.firstChild);
       if (!chartInstance || !candleSeriesRef) return;
       const timeScale = chartInstance.timeScale();
       const r = calcRadius();
-      const labelLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      labelLayer.style.display = labelsVisible ? '' : 'none';
-      labelLayerRef = labelLayer;
 
       for (const m of resolved) {
-        const x = timeScale.timeToCoordinate(m.ts);
+        const x = timeScale.timeToCoordinate(m.tsBar);
         const y = candleSeriesRef.priceToCoordinate(m.price);
         if (x == null || y == null) continue;
 
@@ -606,110 +1300,29 @@
         const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', r);
         dot.setAttribute('fill', color);
-        dot.style.pointerEvents = 'none';
+        dot.style.pointerEvents = 'all';
+        dot.style.cursor = 'crosshair';
+
+        const sideLabel = m.side === 'buy' ? 'BUY' : 'SELL';
+        const timeStr   = tsToET(m.ts);
+        dot.addEventListener('mouseenter', e => {
+          dotTooltip.innerHTML =
+            `<span style="color:${color};font-weight:600">${sideLabel}</span>&nbsp;&nbsp;$${m.price.toFixed(2)}<br>` +
+            `<span style="color:#6b7280;font-size:11px">${timeStr}</span>`;
+          dotTooltip.style.display = 'block';
+          dotTooltip.style.left = (e.clientX + 14) + 'px';
+          dotTooltip.style.top  = (e.clientY - 36) + 'px';
+        });
+        dot.addEventListener('mousemove', e => {
+          dotTooltip.style.left = (e.clientX + 14) + 'px';
+          dotTooltip.style.top  = (e.clientY - 36) + 'px';
+        });
+        dot.addEventListener('mouseleave', () => {
+          dotTooltip.style.display = 'none';
+        });
+
         svg.appendChild(dot);
-
-        const mKey = `${m.ts}_${m.side}_${m.price}`;
-        if (!labelOffsets[mKey]) labelOffsets[mKey] = { dx: 0, dy: 0 };
-        const off = labelOffsets[mKey];
-
-        // Measure text to size the pill
-        const measTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        measTxt.setAttribute('font-size', '13');
-        measTxt.setAttribute('font-family', 'Inter, sans-serif');
-        measTxt.setAttribute('font-weight', '500');
-        measTxt.textContent = `$${m.price.toFixed(2)}`;
-        svg.appendChild(measTxt);
-        const tw = measTxt.getBBox().width;
-        svg.removeChild(measTxt);
-
-        const padX = 10, padY = 5;
-        const bw = tw + padX * 2;
-        const bh = 26;
-
-        const svgW     = svg.clientWidth || svg.getBoundingClientRect().width || 800;
-        const flipLeft = x + r + 8 + bw > svgW;
-        const baseX    = flipLeft ? x - r - 8 - bw : x + r + 8;
-
-        // Connector line
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('stroke', color);
-        line.setAttribute('stroke-width', '1');
-        line.setAttribute('opacity', '0.5');
-        line.style.pointerEvents = 'none';
-        labelLayer.appendChild(line);
-
-        // Label group: pill rect + text
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-
-        const pill = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        pill.setAttribute('x', 0);
-        pill.setAttribute('y', -bh / 2);
-        pill.setAttribute('width', bw);
-        pill.setAttribute('height', bh);
-        pill.setAttribute('rx', 4);
-        const darkColor = color.replace('rgb(', 'rgba(').replace(')', ', 0.35)');
-        pill.setAttribute('fill', darkColor);
-        pill.setAttribute('stroke', color);
-        pill.setAttribute('stroke-width', '1');
-        g.appendChild(pill);
-
-        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        txt.setAttribute('x', padX);
-        txt.setAttribute('y', 0);
-        txt.setAttribute('dominant-baseline', 'middle');
-        txt.setAttribute('text-anchor', 'start');
-        txt.setAttribute('fill', '#ffffff');
-        txt.setAttribute('font-size', '13');
-        txt.setAttribute('font-family', 'Inter, sans-serif');
-        txt.setAttribute('font-weight', '500');
-        txt.textContent = `$${m.price.toFixed(2)}`;
-        g.appendChild(txt);
-
-        g.style.cursor = 'grab';
-        g.style.userSelect = 'none';
-        g.setAttribute('pointer-events', 'all');
-
-        function applyPos(dx, dy) {
-          g.setAttribute('transform', `translate(${baseX + dx}, ${y + dy})`);
-          line.setAttribute('x1', x);
-          line.setAttribute('y1', y);
-          line.setAttribute('x2', baseX + dx + bw / 2);
-          line.setAttribute('y2', y + dy);
-        }
-        applyPos(off.dx, off.dy);
-
-        g.addEventListener('mousedown', e => {
-          e.stopPropagation();
-          e.preventDefault();
-          g.style.cursor = 'grabbing';
-          const startX = e.clientX, startY = e.clientY;
-          const origDx = off.dx, origDy = off.dy;
-          const onMove = ev => {
-            off.dx = origDx + ev.clientX - startX;
-            off.dy = origDy + ev.clientY - startY;
-            applyPos(off.dx, off.dy);
-          };
-          const onUp = () => {
-            g.style.cursor = 'grab';
-            try { localStorage.setItem(labelStorageKey, JSON.stringify(labelOffsets)); } catch (_) {}
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-          };
-          document.addEventListener('mousemove', onMove);
-          document.addEventListener('mouseup', onUp);
-        });
-
-        g.addEventListener('dblclick', e => {
-          e.stopPropagation();
-          delete labelOffsets[mKey];
-          try { localStorage.setItem(labelStorageKey, JSON.stringify(labelOffsets)); } catch (_) {}
-          redraw();
-        });
-
-        labelLayer.appendChild(g);
       }
-      svg.appendChild(labelLayer);
     }
 
     redraw();
@@ -794,6 +1407,24 @@
     return result;
   }
 
+  function calcMACD(candles) {
+    const k12 = 2 / 13, k26 = 2 / 27, k9 = 2 / 10;
+    let ema12 = null, ema26 = null, emaSignal = null;
+    const macdLine = [], signalLine = [], histogram = [];
+    for (const c of candles) {
+      ema12 = ema12 === null ? c.close : c.close * k12 + ema12 * (1 - k12);
+      ema26 = ema26 === null ? c.close : c.close * k26 + ema26 * (1 - k26);
+      const macd = ema12 - ema26;
+      emaSignal = emaSignal === null ? macd : macd * k9 + emaSignal * (1 - k9);
+      const hist = macd - emaSignal;
+      macdLine.push({ time: c.time, value: macd });
+      signalLine.push({ time: c.time, value: emaSignal });
+      histogram.push({ time: c.time, value: hist,
+        color: hist >= 0 ? 'rgba(8,153,129,0.7)' : 'rgba(242,54,69,0.7)' });
+    }
+    return { macdLine, signalLine, histogram };
+  }
+
   /* ── Timeframe switch ────────────────────────────── */
   function setTimeframe(mins) {
     activeInterval = mins;
@@ -805,12 +1436,17 @@
   /* ── Chart render ────────────────────────────────── */
   function renderChart(candles, executions, intervalMins = 1, preserveZoom = false) {
     const bars = aggregateCandles(candles, intervalMins);
+    activeBars = bars;
     // Save zoom before teardown if caller wants to preserve it
     const savedRange = (preserveZoom && chartInstance)
       ? chartInstance.timeScale().getVisibleLogicalRange()
       : null;
     // Teardown previous overlays + chart (order matters: unsubscribe before remove)
-    if (markerCleanup) { markerCleanup(); markerCleanup = null; }
+    if (lpSubCleanup)     { lpSubCleanup();     lpSubCleanup     = null; }
+    if (lpSvg)            { lpSvg.remove();     lpSvg            = null; }
+    if (rulerSubCleanup)  { rulerSubCleanup();  rulerSubCleanup  = null; }
+    if (rulerSvg)         { rulerSvg.remove();  rulerSvg         = null; }
+    if (markerCleanup)    { markerCleanup();    markerCleanup    = null; }
     if (chartInstance) { chartInstance.remove(); chartInstance = null; }
     candleSeriesRef = null;
 
@@ -878,19 +1514,21 @@
     candleSeriesRef = candleSeries;
 
     /* ── Pre-market / after-hours background zones ─── */
-    const PRE_COLOR  = 'rgb(26, 28, 36)';
-    const POST_COLOR = 'rgb(26, 28, 36)';
+    const PRE_COLOR  = 'rgb(50, 43, 30)';
+    const POST_COLOR = 'rgb(22, 26, 52)';
     let preStart = null, preEnd = null, postStart = null, postEnd = null;
+    let seenOpen = false;
     for (const c of bars) {
       const et   = tsToET(c.time);
       const [h, m] = et.split(':').map(Number);
       const mins = h * 60 + m;
-      if (mins < 9 * 60 + 30) {
+      if (mins >= 9 * 60 + 30 && mins < 16 * 60) {
+        if (!seenOpen) { seenOpen = true; preEnd = c.time; } // anchor preEnd to first real bar in session
+      } else if (mins < 9 * 60 + 30 && !seenOpen) {
         if (preStart === null) preStart = c.time;
-        preEnd = c.time + intervalMins * 60;
-      } else if (mins >= 16 * 60) {
+      } else if (mins >= 16 * 60 && seenOpen) {
         if (postStart === null) postStart = c.time;
-        postEnd = c.time + intervalMins * 60;
+        postEnd = c.time;
       }
     }
     const bgZones = [];
@@ -907,7 +1545,7 @@
       priceScaleId:  'vol',
     });
     chartInstance.priceScale('vol').applyOptions({
-      scaleMargins: { top: 0.82, bottom: 0 },
+      scaleMargins: { top: 0.65, bottom: 0.18 },
     });
     volumeSeries.setData(bars.map(c => ({
       time:  c.time,
@@ -945,14 +1583,51 @@
     });
     vwapSeries.setData(calcVWAP(bars));
 
+    /* ── MACD ───────────────────────────────────────── */
+    const macdData = calcMACD(bars);
+
+    const macdHistSeries = chartInstance.addHistogramSeries({
+      priceFormat:      { type: 'price', precision: 4, minMove: 0.0001 },
+      priceScaleId:     'macd',
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    chartInstance.priceScale('macd').applyOptions({
+      scaleMargins: { top: 0.83, bottom: 0 },
+    });
+    macdHistSeries.setData(macdData.histogram);
+
+    const macdLineSeries = chartInstance.addLineSeries({
+      color:                  'rgb(33,150,243)',
+      lineWidth:              1,
+      priceScaleId:           'macd',
+      lastValueVisible:       false,
+      priceLineVisible:       false,
+      crosshairMarkerVisible: false,
+    });
+    macdLineSeries.setData(macdData.macdLine);
+
+    const macdSignalSeries = chartInstance.addLineSeries({
+      color:                  'rgb(255,152,0)',
+      lineWidth:              1,
+      priceScaleId:           'macd',
+      lastValueVisible:       false,
+      priceLineVisible:       false,
+      crosshairMarkerVisible: false,
+    });
+    macdSignalSeries.setData(macdData.signalLine);
+
     /* ── Hover tooltip ──────────────────────────────── */
     const ema9Data  = calcEMA(bars, 9);
     const ema20Data = calcEMA(bars, 20);
     const vwapData  = calcVWAP(bars);
-    const barMap  = Object.fromEntries(bars.map(b => [b.time, b]));
-    const ema9Map  = Object.fromEntries(ema9Data.map(p => [p.time, p.value]));
-    const ema20Map = Object.fromEntries(ema20Data.map(p => [p.time, p.value]));
-    const vwapMap  = Object.fromEntries(vwapData.map(p => [p.time, p.value]));
+    const barMap      = Object.fromEntries(bars.map(b => [b.time, b]));
+    const ema9Map     = Object.fromEntries(ema9Data.map(p => [p.time, p.value]));
+    const ema20Map    = Object.fromEntries(ema20Data.map(p => [p.time, p.value]));
+    const vwapMap     = Object.fromEntries(vwapData.map(p => [p.time, p.value]));
+    const macdLineMap = Object.fromEntries(macdData.macdLine.map(p => [p.time, p.value]));
+    const macdSigMap  = Object.fromEntries(macdData.signalLine.map(p => [p.time, p.value]));
+    const macdHistMap = Object.fromEntries(macdData.histogram.map(p => [p.time, p.value]));
 
     const tooltip = document.getElementById('hoverTooltip');
     const fmtP  = v => v != null ? v.toFixed(4) : '—';
@@ -966,6 +1641,9 @@
       const e9  = ema9Map[param.time];
       const e20 = ema20Map[param.time];
       const vw  = vwapMap[param.time];
+      const mc  = macdLineMap[param.time];
+      const ms  = macdSigMap[param.time];
+      const mh  = macdHistMap[param.time];
       const time = tsToET(bar.time);
       const ocColor = bar.close >= bar.open ? 'rgb(8,153,129)' : 'rgb(242,54,69)';
 
@@ -979,7 +1657,11 @@
         <div class="tip-divider"></div>
         <div class="tip-row"><span class="tip-label" style="color:rgb(128,255,255)">EMA9</span><span class="tip-val">${fmtP(e9)}</span></div>
         <div class="tip-row"><span class="tip-label" style="color:rgb(0,128,255)">EMA20</span><span class="tip-val">${fmtP(e20)}</span></div>
-        <div class="tip-row"><span class="tip-label" style="color:rgb(246,197,72)">VWAP</span><span class="tip-val">${fmtP(vw)}</span></div>`;
+        <div class="tip-row"><span class="tip-label" style="color:rgb(246,197,72)">VWAP</span><span class="tip-val">${fmtP(vw)}</span></div>
+        <div class="tip-divider"></div>
+        <div class="tip-row"><span class="tip-label" style="color:rgb(33,150,243)">MACD</span><span class="tip-val">${fmtP(mc)}</span></div>
+        <div class="tip-row"><span class="tip-label" style="color:rgb(255,152,0)">Signal</span><span class="tip-val">${fmtP(ms)}</span></div>
+        <div class="tip-row"><span class="tip-label" style="color:#9ca3af">Hist</span><span class="tip-val" style="color:${mh != null && mh >= 0 ? 'rgb(8,153,129)' : 'rgb(242,54,69)'}">${fmtP(mh)}</span></div>`;
       tooltip.classList.add('visible');
     });
 
@@ -991,10 +1673,12 @@
     }
 
     /* ── Execution markers at exact price ───────────── */
-    // Called after fitContent() so timeToCoordinate has a valid range on first draw
-    const timeMap = buildTimeMap(bars);
+    // timeMap: 1-min stable keys (localStorage mKeys survive TF switches)
+    // barsTimeMap: aggregated-bar timestamps for timeToCoordinate (must match chart data)
+    const timeMap     = buildTimeMap(rawCandles || bars);
+    const barsTimeMap = rawCandles ? buildTimeMap(bars) : timeMap;
     if (executions && executions.length > 0) {
-      renderExecMarkers(executions, timeMap);
+      renderExecMarkers(executions, timeMap, barsTimeMap);
     }
 
     /* ── Volume at first entry ──────────────────────── */
@@ -1021,15 +1705,29 @@
 
     hideStatus();
     document.getElementById('chartLegend').style.display = 'flex';
+
+    // Restore overlays after chart re-render (e.g. timeframe switch)
+    if (longPos && longPosMode) setTimeout(() => renderLongPosOverlay(), 0);
+    if (ruler && ruler.t1 != null && rulerMode) setTimeout(() => renderRulerOverlay(), 0);
   }
 
   /* ── Load chart for symbol ───────────────────────── */
   async function loadSymbol(symbol, dayData) {
     activeSymbol = symbol;
 
+    // Clear placed long position when switching symbols (different price range)
+    if (longPos) {
+      clearLongPosTool();
+      if (longPosMode) document.getElementById('chartMain').style.cursor = 'crosshair';
+    }
+
     // Update pill active state
     document.querySelectorAll('.sym-pill').forEach(pill => {
-      pill.classList.toggle('active', pill.dataset.sym === symbol);
+      pill.classList.remove('active-pos', 'active-neg', 'active-zero');
+      if (pill.dataset.sym === symbol) {
+        const pnl = parseFloat(pill.dataset.pnl || '0');
+        pill.classList.add(pnl > 0 ? 'active-pos' : pnl < 0 ? 'active-neg' : 'active-zero');
+      }
     });
 
     showLoading(`Loading 1-min data for ${symbol}…`);
@@ -1040,8 +1738,6 @@
 
     // ── 1. Try local ohlcv_YYYY-MM-DD.json cache ─────
     const dateStr    = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
-    labelStorageKey  = `tcj_labels_${symbol}_${dateStr}`;
-    try { labelOffsets = JSON.parse(localStorage.getItem(labelStorageKey) || '{}'); } catch (_) { labelOffsets = {}; }
     const localData  = ohlcvCache[symbol];
     if (localData?.length) {
       rawCandles = localData;
@@ -1065,15 +1761,16 @@
     const container = document.getElementById('symPills');
     container.innerHTML = '';
 
-    const dayPnl = Object.values(symbols).reduce((s, sd) => s + (sd.pnl || 0), 0);
-    const dayCls = dayPnl > 0 ? 'pos' : dayPnl < 0 ? 'neg' : 'zero';
+    // Day pill
+    const dayRealPnl = Object.values(symbols).reduce((s, sd) => s + (sd.pnl || 0), 0);
+    const dayRealCls = dayRealPnl > 0 ? 'pos' : dayRealPnl < 0 ? 'neg' : 'zero';
     const dayPill = document.createElement('div');
     dayPill.className = 'sym-pill';
-    dayPill.style.cssText = 'cursor:default;flex-shrink:0;border-color:transparent;background:transparent;';
+    dayPill.style.cssText = 'cursor:default;border-color:transparent;background:transparent;color:#ffffff;width:fit-content;flex-shrink:0;';
     dayPill.innerHTML = `
       <span class="sym-pill-name">Day</span>
       <span class="sym-pill-stack">
-        <span class="pill-sub ${dayCls}" style="font-size:20px;padding:4px 10px;">${fmtPnl(dayPnl)}</span>
+        <span class="pill-sub ${dayRealCls}">${fmtPnl(dayRealPnl)}</span>
       </span>`;
     container.appendChild(dayPill);
 
@@ -1085,16 +1782,15 @@
     inner.className = 'sym-pills-inner';
 
     for (const [sym, sd] of Object.entries(symbols)) {
-      const pill = document.createElement('button');
-      const cls = sd.pnl > 0 ? 'pos' : sd.pnl < 0 ? 'neg' : 'zero';
+      const pill    = document.createElement('button');
       pill.className = 'sym-pill';
       pill.dataset.sym = sym;
       pill.dataset.pnl = sd.pnl;
-      const nameColor = '#ffffff';
+      const realCls = sd.pnl > 0 ? 'pos' : sd.pnl < 0 ? 'neg' : 'zero';
       pill.innerHTML = `
-        <span class="sym-pill-name" style="color:${nameColor}">${sym}</span>
+        <span class="sym-pill-name">${sym}</span>
         <span class="sym-pill-stack">
-          <span class="pill-sub ${cls}">${fmtPnl(sd.pnl)}</span>
+          <span class="pill-sub ${realCls}">${fmtPnl(sd.pnl)}</span>
         </span>`;
       pill.onclick = () => loadSymbol(sym, dayData);
       inner.appendChild(pill);
@@ -1135,6 +1831,7 @@
 
   /* ── Init ────────────────────────────────────────── */
   const params = new URLSearchParams(window.location.search);
+  const hasDateParams = params.has('year') && params.has('month') && params.has('day');
   curYear  = parseInt(params.get('year')  || new Date().getFullYear());
   curMonth = parseInt(params.get('month') || new Date().getMonth() + 1);
   curDay   = parseInt(params.get('day')   || new Date().getDate());
@@ -1145,13 +1842,80 @@
     btn.onclick = () => setTimeframe(+btn.dataset.tf);
   });
 
-  // Price label toggle
-  document.getElementById('btnToggleLabels').onclick = function() {
-    labelsVisible = !labelsVisible;
-    this.querySelector('.toggle-track').classList.toggle('on', labelsVisible);
-    if (labelLayerRef) labelLayerRef.style.display = labelsVisible ? '' : 'none';
-  };
+  // Long position tool — click chart to place entry
+  document.getElementById('chartMain').addEventListener('click', function(e) {
+    const rect = this.getBoundingClientRect();
 
+    // Ruler: first click = anchor, second click = lock
+    if (rulerMode && candleSeriesRef) {
+      const px   = e.clientX - rect.left;
+      const py   = e.clientY - rect.top;
+      const snap = snapToCandle(px, py);
+      const t    = snap ? snap.time  : chartInstance.timeScale().coordinateToTime(px);
+      const p    = snap ? snap.price : candleSeriesRef.coordinateToPrice(py);
+      if (t == null || p == null) return;
+      if (!ruler) {
+        ruler = { t0: t, p0: p, t1: null, p1: null };
+        rulerLiveX = snap ? snap.x : px;
+        rulerLiveY = snap ? snap.y : py;
+        renderRulerOverlay();
+      } else if (ruler.t1 === null) {
+        ruler.t1 = t; ruler.p1 = p;
+        if (rulerSvg?._draw) rulerSvg._draw();
+      }
+      return;
+    }
+
+    if (!longPosMode || longPos !== null || !candleSeriesRef) return;
+    const price = candleSeriesRef.coordinateToPrice(e.clientY - rect.top);
+    if (!price || price <= 0) return;
+    const risk = price * 0.01;            // default 1% risk
+    const PSCALE = 72;
+    const CW = this.offsetWidth - PSCALE;
+    const timeScale = chartInstance.timeScale();
+    const t0 = timeScale.coordinateToTime(0) ?? rawCandles?.[0]?.time ?? 0;
+    const t1 = timeScale.coordinateToTime(CW) ?? rawCandles?.[rawCandles.length - 1]?.time ?? 0;
+    longPos = { entry: price, target: price + risk * 2, stop: price - risk, t0, t1 };
+    renderLongPosOverlay();
+    document.getElementById('longPosPanel').classList.add('visible');
+    updateLpInfo();
+  });
+
+  // Ruler live preview — track mouse while waiting for second click
+  document.getElementById('chartMain').addEventListener('mousemove', function(e) {
+    if (!rulerMode || !ruler || ruler.t1 !== null) return;
+    const rect = this.getBoundingClientRect();
+    const px   = e.clientX - rect.left;
+    const py   = e.clientY - rect.top;
+    const snap = snapToCandle(px, py);
+    rulerLiveX = snap ? snap.x : px;
+    rulerLiveY = snap ? snap.y : py;
+    if (rulerSvg?._draw) rulerSvg._draw();
+  });
+
+  // Update overlay when quantity changes
+  document.getElementById('longPosShares').addEventListener('input', () => {
+    if (longPos && longPosMode) { renderLongPosOverlay(); updateLpInfo(); }
+  });
+
+  // Escape cancels / deactivates tools
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape') {
+      if (longPosMode) {
+        clearLongPosTool();
+        longPosMode = false;
+        document.getElementById('btnLongPos').classList.remove('active');
+        document.getElementById('chartMain').style.cursor = '';
+        document.getElementById('chartMain').title = '';
+      }
+      if (rulerMode) {
+        clearRulerTool();
+        rulerMode = false;
+        document.getElementById('btnRuler').classList.remove('active');
+        document.getElementById('chartMain').style.cursor = '';
+      }
+    }
+  });
 
   // Breadcrumb
   document.getElementById('breadcrumbMonth').href        = `month.html?year=${curYear}&month=${curMonth}`;
@@ -1180,6 +1944,13 @@
       const calData = Object.assign({}, ...files);
 
       tradingDays = buildTradingDays(calData);
+
+      // No date in URL → redirect to the most recent trading day
+      if (!hasDateParams && tradingDays.length > 0) {
+        navTo(tradingDays[tradingDays.length - 1]);
+        return;
+      }
+
       updateNavButtons();
 
       document.getElementById('btnPrev').onclick = () => {
