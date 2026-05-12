@@ -44,7 +44,7 @@
     .breadcrumb-sep { opacity: 0.4; }
 
     /* ── Page header ── */
-    .header { margin-bottom: 20px; }
+    .header { margin-bottom: 8px; }
     h1 { font-size: 20px; font-weight: 400; color: #ffffff; }
 
     /* ── Tabs ── */
@@ -72,7 +72,7 @@
     .tab-btn.active { color: #ffffff; border-bottom-color: #22c55e; }
 
     /* ── Loading / spinner ── */
-    #statusMsg { color: #6b7280; font-size: 14px; margin-bottom: 16px; min-height: 18px; }
+    #statusMsg { color: #6b7280; font-size: 14px; }
     .loading-state {
       display: flex; flex-direction: column; align-items: center;
       justify-content: center; height: 380px; gap: 12px; color: #6b7280;
@@ -102,7 +102,7 @@
       padding: 14px 16px; border-bottom: 1px solid #222;
       display: flex; align-items: center; justify-content: space-between;
     }
-    .table-title { font-size: 15px; font-weight: 600; color: #ffffff; }
+    .table-title { font-size: 17px; font-weight: 600; color: #ffffff; }
     .table-count { font-size: 13px; color: #6b7280; }
 
     .filter-row {
@@ -165,7 +165,22 @@
        TAB 2 — Trading Stats
     ══════════════════════════════════════ */
     /* ── Date Picker ── */
-    .picker-wrap { position: relative; display: inline-block; margin-bottom: 20px; }
+    .picker-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+    .picker-wrap { position: relative; display: inline-block; }
+
+    .quick-bar {
+      display: inline-flex;
+      background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; overflow: hidden;
+    }
+    .quick-btn {
+      background: transparent; border: none; border-right: 1px solid #2a2a2a;
+      color: #6b7280; font-size: 13px; font-family: inherit; font-weight: 500;
+      padding: 8px 16px; cursor: pointer; white-space: nowrap;
+      transition: background 0.15s, color 0.15s;
+    }
+    .quick-btn:last-child { border-right: none; }
+    .quick-btn:hover { background: #242424; color: #e0e0e0; }
+    .quick-btn.active { background: #2a2a2a; color: #ffffff; }
 
     .picker-trigger {
       display: inline-flex; align-items: center; gap: 8px;
@@ -235,6 +250,18 @@
     .cal-day.range-end   { background: #22c55e !important; color: #000 !important; font-weight: 700; border-radius: 0 4px 4px 0; }
     .cal-day.range-start.range-end { border-radius: 4px; }
 
+    .cal-month-label { cursor: pointer; transition: color 0.12s; }
+    .cal-month-label:hover { color: #22c55e; }
+    .year-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px 0; }
+    .year-cell {
+      text-align: center; padding: 9px 4px; border-radius: 6px;
+      font-size: 13.5px; color: #9ca3af; cursor: pointer;
+      transition: background 0.1s, color 0.1s; user-select: none;
+    }
+    .year-cell:hover { background: #2a2a2a; color: #ffffff; }
+    .year-cell.cur-year { color: #ffffff; font-weight: 600; }
+    .year-cell.sel-year { background: #22c55e !important; color: #000 !important; font-weight: 700; }
+
     .picker-footer {
       display: flex; align-items: center; justify-content: space-between;
       padding: 12px 20px;
@@ -263,7 +290,7 @@
     .stats-section-header {
       display: flex; align-items: center; gap: 8px;
       padding: 14px 20px; border-bottom: 1px solid #222;
-      font-size: 15px; font-weight: 600; color: #ffffff;
+      font-size: 17px; font-weight: 600; color: #ffffff;
     }
     .info-icon {
       width: 16px; height: 16px; border-radius: 50%;
@@ -372,7 +399,7 @@
       padding: 16px 20px;
     }
     .equity-title {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 500;
       color: #ffffff;
       margin-bottom: 12px;
@@ -380,6 +407,78 @@
     .equity-chart-wrap {
       position: relative;
       height: 260px;
+    }
+
+    /* ══════════════════════════════════════
+       TAB 3 — Time Analysis
+    ══════════════════════════════════════ */
+    .time-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 1000px) { .time-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 580px)  { .time-grid { grid-template-columns: 1fr; } }
+
+    .time-panel {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .time-panel-hdr {
+      padding: 12px 14px;
+      border-bottom: 1px solid #222;
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .time-panel-body { flex: 1; }
+    .tp-row {
+      display: flex;
+      align-items: center;
+      padding: 7px 14px;
+      gap: 8px;
+      border-bottom: 1px solid #181818;
+    }
+    .tp-row:last-child { border-bottom: none; }
+    .tp-label {
+      font-size: 12.5px;
+      color: #9ca3af;
+      min-width: 36px;
+      white-space: nowrap;
+    }
+    .tp-bar-wrap {
+      flex: 1;
+      height: 5px;
+      background: #1e1e1e;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .tp-bar { height: 100%; border-radius: 3px; }
+    .tp-bar.pos { background: #22c55e; }
+    .tp-bar.neg { background: #ef4444; }
+    .tp-amount {
+      font-size: 12.5px;
+      font-weight: 600;
+      text-align: right;
+      min-width: 58px;
+      white-space: nowrap;
+    }
+    .tp-amount.pos { color: #22c55e; }
+    .tp-amount.neg { color: #ef4444; }
+    .tp-amount.zero { color: #4b5563; }
+    .tp-pct {
+      font-size: 11.5px;
+      color: #6b7280;
+      min-width: 36px;
+      text-align: right;
+      white-space: nowrap;
     }
   </style>
   <script src="auth.js"></script>
@@ -412,10 +511,16 @@
 </div>
 
 
-<div id="statusMsg">Loading trade data…</div>
+<div id="statusMsg"></div>
 
-<!-- ══ TAB: Trading Stats ══ -->
-<div id="tab-stats">
+<!-- ══ Tab Bar ══ -->
+<div class="tab-bar">
+  <button class="tab-btn active" data-tab="stats">Trading Stats</button>
+  <button class="tab-btn" data-tab="time">Time Analysis</button>
+</div>
+
+<!-- ══ Shared Picker Controls ══ -->
+<div class="picker-controls">
   <div class="picker-wrap" id="pickerWrap">
     <button class="picker-trigger" id="pickerTrigger">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -430,15 +535,19 @@
         </div>
         <div class="picker-footer">
           <span class="picker-footer-label" id="pickerFooterLabel">—</span>
-          <div class="picker-actions">
-            <button class="picker-cancel" id="pickerCancel">Cancel</button>
-            <button class="picker-apply" id="pickerApply">Apply</button>
-          </div>
         </div>
       </div>
     </div>
   </div>
+  <div class="quick-bar" id="quickBar">
+    <button class="quick-btn" data-days="30">30 Days</button>
+    <button class="quick-btn" data-days="60">60 Days</button>
+    <button class="quick-btn" data-days="90">90 Days</button>
+  </div>
+</div>
 
+<!-- ══ TAB: Trading Stats ══ -->
+<div id="tab-stats">
   <div class="stats-section" id="statsSection" style="display:none">
     <div class="stats-section-header">
       Stats
@@ -459,6 +568,29 @@
   </div>
 </div>
 
+<!-- ══ TAB: Time Analysis ══ -->
+<div id="tab-time" style="display:none">
+  <div class="stats-section-header" style="margin-bottom:14px;padding:0">Performance By</div>
+  <div class="time-grid">
+    <div class="time-panel">
+      <div class="time-panel-hdr">Hour Of Day</div>
+      <div class="time-panel-body" id="tp-hour-body"></div>
+    </div>
+    <div class="time-panel">
+      <div class="time-panel-hdr">Time Of Day (30 Mins)</div>
+      <div class="time-panel-body" id="tp-slot30-body"></div>
+    </div>
+    <div class="time-panel">
+      <div class="time-panel-hdr">Day Of Week</div>
+      <div class="time-panel-body" id="tp-dow-body"></div>
+    </div>
+    <div class="time-panel">
+      <div class="time-panel-hdr">Month Of Year</div>
+      <div class="time-panel-body" id="tp-month-body"></div>
+    </div>
+  </div>
+</div>
+
 
 <script>
 'use strict';
@@ -470,6 +602,7 @@ let rawRoundtrips = [];
 let rawDayStats   = [];
 
 function mean(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0; }
+function setStatus(msg) { const el = document.getElementById('statusMsg'); el.textContent = msg; el.style.marginBottom = msg ? '16px' : '0'; }
 function stddev(arr) {
   if (arr.length < 2) return 0;
   const m = mean(arr);
@@ -480,6 +613,17 @@ function fmtSecs(s) {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
   if (h > 0) return `${h}h ${String(m).padStart(2,'0')}m`;
   return `${m}:${String(sec).padStart(2,'0')}`;
+}
+function fmtSecsScratch(s) {
+  if (s == null || isNaN(s)) return '—';
+  const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+  if (m === 0) return `${sec}s`;
+  return `${m}:${String(sec).padStart(2,'0')}`;
+}
+function fmtSecsMinutes(s) {
+  if (s == null || isNaN(s)) return '—';
+  const m = Math.round(s / 60);
+  return `${m} minute${m === 1 ? '' : 's'}`;
 }
 
 /* ═══════════════════════════════════════════
@@ -513,7 +657,7 @@ async function loadAllData() {
 /* ═══════════════════════════════════════════
    TAB 2: Trading Stats
 ═══════════════════════════════════════════ */
-const SCRATCH_THRESH = 0.05;
+const SCRATCH_THRESH = 0.01;
 
 function computeStats(rts, days) {
   if (!rts.length) return null;
@@ -616,9 +760,9 @@ function erf(x) {
 }
 
 function dollar(v, sign = true) {
-  const abs = Math.abs(v).toFixed(2);
-  if (!sign) return '$' + abs;
-  return (v >= 0 ? '+$' : '-$') + abs;
+  const str = Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (!sign) return '$' + str;
+  return (v >= 0 ? '+$' : '-$') + str;
 }
 
 function renderStatsTable(s) {
@@ -655,9 +799,9 @@ function renderStatsTable(s) {
   grid.appendChild(cell('Number of Losing Trades',  `${s.nLoss.toLocaleString()} (${(s.nLoss/s.n*100).toFixed(1)}%)`, 'neg'));
 
   // Row 5
-  grid.appendChild(cell('Avg Hold Time (scratch trades)', s.holdScrat != null ? fmtSecs(s.holdScrat) : '—'));
-  grid.appendChild(cell('Avg Hold Time (winning trades)', s.holdWin  != null ? fmtSecs(s.holdWin)  : '—'));
-  grid.appendChild(cell('Avg Hold Time (losing trades)',  s.holdLoss != null ? fmtSecs(s.holdLoss) : '—'));
+  grid.appendChild(cell('Avg Hold Time (scratch trades)', fmtSecsScratch(s.holdScrat)));
+  grid.appendChild(cell('Avg Hold Time (winning trades)', fmtSecsMinutes(s.holdWin)));
+  grid.appendChild(cell('Avg Hold Time (losing trades)',  fmtSecsMinutes(s.holdLoss)));
 
   // Row 6
   grid.appendChild(cell('Number of Scratch Trades', `${s.nScrat} (${s.scratchPct.toFixed(1)}%)`));
@@ -665,7 +809,7 @@ function renderStatsTable(s) {
   grid.appendChild(cell('Max Consecutive Losses', String(s.maxL), 'neg'));
 
   // Row 7
-  grid.appendChild(cell('Trade P&amp;L Std Deviation', '$' + s.pnlStd.toFixed(2)));
+  grid.appendChild(cell('Trade P&amp;L Std Deviation', dollar(s.pnlStd, false)));
   grid.appendChild(cell('System Quality Number (SQN)', s.sqn != null ? s.sqn.toFixed(2) : 'n/a', s.sqn != null ? pnlClass(s.sqn) : 'na'));
   grid.appendChild(cell('Probability of Random Chance', s.pValue != null ? s.pValue.toFixed(1) + '%' : 'n/a'));
 
@@ -682,8 +826,8 @@ function renderStatsTable(s) {
   grid.appendChild(cell('Trading Days', String(s.nDays)));
 
   // Row 10
-  grid.appendChild(cell('Gross Profit', '+$' + s.grossWin.toFixed(2), 'pos'));
-  grid.appendChild(cell('Gross Loss',   '-$' + s.grossLoss.toFixed(2), 'neg'));
+  grid.appendChild(cell('Gross Profit', dollar(s.grossWin),    'pos'));
+  grid.appendChild(cell('Gross Loss',   dollar(-s.grossLoss), 'neg'));
   grid.appendChild(cell('Total Shares Traded', s.totalShares.toLocaleString()));
 
   document.getElementById('statsSection').style.display = 'block';
@@ -692,16 +836,17 @@ function renderStatsTable(s) {
 let _ddChart = null, _cumChart = null;
 
 function renderEquityCharts(rts) {
-  const sorted = [...rts].sort((a, b) =>
-    a.date.localeCompare(b.date) || a.entry_time.localeCompare(b.entry_time)
-  );
+  // Aggregate to end-of-day PnL
+  const byDate = {};
+  for (const r of rts) byDate[r.date] = (byDate[r.date] ?? 0) + r.pnl;
+  const dates = Object.keys(byDate).sort();
 
   let cum = 0, peak = 0;
   const labels = [], cumData = [], ddData = [];
-  for (const r of sorted) {
-    cum  += r.pnl;
+  for (const date of dates) {
+    cum  += byDate[date];
     peak  = Math.max(peak, cum);
-    labels.push(r.date);
+    labels.push(date);
     cumData.push(+cum.toFixed(2));
     ddData.push(+(cum - peak).toFixed(2));
   }
@@ -734,7 +879,7 @@ function renderEquityCharts(rts) {
           padding: 10,
           callbacks: {
             title: items => items[0].label,
-            label: item => `${labelText}: ${item.raw >= 0 ? '+' : ''}$${item.raw.toFixed(2)}`,
+            label: item => `${labelText}: ${dollar(item.raw)}`,
           },
         },
       },
@@ -743,8 +888,15 @@ function renderEquityCharts(rts) {
           ticks: {
             color: '#6b7280',
             font: { size: 11 },
-            maxTicksLimit: 8,
+            maxTicksLimit: 6,
             maxRotation: 0,
+            callback: function(value) {
+              const raw = this.getLabelForValue(value) ?? '';
+              const parts = raw.split('-').map(Number);
+              if (parts.length < 3 || !parts[0]) return '';
+              const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parts[1] - 1];
+              return `${mo} ${parts[2]}`;
+            },
           },
           grid: { color: '#1e1e1e' },
         },
@@ -752,9 +904,9 @@ function renderEquityCharts(rts) {
           ticks: {
             color: '#6b7280',
             font: { size: 11 },
-            callback: v => (v >= 0 ? '' : '-') + '$' + Math.abs(v).toFixed(0),
+            callback: v => (v >= 0 ? '' : '-') + '$' + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 }),
           },
-          grid: { color: '#1e1e1e' },
+          grid: { color: ctx => ctx.tick.value === 0 ? 'rgba(255,255,255,0.5)' : '#1e1e1e', lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1 },
         },
       },
     },
@@ -785,6 +937,7 @@ const PRESETS = [
   { key: 'custom',     label: 'Custom Range' },
 ];
 
+let _yearPickMode = false;
 let _pOpen        = false;
 let _pendFrom     = null;
 let _pendTo       = null;
@@ -846,12 +999,14 @@ function _renderPresets() {
         _pendTo   = r.to   || null;
         _clickStage = 0;
         if (_pendFrom) { const [cy, cm] = _pendFrom.split('-').map(Number); _calBase = new Date(cy, cm - 1, 1); }
+        // Auto-apply preset immediately
+        _applyPicker();
       } else {
         _pendFrom = null; _pendTo = null; _clickStage = 0;
+        _renderPresets();
+        _renderCals();
+        _updateFooter();
       }
-      _renderPresets();
-      _renderCals();
-      _updateFooter();
     });
     el.appendChild(div);
   }
@@ -877,6 +1032,7 @@ function _renderCalMonth(container, year, month, showPrev, showNext) {
   const lbl = document.createElement('span');
   lbl.className = 'cal-month-label';
   lbl.textContent = `${_MONTHS[month]} ${year}`;
+  lbl.addEventListener('click', () => { _yearPickMode = true; _renderCals(); });
   hdr.append(pBtn, lbl, nBtn);
   container.appendChild(hdr);
 
@@ -913,15 +1069,18 @@ function _renderCalMonth(container, year, month, showPrev, showNext) {
     c.addEventListener('click', () => {
       if (_clickStage === 0) {
         _pendFrom = dateStr; _pendTo = null; _clickStage = 1;
+        _activePreset = 'custom';
+        _renderPresets();
+        _renderCals();
+        _updateFooter();
       } else {
         if (dateStr >= _pendFrom) { _pendTo = dateStr; }
         else { _pendTo = _pendFrom; _pendFrom = dateStr; }
         _clickStage = 0;
+        _activePreset = 'custom';
+        // Auto-apply after second date selected
+        _applyPicker();
       }
-      _activePreset = 'custom';
-      _renderPresets();
-      _renderCals();
-      _updateFooter();
     });
     grid.appendChild(c);
   }
@@ -934,8 +1093,51 @@ function _renderCalMonth(container, year, month, showPrev, showNext) {
   container.appendChild(grid);
 }
 
+function _renderYearGrid(container, selYear) {
+  container.innerHTML = '';
+
+  const years = [...new Set(rawDayStats.map(d => +d.date.slice(0, 4)))].sort();
+  const minY   = years.length ? years[0] : selYear - 3;
+  const maxY   = years.length ? years[years.length - 1] : selYear;
+  const todayY = new Date().getFullYear();
+
+  const hdr  = document.createElement('div');
+  hdr.className = 'cal-header';
+  const back = document.createElement('button');
+  back.className = 'cal-nav'; back.textContent = '‹'; back.title = 'Back';
+  back.addEventListener('click', () => { _yearPickMode = false; _renderCals(); });
+  const lbl  = document.createElement('span');
+  lbl.className = 'cal-month-label'; lbl.style.cursor = 'default'; lbl.textContent = 'Select Year';
+  const spc  = document.createElement('span'); spc.style.width = '24px';
+  hdr.append(back, lbl, spc);
+  container.appendChild(hdr);
+
+  const grid = document.createElement('div');
+  grid.className = 'year-grid';
+  for (let y = minY; y <= Math.max(maxY, todayY); y++) {
+    const cell = document.createElement('div');
+    cell.className = 'year-cell';
+    if (y === selYear)       cell.classList.add('sel-year');
+    else if (y === todayY)   cell.classList.add('cur-year');
+    cell.textContent = y;
+    cell.addEventListener('click', () => {
+      _calBase = new Date(y, _calBase.getMonth(), 1);
+      _yearPickMode = false;
+      _renderCals();
+    });
+    grid.appendChild(cell);
+  }
+  container.appendChild(grid);
+}
+
 function _renderCals() {
   const m1y = _calBase.getFullYear(), m1m = _calBase.getMonth();
+  if (_yearPickMode) {
+    document.getElementById('cal2').style.display = 'none';
+    _renderYearGrid(document.getElementById('cal1'), m1y);
+    return;
+  }
+  document.getElementById('cal2').style.display = '';
   const m2 = new Date(m1y, m1m + 1, 1);
   _renderCalMonth(document.getElementById('cal1'), m1y, m1m, true, false);
   _renderCalMonth(document.getElementById('cal2'), m2.getFullYear(), m2.getMonth(), false, true);
@@ -969,13 +1171,17 @@ function _openPicker() {
 
 function _closePicker() {
   _pOpen = false;
+  _yearPickMode = false;
   document.getElementById('pickerDropdown').style.display = 'none';
 }
+
+function _clearQuickBar() { document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active')); }
 
 function _applyPicker() {
   _appliedFrom = _pendFrom;
   _appliedTo   = _pendTo;
   _closePicker();
+  _clearQuickBar();
   _updateTriggerLabel();
   applyStatsDateFilter();
 }
@@ -986,27 +1192,148 @@ function applyStatsDateFilter() {
   const from = _appliedFrom, to = _appliedTo;
   if (from) { rts = rts.filter(r => r.date >= from); days = days.filter(d => d.date >= from); }
   if (to)   { rts = rts.filter(r => r.date <= to);   days = days.filter(d => d.date <= to);   }
+
+  if (!rts.length) {
+    document.getElementById('statsSection').style.display = 'none';
+    document.getElementById('equityRow').style.display = 'none';
+    if (_ddChart)  { _ddChart.destroy();  _ddChart  = null; }
+    if (_cumChart) { _cumChart.destroy(); _cumChart = null; }
+    setStatus('No trades in selected period.');
+    return;
+  }
+
+  setStatus('');
   const s = computeStats(rts, days);
   if (s) renderStatsTable(s);
-  if (rts.length) renderEquityCharts(rts);
+  renderEquityCharts(rts);
+  if (_activeTab === 'time') _renderTimeAnalysis();
 }
 
 document.getElementById('pickerTrigger').addEventListener('click', e => { e.stopPropagation(); _pOpen ? _closePicker() : _openPicker(); });
-document.getElementById('pickerCancel').addEventListener('click', _closePicker);
-document.getElementById('pickerApply').addEventListener('click', _applyPicker);
+document.getElementById('pickerDropdown').addEventListener('click', e => e.stopPropagation());
 document.addEventListener('click', e => { if (_pOpen && !document.getElementById('pickerWrap').contains(e.target)) _closePicker(); });
+
+document.getElementById('quickBar').addEventListener('click', e => {
+  const btn = e.target.closest('.quick-btn');
+  if (!btn) return;
+  const days = parseInt(btn.dataset.days);
+  const now = new Date();
+  const to   = now.toISOString().slice(0, 10);
+  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1)).toISOString().slice(0, 10);
+  _appliedFrom = from; _appliedTo = to;
+  _pendFrom = from;    _pendTo   = to;
+  _activePreset = 'custom';
+  _clearQuickBar();
+  btn.classList.add('active');
+  _updateTriggerLabel();
+  applyStatsDateFilter();
+});
+
+/* ═══════════════════════════════════════════
+   Tab switching
+═══════════════════════════════════════════ */
+let _activeTab = 'stats';
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    _activeTab = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.getElementById('tab-stats').style.display = _activeTab === 'stats' ? '' : 'none';
+    document.getElementById('tab-time').style.display  = _activeTab === 'time'  ? '' : 'none';
+    if (_activeTab === 'time') _renderTimeAnalysis();
+  });
+});
+
+/* ═══════════════════════════════════════════
+   Time Analysis
+═══════════════════════════════════════════ */
+let _tpData = { hour: [], slot30: [], dow: [], month: [] };
+
+function _buildTimeBuckets(rts) {
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  const hourMap = {};
+  for (let h = 6; h <= 16; h++) hourMap[`${h}:00`] = 0;
+
+  const slot30Map = {};
+  for (let h = 6; h <= 16; h++) {
+    slot30Map[`${h}:00`] = 0;
+    if (h < 16) slot30Map[`${h}:30`] = 0;
+  }
+
+  const dowMap   = Object.fromEntries(DAYS.map(d => [d, 0]));
+  const monthMap = Object.fromEntries(MONTHS.map(m => [m, 0]));
+
+  for (const r of rts) {
+    const [yr, mo, dy] = r.date.split('-').map(Number);
+    const parts = (r.entry_time ?? '').split(':').map(Number);
+    const h = parts[0], m = isNaN(parts[1]) ? 0 : parts[1];
+
+    if (!isNaN(h)) {
+      const hKey = `${h}:00`;
+      if (hKey in hourMap) hourMap[hKey] += r.pnl;
+      const slotKey = `${h}:${m < 30 ? '00' : '30'}`;
+      if (slotKey in slot30Map) slot30Map[slotKey] += r.pnl;
+    }
+
+    if (!isNaN(yr) && !isNaN(mo) && !isNaN(dy)) {
+      const dow = new Date(yr, mo - 1, dy).getDay();
+      dowMap[DAYS[dow]] += r.pnl;
+      monthMap[MONTHS[mo - 1]] += r.pnl;
+    }
+  }
+
+  return {
+    hour:   Object.entries(hourMap),
+    slot30: Object.entries(slot30Map),
+    dow:    Object.entries(dowMap),
+    month:  Object.entries(monthMap),
+  };
+}
+
+function _renderTpPanel(key) {
+  const entries  = _tpData[key];
+  const bodyEl   = document.getElementById(`tp-${key}-body`);
+  const totalAbs = entries.reduce((s, [, v]) => s + Math.abs(v), 0);
+  const maxAbs   = Math.max(...entries.map(([, v]) => Math.abs(v)), 0.01);
+
+  bodyEl.innerHTML = '';
+  for (const [label, pnl] of entries) {
+    const pct  = totalAbs > 0 ? Math.abs(pnl) / totalAbs * 100 : 0;
+    const barW = Math.abs(pnl) / maxAbs * 100;
+    const cls  = pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : 'zero';
+    const sign = pnl < 0 ? '-' : '';
+    const row  = document.createElement('div');
+    row.className = 'tp-row';
+    row.innerHTML = `
+      <span class="tp-label">${label}</span>
+      <div class="tp-bar-wrap"><div class="tp-bar ${cls}" style="width:${barW.toFixed(1)}%"></div></div>
+      <span class="tp-amount ${cls}">${sign}$${Math.abs(pnl).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      <span class="tp-pct">${pct.toFixed(2)}%</span>`;
+    bodyEl.appendChild(row);
+  }
+}
+
+function _renderTimeAnalysis() {
+  let rts = rawRoundtrips;
+  if (_appliedFrom) rts = rts.filter(r => r.date >= _appliedFrom);
+  if (_appliedTo)   rts = rts.filter(r => r.date <= _appliedTo);
+  _tpData = _buildTimeBuckets(rts);
+  for (const key of ['hour', 'slot30', 'dow', 'month']) _renderTpPanel(key);
+}
 
 /* ═══════════════════════════════════════════
    Init
 ═══════════════════════════════════════════ */
 initAuth(async () => {
+  setStatus('Loading trade data…');
   try {
     await loadAllData();
     if (!rawRoundtrips.length) {
-      document.getElementById('statusMsg').textContent = 'No data found.';
+      setStatus('No data found.');
       return;
     }
-    document.getElementById('statusMsg').textContent = '';
+    setStatus('');
 
     // Apply default preset (this-month)
     const _defR = _getPresetRange(_activePreset);
@@ -1015,7 +1342,7 @@ initAuth(async () => {
     _updateTriggerLabel();
     applyStatsDateFilter();
   } catch (e) {
-    document.getElementById('statusMsg').textContent = 'Error: ' + e.message;
+    setStatus('Error: ' + e.message);
     console.error(e);
   }
 });

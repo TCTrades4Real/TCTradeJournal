@@ -66,9 +66,16 @@ def parse_csvs(folder):
                 continue
 
             try:
-                exec_dt = datetime.strptime(exec_time_str, '%m/%d/%Y %H:%M:%S')
-                qty     = float(qty_str)
-                price   = float(price_str)
+                for fmt in ('%m/%d/%Y %H:%M:%S', '%m/%d/%Y %H:%M'):
+                    try:
+                        exec_dt = datetime.strptime(exec_time_str, fmt)
+                        break
+                    except ValueError:
+                        continue
+                else:
+                    continue
+                qty   = float(qty_str)
+                price = float(price_str)
             except ValueError:
                 continue
 

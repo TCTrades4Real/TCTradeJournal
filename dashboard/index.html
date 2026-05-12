@@ -76,7 +76,9 @@
       border: 1px solid transparent;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      justify-content: space-between;
+      gap: 12px;
+      min-width: 180px;
     }
 
 
@@ -285,6 +287,7 @@
   <h1>Calendar</h1>
   <div class="year-badge-stack">
     <span class="year-badge badge-zero" id="yearBadge"></span>
+    <span class="year-badge badge-zero" id="yearSimBadge" style="display:none"></span>
   </div>
   <div class="year-selector" id="yearSelector"></div>
 </div>
@@ -300,6 +303,7 @@
   ];
 
   let allData        = {};
+  let simData        = {};
   let selectedYear   = null;
   let availableYears = [];
 
@@ -437,12 +441,29 @@
     });
   }
 
-  function updateYearBadge(yearData) {
+  function updateYearBadge(year, yearData) {
     const total = Object.values(yearData).reduce((sum, m) => sum + (m.total || 0), 0);
     const hasTrades = Object.values(yearData).some(m => Object.keys(m.days || {}).length > 0);
     const badge = document.getElementById('yearBadge');
     badge.className = 'year-badge ' + (!hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg');
-    badge.innerHTML = fmtBadge(total);
+    badge.innerHTML = `<span class="badge-label">REAL</span><span>${fmtBadge(total)}</span>`;
+
+    let simTotal = 0;
+    for (const [mStr, monthData] of Object.entries(yearData)) {
+      for (const dStr of Object.keys(monthData.days || {})) {
+        const entries = Object.values(simData[`${year}_${mStr}_${dStr}`] || {});
+        simTotal += entries.reduce((s, v) => s + v, 0);
+      }
+    }
+    simTotal = Math.round(simTotal * 100) / 100;
+    const simBadge = document.getElementById('yearSimBadge');
+    if (simTotal !== 0) {
+      simBadge.style.display = '';
+      simBadge.className = 'year-badge ' + (simTotal >= 0 ? 'badge-pos' : 'badge-neg');
+      simBadge.innerHTML = `<span class="badge-label">SIM</span><span>${fmtBadge(simTotal)}</span>`;
+    } else {
+      simBadge.style.display = 'none';
+    }
   }
 
   async function selectYear(year) {
@@ -461,7 +482,7 @@
     }
     renderYearSelector(availableYears);
     const yearData = allData[year] || {};
-    updateYearBadge(yearData);
+    updateYearBadge(year, yearData);
     renderGrid(yearData, year);
     const allRoundtrips = Object.values(yearData)
       .flatMap(m => Object.values(m.days || {}).flatMap(d => d?.roundtrips || []));
@@ -492,11 +513,32 @@
 
     const hasTrades = Object.keys(monthData.days).length > 0;
     const total = monthData.total || 0;
-    const badge = document.createElement('span');
-    badge.className = 'month-badge ' + (!hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg');
-    badge.innerHTML = hasTrades ? fmtBadge(total) : '$0.00';
-    badge.title = 'View month detail';
-    badge.onclick = () => { window.location.href = `month.html?year=${year}&month=${month}`; };
+
+    const realBadge = document.createElement('span');
+    realBadge.className = 'month-badge ' + (!hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg');
+    realBadge.innerHTML = `<span class="badge-label">REAL</span><span>${hasTrades ? fmtBadge(total) : '$0.00'}</span>`;
+    realBadge.title = 'View month detail';
+    realBadge.onclick = () => { window.location.href = `month.html?year=${year}&month=${month}`; };
+
+    let monthSimTotal = 0;
+    for (const dStr of Object.keys(monthData.days)) {
+      const entries = Object.values(simData[`${year}_${month}_${dStr}`] || {});
+      monthSimTotal += entries.reduce((s, v) => s + v, 0);
+    }
+    monthSimTotal = Math.round(monthSimTotal * 100) / 100;
+
+    const pillStack = document.createElement('div');
+    pillStack.className = 'pill-stack';
+    pillStack.appendChild(realBadge);
+
+    if (monthSimTotal !== 0) {
+      const simBadge = document.createElement('span');
+      simBadge.className = 'month-badge ' + (monthSimTotal >= 0 ? 'badge-pos' : 'badge-neg');
+      simBadge.innerHTML = `<span class="badge-label">SIM</span><span>${fmtBadge(monthSimTotal)}</span>`;
+      simBadge.title = 'View month detail';
+      simBadge.onclick = () => { window.location.href = `month.html?year=${year}&month=${month}`; };
+      pillStack.appendChild(simBadge);
+    }
 
     const expandBtn = document.createElement('button');
     expandBtn.className = 'expand-btn';
@@ -505,7 +547,7 @@
     expandBtn.onclick = () => { window.location.href = `month.html?year=${year}&month=${month}`; };
 
     header.appendChild(label);
-    header.appendChild(badge);
+    header.appendChild(pillStack);
     header.appendChild(expandBtn);
     card.appendChild(header);
 
@@ -561,9 +603,10 @@
 /* ── Load data ──────────────────────────────────── */
   async function init() {
     try {
-      const idx = await fetch('calendar/calendar_index.json').then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json();
-      });
+      const [idx] = await Promise.all([
+        fetch('calendar/calendar_index.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
+        fetch('sim_data.json?_=' + Date.now()).then(r => r.ok ? r.json() : {}).then(d => { simData = d; }).catch(() => {}),
+      ]);
       availableYears = idx.years.map(String).sort((a, b) => a - b);
       if (availableYears.length === 0) {
         document.getElementById('yearGrid').textContent = 'No data found.';

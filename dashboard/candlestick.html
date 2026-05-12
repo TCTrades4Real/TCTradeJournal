@@ -465,6 +465,7 @@
   <span class="legend-item"><span class="legend-dot" style="background:rgb(246,197,72)"></span> VWAP</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(33,150,243)"></span> MACD</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(255,152,0)"></span> Signal</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(168,85,247)"></span> High ≥0.75% above prev high &amp; vol ≥25k &amp; prev range ≤5%</span>
   <span class="legend-item" id="entryVolInfo" style="display:none;margin-left:8px;color:#9ca3af;"></span>
 </div>
 
@@ -511,6 +512,9 @@
   let rulerLiveX   = 0;           // current mouse X (pixels) for live preview
   let rulerLiveY   = 0;
   let activeBars   = null;        // aggregated bars at current timeframe (for snap)
+
+  let hbSvg        = null;        // high-breakout dot overlay
+  let hbSubCleanup = null;
 
   /* ── Formatters ──────────────────────────────────── */
   function ordinal(n) {
@@ -1397,8 +1401,7 @@
       const et   = tsToET(c.time);
       const [h, m] = et.split(':').map(Number);
       const mins = h * 60 + m;
-      if (mins === 9 * 60 + 30) { cumVol = 0; cumTPV = 0; }  // reset at open
-      if (mins < 9 * 60 + 30) continue;                       // skip pre-market
+      if (mins === 4 * 60) { cumVol = 0; cumTPV = 0; }         // reset at pre-market open
       const tp = (c.high + c.low + c.close) / 3;
       cumVol  += c.volume;
       cumTPV  += tp * c.volume;
@@ -1425,6 +1428,66 @@
     return { macdLine, signalLine, histogram };
   }
 
+  /* ── High-breakout dots (purple dot above candle when high >= prevHigh * 1.025) ── */
+  function renderHighBreakoutDots(bars) {
+    if (hbSubCleanup) { hbSubCleanup(); hbSubCleanup = null; }
+    if (hbSvg)        { hbSvg.remove(); hbSvg = null; }
+    if (!bars?.length || !chartInstance || !candleSeriesRef) return;
+
+    // Compute which bars qualify
+    const breakoutBars = [];
+    for (let i = 1; i < bars.length; i++) {
+      const prev = bars[i - 1];
+      if (
+        bars[i].high >= prev.high * 1.0075 &&
+        bars[i].volume >= 25000 &&
+        (prev.high - prev.low) / prev.low <= 0.05
+      ) breakoutBars.push({ bar: bars[i], dotPrice: prev.high * 1.0075 });
+    }
+    if (!breakoutBars.length) return;
+
+    const container = document.getElementById('chartMain');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'hbOverlay';
+    svg.setAttribute('style',
+      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:4;');
+    container.appendChild(svg);
+    hbSvg = svg;
+
+    function redraw() {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      if (!chartInstance || !candleSeriesRef) return;
+      const timeScale = chartInstance.timeScale();
+      let r;
+      try {
+        const spacing = chartInstance.timeScale().options().barSpacing;
+        r = Math.min(Math.max(spacing * 0.26, 10), 20);
+      } catch (_) { r = 6; }
+      for (const { bar, dotPrice } of breakoutBars) {
+        const x = timeScale.timeToCoordinate(bar.time);
+        const y = candleSeriesRef.priceToCoordinate(dotPrice);
+        if (x == null || y == null) continue;
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', x);
+        dot.setAttribute('cy', y);
+        dot.setAttribute('r', r);
+        dot.setAttribute('fill', 'rgb(168,85,247)');
+        svg.appendChild(dot);
+      }
+    }
+
+    redraw();
+    requestAnimationFrame(redraw);
+    chartInstance.timeScale().subscribeVisibleLogicalRangeChange(redraw);
+    try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(redraw); } catch (_) {}
+
+    hbSubCleanup = () => {
+      try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(redraw); } catch (_) {}
+      try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(redraw); } catch (_) {}
+      if (hbSvg) { hbSvg.remove(); hbSvg = null; }
+    };
+  }
+
   /* ── Timeframe switch ────────────────────────────── */
   function setTimeframe(mins) {
     activeInterval = mins;
@@ -1447,6 +1510,8 @@
     if (rulerSubCleanup)  { rulerSubCleanup();  rulerSubCleanup  = null; }
     if (rulerSvg)         { rulerSvg.remove();  rulerSvg         = null; }
     if (markerCleanup)    { markerCleanup();    markerCleanup    = null; }
+    if (hbSubCleanup)     { hbSubCleanup();     hbSubCleanup     = null; }
+    if (hbSvg)            { hbSvg.remove();     hbSvg            = null; }
     if (chartInstance) { chartInstance.remove(); chartInstance = null; }
     candleSeriesRef = null;
 
@@ -1680,6 +1745,7 @@
     if (executions && executions.length > 0) {
       renderExecMarkers(executions, timeMap, barsTimeMap);
     }
+    renderHighBreakoutDots(bars);
 
     /* ── Volume at first entry ──────────────────────── */
     const entryVolEl = document.getElementById('entryVolInfo');

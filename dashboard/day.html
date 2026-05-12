@@ -169,6 +169,57 @@
     .sym-pos   { color: rgb(5, 150, 105); }
     .sym-neg   { color: rgb(220, 38, 38); }
 
+    /* Simulation input */
+    .sim-input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 15px;
+      text-align: right;
+      color: inherit;
+      padding: 0;
+      outline: none;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    .sim-input::-webkit-outer-spin-button,
+    .sim-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .sim-input:focus { background: rgba(255,255,255,0.04); border-radius: 3px; }
+    .sim-input::placeholder { color: #3a3a3a; }
+    .sim-input:disabled { cursor: default; pointer-events: none; }
+    .sim-input:disabled::placeholder { color: transparent; }
+
+    /* Edit mode — column highlight */
+    .sym-table-wrap.sim-editing .sim-col-header { color: #a5b4fc; }
+    .sym-table-wrap.sim-editing .sim-input {
+      border: 1px solid #3a3a6a;
+      border-radius: 4px;
+      padding: 1px 4px;
+      background: rgba(99,102,241,0.06);
+    }
+    .sym-table-wrap.sim-editing .sim-input:focus {
+      border-color: #6366f1;
+      background: rgba(99,102,241,0.12);
+    }
+
+    /* Sim action buttons */
+    .sim-btn {
+      background: transparent;
+      border: 1px solid #2a2a2a;
+      color: #6b7280;
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-family: inherit;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .sim-btn:hover { border-color: #444; color: #9ca3af; }
+    .sim-btn.active { border-color: #6366f1; color: #a5b4fc; }
+    .sim-btn-row { display: flex; gap: 6px; align-self: flex-end; }
+
     /* Colored checkboxes in symbol table */
     .sym-cb {
       appearance: none;
@@ -349,6 +400,49 @@
   let curYear, curMonth, curDay;
   let chartInstance = null;
   let checkedSymbols = null;
+  let simData = {};
+
+  /* ── Simulation (server-persisted) ─────────────── */
+  const SIM_TOKEN = 'tc_sim_8f3a2d9e1b7c4f06';
+  let allSimData = null; // full sim_data.json cached for session
+
+  function simKey(y, m, d) { return `${y}_${m}_${d}`; }
+
+  async function ensureSimData() {
+    if (allSimData !== null) return;
+    try {
+      const r = await fetch('sim_data.json?_=' + Date.now());
+      allSimData = r.ok ? await r.json() : {};
+    } catch { allSimData = {}; }
+  }
+
+  function loadSim(y, m, d) {
+    return (allSimData && allSimData[simKey(y, m, d)]) ? { ...allSimData[simKey(y, m, d)] } : {};
+  }
+
+  async function postSim(payload) {
+    try {
+      await fetch('sim_save.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Sim-Token': SIM_TOKEN },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) { console.warn('sim save failed', e); }
+  }
+
+  function saveSim(y, m, d, sym, value) {
+    const key = simKey(y, m, d);
+    if (!allSimData[key]) allSimData[key] = {};
+    if (value === null) delete allSimData[key][sym];
+    else allSimData[key][sym] = value;
+    postSim({ key, symbol: sym, value });
+  }
+
+  function resetSim(y, m, d) {
+    const key = simKey(y, m, d);
+    delete allSimData[key];
+    postSim({ key, reset: true });
+  }
 
   /* ── Formatters ─────────────────────────────────── */
   function fmtDollars(abs) {
@@ -400,7 +494,8 @@
   }
 
   /* ── Render ─────────────────────────────────────── */
-  function render() {
+  async function render() {
+    await ensureSimData();
     const dayData = (allData[curYear]?.[curMonth]?.days?.[curDay]) || null;
 
     // Title
@@ -436,7 +531,9 @@
     }
 
     checkedSymbols = null; // reset on each new day
+    simData = loadSim(curYear, curMonth, curDay);
     renderLeft(dayData);
+    updateSimTotal();
     updateFiltered(dayData);
   }
 
@@ -514,6 +611,15 @@
     renderChart(computed.chart);
   }
 
+  function updateSimTotal() {
+    const el = document.getElementById('simDayTotal');
+    if (!el) return;
+    const vals = Object.values(simData);
+    if (vals.length === 0) { el.textContent = ''; return; }
+    const total = Math.round(vals.reduce((s, v) => s + v, 0) * 100) / 100;
+    el.textContent = `sim ${fmtPnl(total)}`;
+  }
+
   function renderLeft(dayData) {
     const pnl = dayData.pnl || 0;
     const pnlClass = pnl > 0 ? 'pnl-pos' : pnl < 0 ? 'pnl-neg' : 'pnl-zero';
@@ -533,33 +639,52 @@
       const cbClass = sd.pnl >= 0 ? 'cb-pos' : 'cb-neg';
       const checked = checkedSymbols.has(sym) ? 'checked' : '';
       const warnBadge = sym === worstSymbol ? `<span class="sym-worst-badge" title="Worst symbol today: ${fmtPnl(sd.pnl)}">⚠</span>` : '';
+      const simVal = simData[sym];
+      const simClass = simVal === undefined ? '' : simVal >= 0 ? 'sym-pos' : 'sym-neg';
+      const simRaw = simVal !== undefined ? simVal : '';
       rows += `<tr>
         <td><span class="sym-name"><input type="checkbox" class="sym-cb ${cbClass}" data-sym="${sym}" ${checked} />${sym}${warnBadge}</span></td>
         <td>${sd.trades}</td>
         <td>${sd.shares.toLocaleString('en-US')}</td>
         <td class="${pClass}">${fmtPnl(sd.pnl)}</td>
+        <td><input class="sim-input ${simClass}" type="number" step="0.01" data-sym="${sym}" value="${simRaw}" placeholder="—" disabled /></td>
       </tr>`;
     }
 
     document.getElementById('leftPanel').innerHTML = `
       <div class="pnl-row">
-        <div class="day-pnl ${pnlClass}">${fmtPnl(pnl)}</div>
+        <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+          <div class="day-pnl ${pnlClass}">${fmtPnl(pnl)}</div>
+          <div id="simDayTotal" style="font-size:15px;color:#9ca3af"></div>
+        </div>
         <button class="icon-btn" title="Candlestick view" onclick="window.location.href='candlestick.html?year=${curYear}&month=${curMonth}&day=${curDay}'">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v4"/><rect width="4" height="6" x="7" y="9" rx="1"/><path d="M9 15v2"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v3"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/></svg>
         </button>
       </div>
       <div class="sym-table-wrap">
-        <table class="sym-table">
+        <table class="sym-table" style="table-layout:fixed">
+          <colgroup>
+            <col style="width:22%">
+            <col style="width:14%">
+            <col style="width:18%">
+            <col style="width:22%">
+            <col style="width:24%">
+          </colgroup>
           <thead>
             <tr>
               <th><span class="sym-name"><input type="checkbox" class="sym-cb" id="cbSelectAll" checked />Symbol</span></th>
               <th style="text-align:right">Trades</th>
               <th style="text-align:right">Shares</th>
               <th style="text-align:right">Realized</th>
+              <th class="sim-col-header" style="text-align:right">Simulation</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
+      </div>
+      <div class="sim-btn-row">
+        <button class="sim-btn" id="editSimBtn">Edit Sim</button>
+        <button class="sim-btn" id="resetSimBtn">Reset</button>
       </div>`;
 
     const allSymbols = Object.keys(symbols);
@@ -595,6 +720,60 @@
     });
 
     syncSelectAll();
+
+    // Tab trapping between sim inputs in edit mode
+    const simInputs = Array.from(document.querySelectorAll('.sim-input'));
+    simInputs.forEach((inp, i) => {
+      inp.addEventListener('keydown', e => {
+        if (e.key !== 'Tab') return;
+        e.preventDefault();
+        const next = e.shiftKey
+          ? simInputs[(i - 1 + simInputs.length) % simInputs.length]
+          : simInputs[(i + 1) % simInputs.length];
+        next.focus();
+        next.select();
+      });
+    });
+
+    // Simulation input handlers
+    document.querySelectorAll('.sim-input').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const sym = inp.dataset.sym;
+        const raw = parseFloat(inp.value);
+        if (isNaN(raw)) {
+          delete simData[sym];
+          inp.value = '';
+          inp.className = 'sim-input';
+          saveSim(curYear, curMonth, curDay, sym, null);
+        } else {
+          simData[sym] = raw;
+          inp.className = 'sim-input ' + (raw >= 0 ? 'sym-pos' : 'sym-neg');
+          saveSim(curYear, curMonth, curDay, sym, raw);
+        }
+        updateSimTotal();
+      });
+    });
+
+    // Edit / Done toggle
+    const editBtn = document.getElementById('editSimBtn');
+    function setEditMode(on) {
+      document.querySelectorAll('.sim-input').forEach(inp => { inp.disabled = !on; });
+      document.querySelector('.sym-table-wrap')?.classList.toggle('sim-editing', on);
+      editBtn.textContent = on ? 'Done' : 'Edit Sim';
+      editBtn.classList.toggle('active', on);
+    }
+    editBtn.addEventListener('click', () => {
+      const entering = editBtn.textContent === 'Edit Sim';
+      setEditMode(entering);
+    });
+
+    // Reset simulation button
+    document.getElementById('resetSimBtn').addEventListener('click', () => {
+      if (!confirm('Reset all sim trades for this day? This cannot be undone.')) return;
+      simData = {};
+      resetSim(curYear, curMonth, curDay);
+      renderLeft(dayData);
+    });
   }
 
   const STAT_ICONS = {

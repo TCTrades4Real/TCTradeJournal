@@ -543,6 +543,17 @@ if __name__ == "__main__":
             print(f"  Uploaded: ohlcv/{f.name}")
             newly_uploaded.append(f.name)
 
+        # Upload backtest trades JSON + candlestick HTML
+        for local, remote_name in [
+            ("dashboard/backtest_trades.json", "backtest_trades.json"),
+            ("dashboard/candlestick.html",     "candlestick.html"),
+        ]:
+            _lp = pathlib.Path(local)
+            if _lp.exists():
+                with open(_lp, "rb") as fh:
+                    ftp.storbinary(f"STOR {_remote}/{remote_name}", fh)
+                print(f"  Uploaded: {remote_name}")
+
     # Update manifest
     _uploaded.update(newly_uploaded)
     _manifest.write_text("\n".join(sorted(_uploaded)))
