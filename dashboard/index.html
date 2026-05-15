@@ -76,9 +76,8 @@
       border: 1px solid transparent;
       display: inline-flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center;
       gap: 12px;
-      min-width: 180px;
     }
 
 
@@ -293,7 +292,6 @@
 </div>
 
 <div class="year-grid" id="yearGrid"></div>
-<div class="stats-bar" id="statsBar" style="display:none;margin-top:24px;"></div>
 
 
 <script>
@@ -446,7 +444,7 @@
     const hasTrades = Object.values(yearData).some(m => Object.keys(m.days || {}).length > 0);
     const badge = document.getElementById('yearBadge');
     badge.className = 'year-badge ' + (!hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg');
-    badge.innerHTML = `<span class="badge-label">REAL</span><span>${fmtBadge(total)}</span>`;
+    badge.innerHTML = `<span>${fmtBadge(total)}</span>`;
 
     let simTotal = 0;
     for (const [mStr, monthData] of Object.entries(yearData)) {
@@ -486,7 +484,6 @@
     renderGrid(yearData, year);
     const allRoundtrips = Object.values(yearData)
       .flatMap(m => Object.values(m.days || {}).flatMap(d => d?.roundtrips || []));
-    renderStats(allRoundtrips.length ? computeStats(allRoundtrips) : { trades: 0 });
   }
 
   /* ── Year grid ──────────────────────────────────── */
@@ -516,7 +513,7 @@
 
     const realBadge = document.createElement('span');
     realBadge.className = 'month-badge ' + (!hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg');
-    realBadge.innerHTML = `<span class="badge-label">REAL</span><span>${hasTrades ? fmtBadge(total) : '$0.00'}</span>`;
+    realBadge.innerHTML = `<span>${hasTrades ? fmtBadge(total) : '$0.00'}</span>`;
     realBadge.title = 'View month detail';
     realBadge.onclick = () => { window.location.href = `month.html?year=${year}&month=${month}`; };
 

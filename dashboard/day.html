@@ -43,18 +43,18 @@
     .breadcrumb-sep { opacity: 0.4; }
 
     /* ── Header ─────────────────────────────────────── */
-    .page-header {
+    .header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      position: relative;
       gap: 12px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
+      margin-bottom: 24px;
     }
 
-    .day-title {
-      font-size: 26px;
-      font-weight: 700;
+    .header h1 {
+      flex: 1;
+      font-size: 30px;
+      font-weight: 400;
       color: #ffffff;
     }
 
@@ -90,7 +90,7 @@
       margin-bottom: 16px;
     }
     @media (min-width: 700px) {
-      .main-grid { grid-template-columns: 1.3fr 1.6fr; }
+      .main-grid { grid-template-columns: 40% 60%; }
     }
 
     /* ── Left panel ──────────────────────────────────── */
@@ -131,7 +131,7 @@
       font-size: 26px;
       font-weight: 400;
     }
-    .pnl-pos { color: rgb(5, 150, 105); }
+    .pnl-pos { color: #22c55e; }
     .pnl-neg { color: rgb(220, 38, 38); }
     .pnl-zero { color: #9ca3af; }
 
@@ -166,7 +166,7 @@
     .sym-table td:not(:first-child) { text-align: right; }
     .sym-table tr:last-child td { border-bottom: none; }
     .sym-name { color: #ffffff; font-weight: 500; display: flex; align-items: center; gap: 8px; }
-    .sym-pos   { color: rgb(5, 150, 105); }
+    .sym-pos   { color: #22c55e; }
     .sym-neg   { color: rgb(220, 38, 38); }
 
     /* Simulation input */
@@ -191,33 +191,33 @@
     .sim-input:disabled::placeholder { color: transparent; }
 
     /* Edit mode — column highlight */
-    .sym-table-wrap.sim-editing .sim-col-header { color: #a5b4fc; }
+    .sym-table-wrap.sim-editing .sim-col-header { color: #22c55e; }
     .sym-table-wrap.sim-editing .sim-input {
-      border: 1px solid #3a3a6a;
+      border: 1px solid #166534;
       border-radius: 4px;
       padding: 1px 4px;
-      background: rgba(99,102,241,0.06);
+      background: rgba(34,197,94,0.06);
     }
     .sym-table-wrap.sim-editing .sim-input:focus {
-      border-color: #6366f1;
-      background: rgba(99,102,241,0.12);
+      border-color: #22c55e;
+      background: rgba(34,197,94,0.12);
     }
 
     /* Sim action buttons */
-    .sim-btn {
-      background: transparent;
-      border: 1px solid #2a2a2a;
-      color: #6b7280;
-      border-radius: 5px;
-      padding: 4px 10px;
-      font-size: 11px;
-      font-family: inherit;
-      cursor: pointer;
-      letter-spacing: 0.03em;
-      transition: border-color 0.15s, color 0.15s;
+    .sim-btn-reset {
+      background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px;
+      color: #9ca3af; font-size: 13px; font-family: inherit;
+      padding: 6px 14px; cursor: pointer; transition: background 0.12s, color 0.12s;
     }
-    .sim-btn:hover { border-color: #444; color: #9ca3af; }
-    .sim-btn.active { border-color: #6366f1; color: #a5b4fc; }
+    .sim-btn-reset:hover { background: #222; color: #e0e0e0; }
+    .sim-btn-edit {
+      background: #22c55e; border: none; border-radius: 6px;
+      color: #000; font-size: 13px; font-weight: 600; font-family: inherit;
+      padding: 6px 14px; cursor: pointer; transition: background 0.12s;
+    }
+    .sim-btn-edit:hover { background: #16a34a; }
+    .sim-btn-edit.active { background: #22c55e; color: #000; }
+    .sim-btn-edit.active:hover { background: #16a34a; }
     .sim-btn-row { display: flex; gap: 6px; align-self: flex-end; }
 
     /* Colored checkboxes in symbol table */
@@ -367,8 +367,8 @@
   <span id="breadcrumbDay"></span>
 </div>
 
-<div class="page-header">
-  <div class="day-title" id="dayTitle"></div>
+<div class="header">
+  <h1 id="dayTitle"></h1>
   <div class="day-nav">
     <button class="nav-day-btn" id="prevBtn">&#8592; <span id="prevLabel"></span></button>
     <button class="nav-day-btn" id="nextBtn"><span id="nextLabel"></span> &#8594;</button>
@@ -404,7 +404,7 @@
 
   /* ── Simulation (server-persisted) ─────────────── */
   const SIM_TOKEN = 'tc_sim_8f3a2d9e1b7c4f06';
-  let allSimData = null; // full sim_data.json cached for session
+  let allSimData = null;
 
   function simKey(y, m, d) { return `${y}_${m}_${d}`; }
 
@@ -442,6 +442,15 @@
     const key = simKey(y, m, d);
     delete allSimData[key];
     postSim({ key, reset: true });
+  }
+
+  function updateSimTotal() {
+    const el = document.getElementById('simDayTotal');
+    if (!el) return;
+    const vals = Object.values(simData);
+    if (vals.length === 0) { el.textContent = ''; return; }
+    const total = Math.round(vals.reduce((s, v) => s + v, 0) * 100) / 100;
+    el.textContent = `sim ${fmtPnl(total)}`;
   }
 
   /* ── Formatters ─────────────────────────────────── */
@@ -611,15 +620,6 @@
     renderChart(computed.chart);
   }
 
-  function updateSimTotal() {
-    const el = document.getElementById('simDayTotal');
-    if (!el) return;
-    const vals = Object.values(simData);
-    if (vals.length === 0) { el.textContent = ''; return; }
-    const total = Math.round(vals.reduce((s, v) => s + v, 0) * 100) / 100;
-    el.textContent = `sim ${fmtPnl(total)}`;
-  }
-
   function renderLeft(dayData) {
     const pnl = dayData.pnl || 0;
     const pnlClass = pnl > 0 ? 'pnl-pos' : pnl < 0 ? 'pnl-neg' : 'pnl-zero';
@@ -683,8 +683,8 @@
         </table>
       </div>
       <div class="sim-btn-row">
-        <button class="sim-btn" id="editSimBtn">Edit Sim</button>
-        <button class="sim-btn" id="resetSimBtn">Reset</button>
+        <button class="sim-btn-edit" id="editSimBtn">Edit Sim</button>
+        <button class="sim-btn-reset" id="resetSimBtn">Reset</button>
       </div>`;
 
     const allSymbols = Object.keys(symbols);
@@ -825,7 +825,6 @@
         ${stat('$0.00', 'Fees &amp; Com')}
         ${stat((s.accuracy || 0).toFixed(2) + '%', 'Accuracy')}
         ${stat(s.profit_factor || 0, 'Profit Factor')}
-        ${stat(fmtWLRatio(s.wl_ratio), 'W/L Ratio')}
         ${stat(fmtVolume(s.volume || 0), 'Volume')}
         ${stat(dayData.trades || 0, 'Total Trades')}
         ${stat(fmtPnl(s.avg_trade_pnl || 0), 'Avg Trade PnL')}
@@ -845,11 +844,7 @@
         ${stat(s.avg_hold_loss || '00:00', 'Avg Hold Time (Loss)')}
         ${stat(s.avg_cents_loss || 0, 'Avg Cent / Share (Loss)')}
       </div>
-      <div class="stat-row">
-        ${stat(s.longest_win_streak || 0, 'Longest Win Streak')}
-        ${stat(s.longest_loss_streak || 0, 'Longest Loss Streak')}
-        ${stat((s.profit_concentration || 0).toFixed(1) + '%', 'Top 10% Contribution')}
-      </div>`;
+      `;
   }
 
   function renderChart(chartPoints) {
@@ -896,8 +891,8 @@
         const ratio   = (clamped - top) / (bottom - top);
 
         const grad = c.createLinearGradient(0, top, 0, bottom);
-        grad.addColorStop(0,                          'rgba(5, 150, 105, 0.45)');
-        grad.addColorStop(Math.max(0, ratio - 0.001), 'rgba(5, 150, 105, 0.45)');
+        grad.addColorStop(0,                          'rgba(34, 197, 94, 0.45)');
+        grad.addColorStop(Math.max(0, ratio - 0.001), 'rgba(34, 197, 94, 0.45)');
         grad.addColorStop(Math.min(1, ratio + 0.001), 'rgba(220, 38, 38, 0.45)');
         grad.addColorStop(1,                          'rgba(220, 38, 38, 0.45)');
 
@@ -913,16 +908,15 @@
           label: 'Realized',
           data: values,
           fill: 'origin',
-          backgroundColor: 'rgba(26,61,57,0.6)',
-          borderColor: 'rgb(5, 150, 105)',
+          backgroundColor: 'rgba(34,197,94,0.15)',
+          borderColor: '#22c55e',
           borderWidth: 1.5,
           pointRadius: 0,
           tension: 0,
           segment: {
             borderColor: ctx => {
-              const y0 = ctx.p0.parsed.y;
-              const y1 = ctx.p1.parsed.y;
-              return (y0 >= 0 && y1 >= 0) ? 'rgb(5, 150, 105)' : 'rgb(220, 38, 38)';
+              const mid = (ctx.p0.parsed.y + ctx.p1.parsed.y) / 2;
+              return mid >= 0 ? '#22c55e' : 'rgb(220, 38, 38)';
             }
           }
         }]
@@ -947,7 +941,7 @@
                 return ` ${sign}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
               },
               labelColor: ctx => {
-                const color = ctx.parsed.y >= 0 ? 'rgb(5, 150, 105)' : 'rgb(220, 38, 38)';
+                const color = ctx.parsed.y >= 0 ? '#22c55e' : 'rgb(220, 38, 38)';
                 return { borderColor: color, backgroundColor: color };
               }
             }

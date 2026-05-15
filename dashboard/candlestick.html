@@ -435,6 +435,14 @@
     Long position
   </button>
   <div style="width:1px;height:22px;background:#333;flex-shrink:0;"></div>
+  <button class="tool-btn" id="btnHBDots" onclick="toggleHBDots()" title="Toggle breakout circles">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+      <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="7" cy="7" r="1.5" fill="currentColor"/>
+    </svg>
+    Breakout
+  </button>
+  <div style="width:1px;height:22px;background:#333;flex-shrink:0;"></div>
   <button class="tool-btn" id="btnRuler" onclick="toggleRulerTool()" title="Ruler — measure price &amp; time (Esc to cancel)">
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
       <line x1="2" y1="12" x2="12" y2="2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -501,12 +509,13 @@
   let tradingDays       = [];     // sorted list of {year,month,day} objects with trade data
   let activeTrades      = [];     // activeExecs grouped by round-trip
   let longPosMode  = false;       // long position tool toggled on
-  let longPos      = null;        // { entry, target, stop } or null when not placed
+  let longPositions = [];         // array of { entry, target, stop, t0, t1 }
   let lpSvg        = null;        // SVG overlay element
   let lpSubCleanup = null;        // fn to unsubscribe chart events
 
   let rulerMode    = false;       // ruler tool active
-  let ruler        = null;        // { t0, p0, t1, p1 } — t1/p1 null = preview phase
+  let rulers       = [];          // array of locked { t0, p0, t1, p1 }
+  let activeRuler  = null;        // in-progress ruler, t1/p1 null = preview phase
   let rulerSvg     = null;
   let rulerSubCleanup = null;
   let rulerLiveX   = 0;           // current mouse X (pixels) for live preview
@@ -514,6 +523,7 @@
   let activeBars   = null;        // aggregated bars at current timeframe (for snap)
 
   let hbSvg        = null;        // high-breakout dot overlay
+  let showHBDots   = false;
   let hbSubCleanup = null;
 
   /* ── Formatters ──────────────────────────────────── */
@@ -651,7 +661,7 @@
   }
 
   function clearLongPosTool() {
-    longPos = null;
+    longPositions = [];
     if (lpSubCleanup) { lpSubCleanup(); lpSubCleanup = null; }
     if (lpSvg)        { lpSvg.remove(); lpSvg = null; }
     document.getElementById('longPosPanel')?.classList.remove('visible');
@@ -672,9 +682,10 @@
   }
 
   function updateLpInfo() {
-    if (!longPos) return;
-    const profitPct = ((longPos.target - longPos.entry) / longPos.entry * 100).toFixed(2);
-    const lossPct   = ((longPos.entry  - longPos.stop)  / longPos.entry * 100).toFixed(2);
+    if (!longPositions.length) return;
+    const pos = longPositions[longPositions.length - 1];
+    const profitPct = ((pos.target - pos.entry) / pos.entry * 100).toFixed(2);
+    const lossPct   = ((pos.entry  - pos.stop)  / pos.entry * 100).toFixed(2);
     const rr = parseFloat(lossPct) > 0
       ? (parseFloat(profitPct) / parseFloat(lossPct)).toFixed(2) : '∞';
     const el = document.getElementById('longPosRR');
@@ -682,7 +693,7 @@
   }
 
   function renderLongPosOverlay() {
-    if (!longPos || !chartInstance || !candleSeriesRef) return;
+    if (!longPositions.length || !chartInstance || !candleSeriesRef) return;
 
     const container = document.getElementById('chartMain');
     container.style.position = 'relative';
@@ -699,46 +710,45 @@
 
     function draw() {
       while (svg.firstChild) svg.removeChild(svg.firstChild);
-      if (!chartInstance || !candleSeriesRef || !longPos) return;
+      if (!chartInstance || !candleSeriesRef || !longPositions.length) return;
+      for (const pos of longPositions) drawPos(pos);
+    }
 
+    function drawPos(pos) {
       const W      = container.offsetWidth;
       const PSCALE = 72;
       const CW     = W - PSCALE;
       const shares = getLpShares();
       const timeScale = chartInstance.timeScale();
 
-      // t0/t1 are chart timestamps → zone tracks candles during pan/zoom
-      let lineX0 = timeScale.timeToCoordinate(longPos.t0);
-      let lineX1 = timeScale.timeToCoordinate(longPos.t1);
+      let lineX0 = timeScale.timeToCoordinate(pos.t0);
+      let lineX1 = timeScale.timeToCoordinate(pos.t1);
       if (lineX0 == null) lineX0 = 0;
       if (lineX1 == null) lineX1 = CW;
-      const lineW  = lineX1 - lineX0;
+      const lineW = lineX1 - lineX0;
 
-      const yEntry  = candleSeriesRef.priceToCoordinate(longPos.entry);
-      const yTarget = candleSeriesRef.priceToCoordinate(longPos.target);
-      const yStop   = candleSeriesRef.priceToCoordinate(longPos.stop);
+      const yEntry  = candleSeriesRef.priceToCoordinate(pos.entry);
+      const yTarget = candleSeriesRef.priceToCoordinate(pos.target);
+      const yStop   = candleSeriesRef.priceToCoordinate(pos.stop);
       if (yEntry == null || yTarget == null || yStop == null) return;
 
-      const profitAmt = (longPos.target - longPos.entry) * shares;
-      const lossAmt   = (longPos.entry  - longPos.stop)  * shares;
-      const profitPct = (longPos.target - longPos.entry) / longPos.entry * 100;
-      const lossPct   = (longPos.entry  - longPos.stop)  / longPos.entry * 100;
+      const profitAmt = (pos.target - pos.entry) * shares;
+      const lossAmt   = (pos.entry  - pos.stop)  * shares;
+      const profitPct = (pos.target - pos.entry) / pos.entry * 100;
+      const lossPct   = (pos.entry  - pos.stop)  / pos.entry * 100;
       const rr        = lossPct > 0 ? (profitPct / lossPct).toFixed(2) : '∞';
       const fmtP      = v => Math.abs(v) < 10 ? v.toFixed(4) : v.toFixed(2);
       const fmtD      = v => v.toFixed(2);
 
-      // ── Outcome: scan raw 1-min candles from lineX0 time forward ── //
-      // Whichever level (target or stop) is touched first determines the badge color
       let outcome = null;
       if (rawCandles?.length) {
         for (const c of rawCandles) {
-          if (c.time < longPos.t0) continue;
-          if (c.high >= longPos.target) { outcome = 'target'; break; }
-          if (c.low  <= longPos.stop)   { outcome = 'stop';   break; }
+          if (c.time < pos.t0) continue;
+          if (c.high >= pos.target) { outcome = 'target'; break; }
+          if (c.low  <= pos.stop)   { outcome = 'stop';   break; }
         }
       }
 
-      // ── Shaded zones ──────────────────────────────── //
       function fillZone(y1, y2, fill) {
         const el = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         el.setAttribute('x', lineX0); el.setAttribute('y', Math.min(y1, y2));
@@ -749,7 +759,6 @@
       fillZone(yEntry, yTarget, 'rgba(8,153,129,0.18)');
       fillZone(yStop,  yEntry,  'rgba(242,54,69,0.18)');
 
-      // ── Horizontal lines ──────────────────────────── //
       function hLine(y, color, dash) {
         const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         el.setAttribute('x1', lineX0); el.setAttribute('y1', y);
@@ -762,7 +771,7 @@
       hLine(yEntry,  '#6b7280', '5,3');
       hLine(yStop,   'rgb(242,54,69)');
 
-      // ── Whole-tool move area (drawn before handles so they stay on top) ── //
+      // ── Move area ─────────────────────────────────── //
       const moveArea = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       moveArea.setAttribute('x', lineX0);
       moveArea.setAttribute('y', Math.min(yTarget, yStop));
@@ -777,46 +786,59 @@
         const cap = document.createElement('div');
         cap.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:move;';
         document.body.appendChild(cap);
-        const startClientX  = ev.clientX;
-        const startClientY  = ev.clientY;
-        const snapEntry     = longPos.entry;
-        const snapTarget    = longPos.target;
-        const snapStop      = longPos.stop;
-        const snapT0        = longPos.t0;
-        const snapT1        = longPos.t1;
-        const bRect0        = container.getBoundingClientRect();
-        const startPrice    = candleSeriesRef.coordinateToPrice(startClientY - bRect0.top);
+        const startClientX = ev.clientX;
+        const startClientY = ev.clientY;
+        const snapEntry = pos.entry, snapTarget = pos.target, snapStop = pos.stop;
+        const snapT0 = pos.t0, snapT1 = pos.t1;
+        const bRect0 = container.getBoundingClientRect();
+        const startPrice = candleSeriesRef.coordinateToPrice(startClientY - bRect0.top);
         function onMove(mv) {
           const bRect = container.getBoundingClientRect();
           const curPrice = candleSeriesRef.coordinateToPrice(mv.clientY - bRect.top);
           if (startPrice != null && curPrice != null) {
             const dp = curPrice - startPrice;
-            longPos.entry  = snapEntry  + dp;
-            longPos.target = snapTarget + dp;
-            longPos.stop   = snapStop   + dp;
+            pos.entry = snapEntry + dp; pos.target = snapTarget + dp; pos.stop = snapStop + dp;
           }
           const dx = mv.clientX - startClientX;
           const snapX0 = timeScale.timeToCoordinate(snapT0);
           const snapX1 = timeScale.timeToCoordinate(snapT1);
           if (snapX0 != null && snapX1 != null) {
-            const newX0 = snapX0 + dx;
-            const newX1 = snapX1 + dx;
-            longPos.t0 = timeScale.coordinateToTime(newX0) ?? longPos.t0;
-            longPos.t1 = timeScale.coordinateToTime(newX1) ?? longPos.t1;
+            pos.t0 = timeScale.coordinateToTime(snapX0 + dx) ?? pos.t0;
+            pos.t1 = timeScale.coordinateToTime(snapX1 + dx) ?? pos.t1;
           }
           draw(); updateLpInfo();
         }
-        function onUp() {
-          cap.remove();
-          document.removeEventListener('mousemove', onMove);
-          document.removeEventListener('mouseup', onUp);
-        }
+        function onUp() { cap.remove(); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
       });
       svg.appendChild(moveArea);
 
-      // ── Inline line labels ─────────────────────────── //
+      // ── Delete (✕) button top-right of move area ─── //
+      const delX = lineX1 - 10, delY = Math.min(yTarget, yStop) + 10;
+      const delBtn = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      delBtn.style.pointerEvents = 'all';
+      delBtn.style.cursor = 'pointer';
+      const delBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      delBg.setAttribute('cx', delX); delBg.setAttribute('cy', delY);
+      delBg.setAttribute('r', 7); delBg.setAttribute('fill', 'rgba(30,30,30,0.85)');
+      delBg.setAttribute('stroke', '#555'); delBg.setAttribute('stroke-width', 1);
+      const delTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      delTxt.setAttribute('x', delX); delTxt.setAttribute('y', delY + 4);
+      delTxt.setAttribute('text-anchor', 'middle'); delTxt.setAttribute('fill', '#9ca3af');
+      delTxt.setAttribute('font-size', 10); delTxt.setAttribute('font-family', 'Inter,sans-serif');
+      delTxt.textContent = '✕';
+      delBtn.appendChild(delBg); delBtn.appendChild(delTxt);
+      delBtn.addEventListener('mousedown', ev => { ev.preventDefault(); ev.stopPropagation(); });
+      delBtn.addEventListener('click', ev => {
+        ev.stopPropagation();
+        const idx = longPositions.indexOf(pos);
+        if (idx !== -1) longPositions.splice(idx, 1);
+        if (!longPositions.length) { clearLongPosTool(); } else { draw(); updateLpInfo(); }
+      });
+      svg.appendChild(delBtn);
+
+      // ── Line labels ───────────────────────────────── //
       function lineLabel(y, bgColor, text) {
         const FH = 11, PX = 7, PY = 4;
         const BH = FH + PY * 2;
@@ -836,15 +858,14 @@
         t.textContent = text;
         svg.appendChild(t);
       }
-
       lineLabel(yTarget, 'rgba(8,153,129,0.95)',
-        `${fmtP(longPos.target)}  (+${profitPct.toFixed(3)}%)  ${shares}  +$${fmtD(profitAmt)}`);
+        `${fmtP(pos.target)}  (+${profitPct.toFixed(3)}%)  ${shares}  +$${fmtD(profitAmt)}`);
       lineLabel(yEntry,  'rgba(30,41,59,0.95)',
-        `${fmtP(longPos.entry)}  ×${shares} shares`);
+        `${fmtP(pos.entry)}  ×${shares} shares`);
       lineLabel(yStop,   'rgba(140,31,31,0.95)',
-        `${fmtP(longPos.stop)}  (${lossPct.toFixed(3)}%)  ${shares}  −$${fmtD(lossAmt)}`);
+        `${fmtP(pos.stop)}  (${lossPct.toFixed(3)}%)  ${shares}  −$${fmtD(lossAmt)}`);
 
-      // ── Centre badge in the loss zone ─────────────── //
+      // ── Centre badge ──────────────────────────────── //
       const lossH = Math.abs(yEntry - yStop);
       if (lossH > 30 && lineW > 80) {
         const midY = (yEntry + yStop) / 2;
@@ -870,8 +891,7 @@
         svg.appendChild(t);
       }
 
-      // ── Blue square corner handles with horizontal drag ── //
-      // xEdge: 'left' drags x0, 'right' drags x1
+      // ── Corner handles ────────────────────────────── //
       function square(x, y, xEdge) {
         const SZ = 8;
         const el = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -889,21 +909,13 @@
           document.body.appendChild(cap);
           function onMove(mv) {
             const bRect = container.getBoundingClientRect();
-            const px = mv.clientX - bRect.left;
-            const t = timeScale.coordinateToTime(px);
+            const t = timeScale.coordinateToTime(mv.clientX - bRect.left);
             if (t == null) return;
-            if (xEdge === 'left') {
-              if (t !== longPos.t1) longPos.t0 = t;
-            } else {
-              if (t !== longPos.t0) longPos.t1 = t;
-            }
+            if (xEdge === 'left') { if (t !== pos.t1) pos.t0 = t; }
+            else                  { if (t !== pos.t0) pos.t1 = t; }
             draw();
           }
-          function onUp() {
-            cap.remove();
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-          }
+          function onUp() { cap.remove(); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
           document.addEventListener('mousemove', onMove);
           document.addEventListener('mouseup', onUp);
         });
@@ -913,10 +925,9 @@
       square(lineX0, yEntry,  'left');  square(lineX1, yEntry,  'right');
       square(lineX0, yStop,   'left');  square(lineX1, yStop,   'right');
 
-      // ── Invisible vertical drag strips (drawn last = on top) ── //
+      // ── Price drag strips ─────────────────────────── //
       function dragHandle(y, role) {
         const el = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        // inset 10px from each edge so the corner squares handle edge drags
         el.setAttribute('x', lineX0 + 10); el.setAttribute('y', y - 7);
         el.setAttribute('width', Math.max(0, lineW - 20)); el.setAttribute('height', 14);
         el.setAttribute('fill', 'transparent');
@@ -932,21 +943,12 @@
             const bRect = container.getBoundingClientRect();
             const p = candleSeriesRef.coordinateToPrice(mv.clientY - bRect.top);
             if (p == null) return;
-            if (role === 'target') {
-              longPos.target = Math.max(p, longPos.entry + 0.005);
-            } else if (role === 'stop') {
-              longPos.stop = Math.min(p, longPos.entry - 0.005);
-            } else {
-              const d = p - longPos.entry;
-              longPos.entry += d; longPos.target += d; longPos.stop += d;
-            }
+            if (role === 'target')     { pos.target = Math.max(p, pos.entry + 0.005); }
+            else if (role === 'stop')  { pos.stop   = Math.min(p, pos.entry - 0.005); }
+            else { const d = p - pos.entry; pos.entry += d; pos.target += d; pos.stop += d; }
             draw(); updateLpInfo();
           }
-          function onUp() {
-            cap.remove();
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-          }
+          function onUp() { cap.remove(); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
           document.addEventListener('mousemove', onMove);
           document.addEventListener('mouseup', onUp);
         });
@@ -993,9 +995,15 @@
 
   /* ── Ruler Tool ─────────────────────────────────── */
   function clearRulerTool() {
-    ruler = null;
+    rulers = []; activeRuler = null;
     if (rulerSubCleanup) { rulerSubCleanup(); rulerSubCleanup = null; }
     if (rulerSvg)        { rulerSvg.remove(); rulerSvg = null; }
+  }
+
+  function toggleHBDots() {
+    showHBDots = !showHBDots;
+    document.getElementById('btnHBDots').classList.toggle('active', showHBDots);
+    if (hbSvg) hbSvg.style.display = showHBDots ? '' : 'none';
   }
 
   function toggleRulerTool() {
@@ -1011,123 +1019,107 @@
   }
 
   function renderRulerOverlay() {
-    if (!ruler || !chartInstance || !candleSeriesRef) return;
+    if (!rulers.length && !activeRuler || !chartInstance || !candleSeriesRef) return;
 
     const container = document.getElementById('chartMain');
     container.style.position = 'relative';
 
-    if (rulerSubCleanup) { rulerSubCleanup(); rulerSubCleanup = null; }
-    if (rulerSvg)        { rulerSvg.remove(); rulerSvg = null; }
-
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.id = 'rulerOverlay';
-    svg.setAttribute('style',
-      'position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:7;pointer-events:none;');
-    container.appendChild(svg);
-    rulerSvg = svg;
+    if (!rulerSvg) {
+      if (rulerSubCleanup) { rulerSubCleanup(); rulerSubCleanup = null; }
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.id = 'rulerOverlay';
+      svg.setAttribute('style',
+        'position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:7;pointer-events:none;');
+      container.appendChild(svg);
+      rulerSvg = svg;
+      chartInstance.timeScale().subscribeVisibleLogicalRangeChange(draw);
+      try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(draw); } catch (_) {}
+      rulerSubCleanup = () => {
+        try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(draw); } catch (_) {}
+        try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(draw); } catch (_) {}
+      };
+    }
 
     function draw() {
+      const svg = rulerSvg;
+      if (!svg || !chartInstance || !candleSeriesRef) return;
       while (svg.firstChild) svg.removeChild(svg.firstChild);
-      if (!chartInstance || !candleSeriesRef || !ruler) return;
+      for (const r of rulers) drawRuler(r, true, svg);
+      if (activeRuler) drawRuler(activeRuler, false, svg);
+    }
 
+    function drawRuler(r, locked, svg) {
       const timeScale = chartInstance.timeScale();
-      const x0 = timeScale.timeToCoordinate(ruler.t0);
-      const y0 = candleSeriesRef.priceToCoordinate(ruler.p0);
+      const x0 = timeScale.timeToCoordinate(r.t0);
+      const y0 = candleSeriesRef.priceToCoordinate(r.p0);
       if (x0 == null || y0 == null) return;
 
-      // Use locked second point or live mouse position
       let x1, y1, p1, t1;
-      if (ruler.t1 != null) {
-        x1 = timeScale.timeToCoordinate(ruler.t1);
-        y1 = candleSeriesRef.priceToCoordinate(ruler.p1);
-        p1 = ruler.p1;
-        t1 = ruler.t1;
+      if (locked) {
+        x1 = timeScale.timeToCoordinate(r.t1);
+        y1 = candleSeriesRef.priceToCoordinate(r.p1);
+        p1 = r.p1; t1 = r.t1;
       } else {
-        x1 = rulerLiveX;
-        y1 = rulerLiveY;
-        t1 = timeScale.coordinateToTime(x1) ?? ruler.t0;
-        p1 = candleSeriesRef.coordinateToPrice(y1) ?? ruler.p0;
+        x1 = rulerLiveX; y1 = rulerLiveY;
+        t1 = timeScale.coordinateToTime(x1) ?? r.t0;
+        p1 = candleSeriesRef.coordinateToPrice(y1) ?? r.p0;
       }
       if (x1 == null || y1 == null) return;
 
-      const priceDelta = p1 - ruler.p0;
-      const pctDelta   = (priceDelta / ruler.p0) * 100;
+      const priceDelta = p1 - r.p0;
+      const pctDelta   = (priceDelta / r.p0) * 100;
       const sign       = priceDelta >= 0 ? '+' : '';
       const lineColor  = priceDelta >= 0 ? 'rgb(8,153,129)' : 'rgb(242,54,69)';
       const fillColor  = priceDelta >= 0 ? 'rgba(8,153,129,0.10)' : 'rgba(242,54,69,0.10)';
 
-      // Count 1-min candles in range
-      const tMin = Math.min(ruler.t0, t1);
-      const tMax = Math.max(ruler.t0, t1);
+      const tMin = Math.min(r.t0, t1), tMax = Math.max(r.t0, t1);
       let barCount = 0;
-      for (const c of (rawCandles || [])) {
-        if (c.time >= tMin && c.time <= tMax) barCount++;
-      }
-      const timeMins = Math.round(Math.abs(t1 - ruler.t0) / 60);
+      for (const c of (rawCandles || [])) { if (c.time >= tMin && c.time <= tMax) barCount++; }
+      const timeMins = Math.round(Math.abs(t1 - r.t0) / 60);
 
-      // Shaded rect
       const rectEl = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rectEl.setAttribute('x', Math.min(x0, x1));
-      rectEl.setAttribute('y', Math.min(y0, y1));
-      rectEl.setAttribute('width', Math.abs(x1 - x0));
-      rectEl.setAttribute('height', Math.abs(y1 - y0));
+      rectEl.setAttribute('x', Math.min(x0, x1)); rectEl.setAttribute('y', Math.min(y0, y1));
+      rectEl.setAttribute('width', Math.abs(x1 - x0)); rectEl.setAttribute('height', Math.abs(y1 - y0));
       rectEl.setAttribute('fill', fillColor);
-      if (ruler.t1 != null) {
-        rectEl.style.pointerEvents = 'all';
-        rectEl.style.cursor = 'move';
-      }
+      if (locked) { rectEl.style.pointerEvents = 'all'; rectEl.style.cursor = 'move'; }
       svg.appendChild(rectEl);
 
-      // Horizontal dashed leg at y1
       const hLeg = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       hLeg.setAttribute('x1', x0); hLeg.setAttribute('y1', y1);
       hLeg.setAttribute('x2', x1); hLeg.setAttribute('y2', y1);
       hLeg.setAttribute('stroke', '#4b5563'); hLeg.setAttribute('stroke-width', 1);
-      hLeg.setAttribute('stroke-dasharray', '4,3');
-      svg.appendChild(hLeg);
+      hLeg.setAttribute('stroke-dasharray', '4,3'); svg.appendChild(hLeg);
 
-      // Vertical dashed leg at x1
       const vLeg = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       vLeg.setAttribute('x1', x1); vLeg.setAttribute('y1', y0);
       vLeg.setAttribute('x2', x1); vLeg.setAttribute('y2', y1);
       vLeg.setAttribute('stroke', '#4b5563'); vLeg.setAttribute('stroke-width', 1);
-      vLeg.setAttribute('stroke-dasharray', '4,3');
-      svg.appendChild(vLeg);
+      vLeg.setAttribute('stroke-dasharray', '4,3'); svg.appendChild(vLeg);
 
-      // Diagonal line
       const diagLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       diagLine.setAttribute('x1', x0); diagLine.setAttribute('y1', y0);
       diagLine.setAttribute('x2', x1); diagLine.setAttribute('y2', y1);
       diagLine.setAttribute('stroke', lineColor); diagLine.setAttribute('stroke-width', 1.5);
       svg.appendChild(diagLine);
 
-      // Mid-point label
-      const midX = (x0 + x1) / 2;
-      const midY = (y0 + y1) / 2;
-      const absPriceFmt = Math.abs(priceDelta) < 10
-        ? Math.abs(priceDelta).toFixed(4)
-        : Math.abs(priceDelta).toFixed(2);
+      const midX = (x0 + x1) / 2, midY = (y0 + y1) / 2;
+      const absPriceFmt = Math.abs(priceDelta) < 10 ? Math.abs(priceDelta).toFixed(4) : Math.abs(priceDelta).toFixed(2);
       const label = `${sign}$${absPriceFmt}  ${sign}${pctDelta.toFixed(2)}%  ${barCount} bars  ${timeMins}m`;
       const FH = 11, PX = 8, PY = 4;
-      const BW = label.length * 6.1 + PX * 2;
-      const BH = FH + PY * 2;
+      const BW = label.length * 6.1 + PX * 2, BH = FH + PY * 2;
       const badgeFill = priceDelta >= 0 ? 'rgba(8,153,129,0.92)' : 'rgba(140,31,31,0.92)';
       const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       bg.setAttribute('x', midX - BW / 2); bg.setAttribute('y', midY - BH / 2);
       bg.setAttribute('width', BW); bg.setAttribute('height', BH);
-      bg.setAttribute('rx', 4); bg.setAttribute('fill', badgeFill);
-      svg.appendChild(bg);
+      bg.setAttribute('rx', 4); bg.setAttribute('fill', badgeFill); svg.appendChild(bg);
       const labelEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      labelEl.setAttribute('x', midX - BW / 2 + PX);
-      labelEl.setAttribute('y', midY + FH / 2 - 1);
+      labelEl.setAttribute('x', midX - BW / 2 + PX); labelEl.setAttribute('y', midY + FH / 2 - 1);
       labelEl.setAttribute('fill', '#fff'); labelEl.setAttribute('font-size', FH);
       labelEl.setAttribute('font-family', 'Inter,-apple-system,sans-serif');
-      labelEl.setAttribute('font-weight', '600');
-      labelEl.textContent = label;
+      labelEl.setAttribute('font-weight', '600'); labelEl.textContent = label;
       svg.appendChild(labelEl);
 
-      if (ruler.t1 == null) {
-        // Preview mode: draw snap indicator ring at the live endpoint
+      if (!locked) {
         const snapHit = snapToCandle(rulerLiveX, rulerLiveY);
         if (snapHit) {
           const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -1136,17 +1128,37 @@
           ring.setAttribute('stroke', '#fbbf24'); ring.setAttribute('stroke-width', 1.5);
           svg.appendChild(ring);
         }
-        return; // no handles/drag in preview mode
+        return;
       }
+
+      // Delete button
+      const delX = Math.max(x0, x1) - 10, delY = Math.min(y0, y1) + 10;
+      const delG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      delG.style.pointerEvents = 'all'; delG.style.cursor = 'pointer';
+      const delBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      delBg.setAttribute('cx', delX); delBg.setAttribute('cy', delY);
+      delBg.setAttribute('r', 7); delBg.setAttribute('fill', 'rgba(30,30,30,0.85)');
+      delBg.setAttribute('stroke', '#555'); delBg.setAttribute('stroke-width', 1);
+      const delTxt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      delTxt.setAttribute('x', delX); delTxt.setAttribute('y', delY + 4);
+      delTxt.setAttribute('text-anchor', 'middle'); delTxt.setAttribute('fill', '#9ca3af');
+      delTxt.setAttribute('font-size', 10); delTxt.setAttribute('font-family', 'Inter,sans-serif');
+      delTxt.textContent = '✕'; delG.appendChild(delBg); delG.appendChild(delTxt);
+      delG.addEventListener('mousedown', ev => { ev.preventDefault(); ev.stopPropagation(); });
+      delG.addEventListener('click', ev => {
+        ev.stopPropagation();
+        const idx = rulers.indexOf(r);
+        if (idx !== -1) rulers.splice(idx, 1);
+        if (!rulers.length && !activeRuler) { clearRulerTool(); } else { draw(); }
+      });
+      svg.appendChild(delG);
 
       // Endpoint circles
       function endCircle(cx, cy, isFirst) {
         const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', 5);
-        c.setAttribute('fill', lineColor);
-        c.setAttribute('stroke', '#ffffff'); c.setAttribute('stroke-width', 1.5);
-        c.style.pointerEvents = 'all';
-        c.style.cursor = 'grab';
+        c.setAttribute('fill', lineColor); c.setAttribute('stroke', '#ffffff'); c.setAttribute('stroke-width', 1.5);
+        c.style.pointerEvents = 'all'; c.style.cursor = 'grab';
         c.addEventListener('mousedown', ev => {
           if (ev.button !== 0) return;
           ev.preventDefault(); ev.stopPropagation();
@@ -1155,77 +1167,50 @@
           document.body.appendChild(cap);
           function onMove(mv) {
             const bRect = container.getBoundingClientRect();
-            const px = mv.clientX - bRect.left;
-            const py = mv.clientY - bRect.top;
+            const px = mv.clientX - bRect.left, py = mv.clientY - bRect.top;
             const snap = snapToCandle(px, py);
             const t = snap ? snap.time : timeScale.coordinateToTime(px);
             const p = snap ? snap.price : candleSeriesRef.coordinateToPrice(py);
             if (t == null || p == null) return;
-            if (isFirst) { ruler.t0 = t; ruler.p0 = p; }
-            else         { ruler.t1 = t; ruler.p1 = p; }
+            if (isFirst) { r.t0 = t; r.p0 = p; } else { r.t1 = t; r.p1 = p; }
             draw();
           }
-          function onUp() {
-            cap.remove();
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-          }
-          document.addEventListener('mousemove', onMove);
-          document.addEventListener('mouseup', onUp);
+          function onUp() { cap.remove(); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+          document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
         });
         svg.appendChild(c);
       }
-      endCircle(x0, y0, true);
-      endCircle(x1, y1, false);
+      endCircle(x0, y0, true); endCircle(x1, y1, false);
 
-      // Move whole ruler via rect drag
+      // Move rect drag
       rectEl.addEventListener('mousedown', ev => {
         if (ev.button !== 0) return;
         ev.preventDefault(); ev.stopPropagation();
         const cap = document.createElement('div');
         cap.style.cssText = 'position:fixed;inset:0;z-index:9999;cursor:move;';
         document.body.appendChild(cap);
-        const bRect0      = container.getBoundingClientRect();
-        const startPrice  = candleSeriesRef.coordinateToPrice(ev.clientY - bRect0.top);
-        const startCX     = ev.clientX;
-        const snapT0 = ruler.t0, snapP0 = ruler.p0;
-        const snapT1 = ruler.t1, snapP1 = ruler.p1;
+        const bRect0 = container.getBoundingClientRect();
+        const startPrice = candleSeriesRef.coordinateToPrice(ev.clientY - bRect0.top);
+        const startCX = ev.clientX;
+        const snapT0 = r.t0, snapP0 = r.p0, snapT1 = r.t1, snapP1 = r.p1;
         function onMove(mv) {
-          const bRect    = container.getBoundingClientRect();
+          const bRect = container.getBoundingClientRect();
           const curPrice = candleSeriesRef.coordinateToPrice(mv.clientY - bRect.top);
-          if (startPrice != null && curPrice != null) {
-            const dp = curPrice - startPrice;
-            ruler.p0 = snapP0 + dp;
-            ruler.p1 = snapP1 + dp;
-          }
-          const dx   = mv.clientX - startCX;
-          const sx0  = timeScale.timeToCoordinate(snapT0);
-          const sx1  = timeScale.timeToCoordinate(snapT1);
+          if (startPrice != null && curPrice != null) { const dp = curPrice - startPrice; r.p0 = snapP0 + dp; r.p1 = snapP1 + dp; }
+          const dx = mv.clientX - startCX;
+          const sx0 = timeScale.timeToCoordinate(snapT0), sx1 = timeScale.timeToCoordinate(snapT1);
           if (sx0 != null && sx1 != null) {
-            ruler.t0 = timeScale.coordinateToTime(sx0 + dx) ?? ruler.t0;
-            ruler.t1 = timeScale.coordinateToTime(sx1 + dx) ?? ruler.t1;
+            r.t0 = timeScale.coordinateToTime(sx0 + dx) ?? r.t0;
+            r.t1 = timeScale.coordinateToTime(sx1 + dx) ?? r.t1;
           }
           draw();
         }
-        function onUp() {
-          cap.remove();
-          document.removeEventListener('mousemove', onMove);
-          document.removeEventListener('mouseup', onUp);
-        }
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
+        function onUp() { cap.remove(); document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+        document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
       });
     }
 
     draw();
-    chartInstance.timeScale().subscribeVisibleLogicalRangeChange(draw);
-    try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(draw); } catch (_) {}
-    rulerSubCleanup = () => {
-      try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(draw); } catch (_) {}
-      try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(draw); } catch (_) {}
-    };
-
-    // Expose draw for mousemove updates during preview phase
     rulerSvg._draw = draw;
   }
 
@@ -1453,6 +1438,7 @@
       'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:4;');
     container.appendChild(svg);
     hbSvg = svg;
+    if (!showHBDots) svg.style.display = 'none';
 
     function redraw() {
       while (svg.firstChild) svg.removeChild(svg.firstChild);
@@ -1773,8 +1759,8 @@
     document.getElementById('chartLegend').style.display = 'flex';
 
     // Restore overlays after chart re-render (e.g. timeframe switch)
-    if (longPos && longPosMode) setTimeout(() => renderLongPosOverlay(), 0);
-    if (ruler && ruler.t1 != null && rulerMode) setTimeout(() => renderRulerOverlay(), 0);
+    if (longPositions.length && longPosMode) setTimeout(() => renderLongPosOverlay(), 0);
+    if ((rulers.length || activeRuler) && rulerMode) setTimeout(() => renderRulerOverlay(), 0);
   }
 
   /* ── Load chart for symbol ───────────────────────── */
@@ -1782,7 +1768,7 @@
     activeSymbol = symbol;
 
     // Clear placed long position when switching symbols (different price range)
-    if (longPos) {
+    if (longPositions.length) {
       clearLongPosTool();
       if (longPosMode) document.getElementById('chartMain').style.cursor = 'crosshair';
     }
@@ -1912,7 +1898,7 @@
   document.getElementById('chartMain').addEventListener('click', function(e) {
     const rect = this.getBoundingClientRect();
 
-    // Ruler: first click = anchor, second click = lock
+    // Ruler: click 1 = anchor, click 2 = lock + ready for next ruler
     if (rulerMode && candleSeriesRef) {
       const px   = e.clientX - rect.left;
       const py   = e.clientY - rect.top;
@@ -1920,28 +1906,31 @@
       const t    = snap ? snap.time  : chartInstance.timeScale().coordinateToTime(px);
       const p    = snap ? snap.price : candleSeriesRef.coordinateToPrice(py);
       if (t == null || p == null) return;
-      if (!ruler) {
-        ruler = { t0: t, p0: p, t1: null, p1: null };
+      if (!activeRuler) {
+        activeRuler = { t0: t, p0: p, t1: null, p1: null };
         rulerLiveX = snap ? snap.x : px;
         rulerLiveY = snap ? snap.y : py;
         renderRulerOverlay();
-      } else if (ruler.t1 === null) {
-        ruler.t1 = t; ruler.p1 = p;
+      } else {
+        activeRuler.t1 = t; activeRuler.p1 = p;
+        rulers.push(activeRuler);
+        activeRuler = null;
         if (rulerSvg?._draw) rulerSvg._draw();
       }
       return;
     }
 
-    if (!longPosMode || longPos !== null || !candleSeriesRef) return;
+    if (!longPosMode || !candleSeriesRef) return;
     const price = candleSeriesRef.coordinateToPrice(e.clientY - rect.top);
     if (!price || price <= 0) return;
-    const risk = price * 0.01;            // default 1% risk
+    const risk = price * 0.01;
     const PSCALE = 72;
     const CW = this.offsetWidth - PSCALE;
     const timeScale = chartInstance.timeScale();
-    const t0 = timeScale.coordinateToTime(0) ?? rawCandles?.[0]?.time ?? 0;
+    const clickX = e.clientX - rect.left;
+    const t0 = timeScale.coordinateToTime(clickX) ?? rawCandles?.[0]?.time ?? 0;
     const t1 = timeScale.coordinateToTime(CW) ?? rawCandles?.[rawCandles.length - 1]?.time ?? 0;
-    longPos = { entry: price, target: price + risk * 2, stop: price - risk, t0, t1 };
+    longPositions.push({ entry: price, target: price + risk * 2, stop: price - risk, t0, t1 });
     renderLongPosOverlay();
     document.getElementById('longPosPanel').classList.add('visible');
     updateLpInfo();
@@ -1949,7 +1938,7 @@
 
   // Ruler live preview — track mouse while waiting for second click
   document.getElementById('chartMain').addEventListener('mousemove', function(e) {
-    if (!rulerMode || !ruler || ruler.t1 !== null) return;
+    if (!rulerMode || !activeRuler) return;
     const rect = this.getBoundingClientRect();
     const px   = e.clientX - rect.left;
     const py   = e.clientY - rect.top;
@@ -1961,7 +1950,7 @@
 
   // Update overlay when quantity changes
   document.getElementById('longPosShares').addEventListener('input', () => {
-    if (longPos && longPosMode) { renderLongPosOverlay(); updateLpInfo(); }
+    if (longPositions.length && longPosMode) { renderLongPosOverlay(); updateLpInfo(); }
   });
 
   // Escape cancels / deactivates tools

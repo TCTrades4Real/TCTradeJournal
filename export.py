@@ -547,6 +547,7 @@ if __name__ == "__main__":
         for local, remote_name in [
             ("dashboard/backtest_trades.json", "backtest_trades.json"),
             ("dashboard/candlestick.html",     "candlestick.html"),
+            ("dashboard/monte_carlo.html",     "monte_carlo.html"),
         ]:
             _lp = pathlib.Path(local)
             if _lp.exists():

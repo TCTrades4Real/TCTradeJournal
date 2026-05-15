@@ -8,6 +8,9 @@ Usage:
     python fetch_ohlcv.py --date 2026-03-16            # re-fetch all symbols for one date
     python fetch_ohlcv.py --symbol ACXP                # re-fetch all dates for one symbol
     python fetch_ohlcv.py --date 2026-03-16 --symbol ACXP  # re-fetch one symbol/date pair
+
+Source priority: Schwab API (primary) → Massive API (fallback).
+Schwab only retains ~10 days of 1-min history; Massive covers all dates.
 """
 
 import json
@@ -15,9 +18,16 @@ import os
 import sys
 import argparse
 import requests
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+_ET = ZoneInfo('America/New_York')
 
 MASSIVE_API_KEY = 'REDACTED_API_KEY'
 MASSIVE_BASE    = 'https://api.massive.com'
+
+# Schwab client — initialised once in main(), shared by fetch helpers
+_schwab_client = None
 
 _HERE        = os.path.dirname(__file__)
 DASHBOARD    = os.path.join(_HERE, 'dashboard')
@@ -64,11 +74,47 @@ def load_calendar_pairs():
     return pairs
 
 
-def fetch_day(symbol, date_str):
-    """
-    Fetch 1-minute OHLCV (including pre/post market) for a single symbol + date.
-    Returns list of candle dicts or [] if unavailable.
-    """
+def _fetch_schwab(symbol, date_str):
+    """Try Schwab price_history for one symbol/date. Returns candle list or []."""
+    if _schwab_client is None:
+        return []
+    try:
+        # Build midnight-to-midnight ET window in epoch-ms
+        dt_start = datetime.strptime(date_str, '%Y-%m-%d').replace(
+            hour=4, minute=0, second=0, tzinfo=_ET)
+        dt_end   = datetime.strptime(date_str, '%Y-%m-%d').replace(
+            hour=20, minute=0, second=0, tzinfo=_ET)
+
+        resp = _schwab_client.price_history(
+            symbol,
+            frequencyType='minute',
+            frequency=1,
+            startDate=dt_start,
+            endDate=dt_end,
+            needExtendedHoursData=True,
+        )
+        resp.raise_for_status()
+        candles = resp.json().get('candles') or []
+        if not candles:
+            return []
+        return [
+            {
+                'time':   c['datetime'] // 1000,
+                'open':   round(c['open'],   4),
+                'high':   round(c['high'],   4),
+                'low':    round(c['low'],    4),
+                'close':  round(c['close'],  4),
+                'volume': int(c.get('volume') or 0),
+            }
+            for c in candles
+        ]
+    except Exception as e:
+        print(f'  [schwab error] {e}', end=' ')
+        return []
+
+
+def _fetch_massive(symbol, date_str):
+    """Fetch from Massive API. Returns candle list or []."""
     url = f'{MASSIVE_BASE}/v2/aggs/ticker/{symbol}/range/1/minute/{date_str}/{date_str}'
     params = {
         'adjusted': 'false',
@@ -79,12 +125,9 @@ def fetch_day(symbol, date_str):
     try:
         resp = requests.get(url, params=params, timeout=30)
         resp.raise_for_status()
-        data = resp.json()
-
-        results = data.get('results') or []
+        results = resp.json().get('results') or []
         if not results:
             return []
-
         return [
             {
                 'time':   r['t'] // 1000,
@@ -96,10 +139,19 @@ def fetch_day(symbol, date_str):
             }
             for r in results
         ]
-
     except Exception as e:
-        print(f'  [error] {e}')
+        print(f'  [massive error] {e}', end=' ')
         return []
+
+
+def fetch_day(symbol, date_str):
+    """Fetch 1-min OHLCV: Schwab primary, Massive fallback."""
+    candles = _fetch_schwab(symbol, date_str)
+    if candles:
+        return candles
+    if _schwab_client is not None:
+        print('→ fallback massive', end=' ')
+    return _fetch_massive(symbol, date_str)
 
 
 def latest_cached_date():
@@ -123,12 +175,22 @@ def today_str():
 
 
 def main():
+    global _schwab_client
+
     parser = argparse.ArgumentParser(description='Fetch 1-min OHLCV for all trade days')
     parser.add_argument('--refresh', action='store_true',
                         help='Re-fetch all dates, overwriting any cached data')
     parser.add_argument('--date',   help='Re-fetch only this date (YYYY-MM-DD)')
     parser.add_argument('--symbol', help='Re-fetch only this symbol')
     args = parser.parse_args()
+
+    try:
+        import schwabdev
+        from utilities import config
+        _schwab_client = schwabdev.Client(config.SCHWAB_API_KEY, config.SCHWAB_CLIENT_ID)
+        print('Schwab client ready (primary source)')
+    except Exception as e:
+        print(f'Schwab unavailable ({e}) — using Massive only')
 
     pairs = load_calendar_pairs()
     print(f'Found {len(pairs)} symbol/date pairs in calendar data\n')

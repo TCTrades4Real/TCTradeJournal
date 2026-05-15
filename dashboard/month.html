@@ -27,28 +27,26 @@
     /* ── Header ─────────────────────────────────────── */
     .header {
       display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-
-    .header-row {
-      display: flex;
       align-items: center;
       position: relative;
+      gap: 12px;
+      margin-bottom: 24px;
     }
 
-    .header-row h1 {
+    .header h1 {
       flex: 1;
+      font-size: 30px;
+      font-weight: 400;
+      color: #ffffff;
     }
 
-    .header-row .badge-group {
+    .header .badge-group {
       position: absolute;
       left: 50%;
       transform: translateX(-50%);
     }
 
-    .header-row .nav-controls {
+    .header .nav-controls {
       flex: 1;
       display: flex;
       justify-content: flex-end;
@@ -161,7 +159,7 @@
       border: 1px solid rgb(161, 161, 170);
       vertical-align: top;
       padding: 4px;
-      height: 150px;
+      height: 110px;
     }
 
     /* Day cell content */
@@ -205,14 +203,6 @@
       justify-content: center;
     }
 
-    .cell-sim-zone {
-      flex: 34;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      border-top: 1px solid rgba(255,255,255,0.15);
-    }
-
     .cell-pnl {
       font-size: 20px;
       font-weight: 400;
@@ -223,6 +213,7 @@
       font-size: 14px;
       font-weight: 400;
       color: #fff;
+      margin-top: 4px;
     }
 
     /* Week total column */
@@ -455,16 +446,13 @@
 </div>
 
 <div class="header">
-  <div class="header-row">
-    <h1 id="pageTitle"></h1>
-    <div class="badge-group">
-      <span class="month-badge" id="pageBadge"></span>
-      <span class="month-badge" id="simBadge" style="display:none"></span>
-    </div>
-    <div class="nav-controls">
-      <button class="nav-btn" id="prevBtn" title="Previous month">&#8592;</button>
-      <button class="nav-btn" id="nextBtn" title="Next month">&#8594;</button>
-    </div>
+  <h1 id="pageTitle">Month</h1>
+  <div class="badge-group">
+    <span class="month-badge" id="pageBadge"></span>
+  </div>
+  <div class="nav-controls">
+    <button class="nav-btn" id="prevBtn" title="Previous month">&#8592;</button>
+    <button class="nav-btn" id="nextBtn" title="Next month">&#8594;</button>
   </div>
 </div>
 
@@ -472,7 +460,6 @@
   <table class="month-cal" id="monthCal"></table>
 </div>
 
-<div class="stats-bar" id="statsBar" style="display:none"></div>
 
 <div class="annual-view" id="annualView"></div>
 
@@ -483,7 +470,6 @@
   ];
 
   let allData = {};
-  let simData = {};
   let curYear, curMonth;
 
   function fmtHold(totalSecs) {
@@ -680,14 +666,14 @@
     const hasTrades = Object.keys(monthData.days).length > 0;
 
     document.title = `${MONTHS[curMonth - 1]} ${curYear}`;
-    document.getElementById('pageTitle').textContent = `${MONTHS[curMonth - 1]}, ${curYear}`;
     document.getElementById('breadcrumbMonth').textContent = `${MONTHS[curMonth - 1]} ${curYear}`;
+    document.getElementById('pageTitle').textContent = `${MONTHS[curMonth - 1]} ${curYear}`;
 
     const colorClass = !hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg';
 
     const badge = document.getElementById('pageBadge');
     badge.className = 'month-badge ' + colorClass;
-    badge.innerHTML = `<span class="badge-label">REAL</span> ${fmtBadge(total)}`;
+    badge.innerHTML = fmtBadge(total);
 
     const monthStats = computeMonthStats(monthData.days);
 
@@ -734,8 +720,6 @@
       let weekPnl        = 0;
       let weekTrades     = 0;
       let weekRoundtrips = [];
-      let weekSimPnl     = 0;
-      let weekSimCount   = 0;
 
       for (let col = 0; col < 7; col++) {
         const cellIndex = row * 7 + col;
@@ -764,11 +748,6 @@
             weekPnl    += dayData.pnl;
             weekTrades += dayData.trades;
             weekRoundtrips.push(...(dayData.roundtrips || []));
-            const simDay     = simData[`${curYear}_${curMonth}_${dayNum}`] || {};
-            const simEntries = Object.values(simDay);
-            const simPnlDay  = Math.round(simEntries.reduce((s, v) => s + v, 0) * 100) / 100;
-            weekSimPnl   += simPnlDay;
-            weekSimCount += simEntries.length;
 
             const inner = document.createElement('div');
             inner.className = 'cell-inner';
@@ -808,20 +787,9 @@
             realEl.appendChild(pnlEl);
             realEl.appendChild(trdEl);
 
-            const simZoneEl = document.createElement('div');
-            simZoneEl.className = 'cell-sim-zone';
-            if (simEntries.length > 0) {
-              const accEl = document.createElement('div');
-              accEl.className = 'cell-stat-primary ' + (simPnlDay >= 0 ? 'cell-stat-green' : 'cell-stat-red');
-              accEl.style.cssText = 'border-radius:4px;padding:2px 6px';
-              accEl.textContent = fmtBadge(simPnlDay);
-              simZoneEl.appendChild(accEl);
-            }
-
             const bodyEl = document.createElement('div');
             bodyEl.className = 'cell-body';
             bodyEl.appendChild(realEl);
-            bodyEl.appendChild(simZoneEl);
 
             inner.appendChild(topRow);
             inner.appendChild(bodyEl);
@@ -853,22 +821,6 @@
         inner.appendChild(pnlEl);
         inner.appendChild(trdEl);
 
-        if (weekSimCount > 0) {
-          const wDivider = document.createElement('hr');
-          wDivider.className = 'cell-divider';
-          inner.appendChild(wDivider);
-
-          const wStatEl = document.createElement('div');
-          wStatEl.className = 'cell-stat ' + (weekSimPnl >= 0 ? 'cell-stat-green' : 'cell-stat-red');
-
-          const wAccEl = document.createElement('div');
-          wAccEl.className = 'cell-stat-primary';
-          wAccEl.textContent = fmtBadge(Math.round(weekSimPnl * 100) / 100);
-
-          wStatEl.appendChild(wAccEl);
-          inner.appendChild(wStatEl);
-        }
-
         totalTd.appendChild(inner);
       }
       tr.appendChild(totalTd);
@@ -876,24 +828,6 @@
     }
 
     cal.appendChild(tbody);
-
-    /* Sim badge */
-    const monthSimTotal = Object.keys(monthData.days).reduce((sum, d) => {
-      const entries = Object.values(simData[`${curYear}_${curMonth}_${d}`] || {});
-      return sum + entries.reduce((s, v) => s + v, 0);
-    }, 0);
-    const simBadge = document.getElementById('simBadge');
-    if (monthSimTotal !== 0) {
-      simBadge.style.display = '';
-      simBadge.className = 'month-badge ' + (monthSimTotal >= 0 ? 'badge-pos' : 'badge-neg');
-      simBadge.innerHTML = `<span class="badge-label">SIM</span> ${fmtBadge(Math.round(monthSimTotal * 100) / 100)}`;
-    } else {
-      simBadge.style.display = 'none';
-    }
-
-    /* Stats bar */
-    const allRoundtrips = Object.values(monthData.days).flatMap(d => d?.roundtrips || []);
-    renderStats(allRoundtrips.length ? computeStats(allRoundtrips) : { trades: 0 });
 
     buildAnnualView();
   }
@@ -1011,10 +945,7 @@
 
   async function init() {
     try {
-      const [idx] = await Promise.all([
-        fetch('calendar/calendar_index.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
-        fetch('sim_data.json?_=' + Date.now()).then(r => r.ok ? r.json() : {}).then(d => { simData = d; }).catch(() => {}),
-      ]);
+      const idx = await fetch('calendar/calendar_index.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
       const files = await Promise.all(idx.years.map(yr =>
         fetch(`calendar/calendar_data_${yr}.json`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       ));
