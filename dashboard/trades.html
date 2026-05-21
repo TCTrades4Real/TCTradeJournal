@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trades — TC Trade Journal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <script src="auth.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0f0f;
+      color: #e0e0e0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      min-height: 100vh;
+      padding: 16px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    @media (min-width: 640px)  { body { padding: 24px; } }
+    @media (min-width: 1024px) { body { padding: 28px 32px; } }
+
+    /* ── Auth ── */
+    .auth-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
+    }
+    .auth-card {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 10px;
+      padding: 40px; text-align: center; width: 300px;
+    }
+    .auth-title { font-size: 18px; color: #fff; margin-bottom: 6px; }
+    .auth-sub   { color: #9ca3af; font-size: 13px; margin-bottom: 24px; }
+    #authError  { color: #f87171; font-size: 12px; margin-top: 12px; min-height: 16px; }
+
+    /* ── Breadcrumb ── */
+    .breadcrumb { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; font-size: 13px; color: #9ca3af; }
+    .breadcrumb a { color: #9ca3af; text-decoration: none; transition: color 0.15s; }
+    .breadcrumb a:hover { color: #e0e0e0; }
+    .breadcrumb-sep { opacity: 0.4; }
+
+    /* ── Page header ── */
+    .header { display: flex; align-items: center; position: relative; gap: 12px; margin-bottom: 24px; }
+    .header h1 { flex: 1; font-size: 30px; font-weight: 400; color: #ffffff; }
+
+    /* ── Loading / spinner ── */
+    #statusMsg { color: #6b7280; font-size: 14px; }
+
+    /* ── Date Picker ── */
+    .picker-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+    .picker-wrap { position: relative; display: inline-block; }
+
+    .quick-bar {
+      display: inline-flex;
+      background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; overflow: hidden;
+    }
+    .quick-btn {
+      background: transparent; border: none; border-right: 1px solid #2a2a2a;
+      color: #6b7280; font-size: 13px; font-family: inherit; font-weight: 500;
+      padding: 8px 16px; cursor: pointer; white-space: nowrap;
+      transition: background 0.15s, color 0.15s;
+    }
+    .quick-btn:last-child { border-right: none; }
+    .quick-btn:hover { background: #242424; color: #e0e0e0; }
+    .quick-btn.active { background: #2a2a2a; color: #ffffff; }
+
+    .picker-trigger {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
+      color: #9ca3af; font-size: 13.5px; font-family: inherit;
+      padding: 8px 16px; cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .picker-trigger:hover { border-color: #3a3a3a; color: #e0e0e0; }
+    .picker-trigger.has-range { color: #ffffff; }
+
+    .picker-dropdown {
+      position: absolute; top: calc(100% + 6px); left: 0;
+      background: #141414; border: 1px solid #2a2a2a; border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+      display: flex; z-index: 1000;
+    }
+    .picker-presets {
+      width: 170px; flex-shrink: 0;
+      border-right: 1px solid #1e1e1e;
+      padding: 8px 0;
+    }
+    .preset-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 14px; font-size: 13px; color: #9ca3af;
+      cursor: pointer; transition: background 0.12s, color 0.12s;
+      user-select: none;
+    }
+    .preset-item:hover { background: #1e1e1e; color: #e0e0e0; }
+    .preset-item.active { color: #ffffff; }
+    .preset-check { color: #22c55e; }
+
+    .picker-right { flex: 1; display: flex; flex-direction: column; min-width: 480px; }
+    .picker-cals { display: flex; gap: 24px; padding: 16px 20px; border-bottom: 1px solid #1e1e1e; }
+    .cal { flex: 1; }
+    .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .cal-nav {
+      background: none; border: none; color: #6b7280; cursor: pointer;
+      font-size: 16px; padding: 2px 6px; border-radius: 4px; line-height: 1;
+      transition: color 0.12s, background 0.12s;
+    }
+    .cal-nav:hover { color: #e0e0e0; background: #1e1e1e; }
+    .cal-month-label { font-size: 13.5px; font-weight: 600; color: #ffffff; cursor: pointer; transition: color 0.12s; }
+    .cal-month-label:hover { color: #22c55e; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+    .cal-dow { text-align: center; font-size: 11px; color: #4b5563; padding: 4px 0; font-weight: 500; }
+    .cal-day {
+      text-align: center; font-size: 13px; color: #9ca3af;
+      padding: 5px 0; cursor: pointer; border-radius: 4px;
+      transition: background 0.1s, color 0.1s; user-select: none;
+    }
+    .cal-day:hover:not(.other-month) { background: #2a2a2a; color: #ffffff; }
+    .cal-day.other-month { color: #252525; cursor: default; pointer-events: none; }
+    .cal-day.is-today { color: #ffffff; font-weight: 600; }
+    .cal-day.in-range { background: rgba(34,197,94,0.12); color: #bbf7d0; border-radius: 0; }
+    .cal-day.range-start { background: #22c55e !important; color: #000 !important; font-weight: 700; border-radius: 4px 0 0 4px; }
+    .cal-day.range-end   { background: #22c55e !important; color: #000 !important; font-weight: 700; border-radius: 0 4px 4px 0; }
+    .cal-day.range-start.range-end { border-radius: 4px; }
+    .year-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px 0; }
+    .year-cell {
+      text-align: center; padding: 9px 4px; border-radius: 6px;
+      font-size: 13.5px; color: #9ca3af; cursor: pointer;
+      transition: background 0.1s, color 0.1s; user-select: none;
+    }
+    .year-cell:hover { background: #2a2a2a; color: #ffffff; }
+    .year-cell.cur-year { color: #ffffff; font-weight: 600; }
+    .year-cell.sel-year { background: #22c55e !important; color: #000 !important; font-weight: 700; }
+    .picker-footer { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; }
+    .picker-footer-label { font-size: 13px; color: #6b7280; }
+    .picker-actions { display: flex; gap: 8px; }
+    .picker-cancel {
+      background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px;
+      color: #9ca3af; font-size: 13px; font-family: inherit;
+      padding: 6px 14px; cursor: pointer; transition: background 0.12s, color 0.12s;
+    }
+    .picker-cancel:hover { background: #222; color: #e0e0e0; }
+    .picker-apply {
+      background: #22c55e; border: none; border-radius: 6px;
+      color: #000; font-size: 13px; font-weight: 600; font-family: inherit;
+      padding: 6px 14px; cursor: pointer; transition: background 0.12s;
+    }
+    .picker-apply:hover { background: #16a34a; }
+
+    /* ── Symbol dropdown ── */
+    .sym-filter-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px; border-bottom: 1px solid #1a1a1a; flex-wrap: wrap;
+    }
+    .sym-label { font-size: 13px; color: #6b7280; white-space: nowrap; }
+    .sym-dropdown-wrap { position: relative; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .sym-search {
+      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
+      color: #ffffff; font-size: 13px; padding: 4px 10px; width: 160px;
+      font-family: inherit; outline: none; transition: border-color 0.15s;
+    }
+    .sym-search:focus { border-color: #555; }
+    .sym-list {
+      position: absolute; top: calc(100% + 4px); left: 0;
+      background: #141414; border: 1px solid #2a2a2a; border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      min-width: 180px; max-height: 280px; overflow-y: auto;
+      z-index: 500; display: none;
+    }
+    .sym-list.open { display: block; }
+    .sym-option {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 12px; font-size: 13px; color: #9ca3af;
+      cursor: pointer; transition: background 0.1s, color 0.1s;
+      user-select: none;
+    }
+    .sym-option:hover { background: #1e1e1e; color: #ffffff; }
+    .sym-option.selected { color: #22c55e; }
+    .sym-check { color: #22c55e; font-size: 11px; width: 12px; flex-shrink: 0; }
+    .sym-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+    .sym-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 4px; padding: 2px 7px; font-size: 12px; color: #22c55e;
+      font-weight: 600;
+    }
+    .sym-chip-x {
+      background: none; border: none; color: #22c55e; cursor: pointer;
+      font-size: 13px; line-height: 1; padding: 0; opacity: 0.7;
+      transition: opacity 0.1s;
+    }
+    .sym-chip-x:hover { opacity: 1; }
+    .sym-clear {
+      background: none; border: none; color: #4b5563; font-size: 12px;
+      cursor: pointer; padding: 3px 6px; font-family: inherit; transition: color 0.15s;
+    }
+    .sym-clear:hover { color: #9ca3af; }
+
+    .vol-filter-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px; border-bottom: 1px solid #1a1a1a; flex-wrap: wrap;
+    }
+    .vol-label { font-size: 13px; color: #6b7280; white-space: nowrap; }
+    .vol-input {
+      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
+      color: #ffffff; font-size: 13px; padding: 4px 10px; width: 96px;
+      font-family: inherit; outline: none; transition: border-color 0.15s;
+    }
+    .vol-input:focus { border-color: #555; }
+    .vol-input.active { border-color: #22c55e; color: #22c55e; }
+    .vol-sep { color: #3a3a3a; font-size: 13px; }
+    .vol-preset {
+      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
+      color: #6b7280; font-size: 12px; padding: 3px 8px; cursor: pointer;
+      font-family: inherit; transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .vol-preset:hover { background: #252525; color: #e0e0e0; border-color: #3a3a3a; }
+    .vol-preset.active { border-color: #22c55e; color: #22c55e; }
+    .vol-clear {
+      background: none; border: none; color: #4b5563; font-size: 12px;
+      cursor: pointer; padding: 3px 6px; font-family: inherit; transition: color 0.15s;
+    }
+    .vol-clear:hover { color: #9ca3af; }
+
+    /* ── Outlier / threshold filter row ── */
+    .outlier-row {
+      display: flex; align-items: center; gap: 16px;
+      padding: 8px 16px; border-bottom: 1px solid #1a1a1a; flex-wrap: wrap;
+    }
+    .outlier-group { display: flex; align-items: center; gap: 6px; }
+    .outlier-label { font-size: 13px; color: #6b7280; white-space: nowrap; }
+    .outlier-input {
+      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
+      color: #ffffff; font-size: 13px; padding: 4px 10px; width: 110px;
+      font-family: inherit; outline: none; transition: border-color 0.15s;
+    }
+    .outlier-input:focus { border-color: #555; }
+    .outlier-input.active { border-color: #22c55e; color: #22c55e; }
+    .outlier-status { font-size: 12px; color: #6b7280; }
+
+    /* ── Table wrap ── */
+    .table-wrap { background: #141414; border: 1px solid #222; border-radius: 10px; overflow: hidden; }
+    .stats-section-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 14px 20px; border-bottom: 1px solid #222;
+      font-size: 17px; font-weight: 600; color: #ffffff;
+    }
+    .table-meta { font-size: 13px; color: #6b7280; margin-left: auto; font-weight: 400; }
+
+    /* ── Scenarios-style table (matching monte carlo) ── */
+    .trades-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .trades-table th {
+      padding: 14px 18px;
+      text-align: left;
+      border-bottom: 1px solid #222;
+      background: #0f0f0f;
+      font-size: 0.85rem;
+      font-family: 'Inter', sans-serif;
+      color: #6b7280;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .trades-table th:hover { color: #9ca3af; }
+    .trades-table th.sorted { color: #e0e0e0; }
+    .trades-table th .sort-arrow { margin-left: 4px; opacity: 0.5; }
+    .trades-table th.sorted .sort-arrow { opacity: 1; }
+    .trades-table td {
+      padding: 14px 18px;
+      font-size: 14px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 400;
+      color: #e0e0e0;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .trades-table tbody tr {
+      transition: background 0.15s;
+      cursor: pointer;
+    }
+    .trades-table tbody tr:hover td { background: #1a1a1a; }
+    .trades-table tbody tr:last-child td { border-bottom: none; }
+    .sym-cell { font-weight: 600; color: #ffffff; }
+    .pnl-pos { color: #22c55e; font-weight: 600; }
+    .pnl-neg { color: rgb(220, 38, 38); font-weight: 600; }
+
+    /* ── Pagination ── */
+    .pagination-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 18px; border-top: 1px solid #222; gap: 12px; flex-wrap: wrap;
+    }
+    .page-size-wrap { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #6b7280; }
+    .page-size-select {
+      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
+      color: #9ca3af; font-size: 13px; font-family: inherit; padding: 4px 28px 4px 10px;
+      cursor: pointer; outline: none; appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center;
+      transition: border-color 0.15s;
+    }
+    .page-size-select:hover { border-color: #3a3a3a; color: #e0e0e0; }
+
+    .page-nav { display: flex; align-items: center; gap: 4px; }
+    .page-btn {
+      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
+      color: #9ca3af; font-size: 13px; font-family: inherit; padding: 4px 10px;
+      cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+      min-width: 32px; text-align: center;
+    }
+    .page-btn:hover:not(:disabled) { background: #252525; color: #ffffff; border-color: #3a3a3a; }
+    .page-btn.active { background: #22c55e; color: #000; border-color: #22c55e; font-weight: 600; }
+    .page-btn:disabled { opacity: 0.3; cursor: default; }
+    .page-info { font-size: 13px; color: #6b7280; }
+
+    /* ── Empty state ── */
+    .empty-state { padding: 60px 20px; text-align: center; color: #4b5563; font-size: 14px; }
+  </style>
+</head>
+<body>
+<script src="nav.js"></script>
+
+<div id="authOverlay" class="auth-overlay" style="display:none">
+  <div class="auth-card">
+    <div class="auth-title">TC Trade Journal</div>
+    <div class="auth-sub">Sign in to continue</div>
+    <div id="g_id_onload"
+      data-client_id="413954462899-jcup1smhjuh6londv3tcsmil17cog1vv.apps.googleusercontent.com"
+      data-callback="_verify"
+      data-auto_prompt="false"></div>
+    <div class="g_id_signin" data-type="standard" data-theme="filled_black"
+      data-size="large" data-shape="rectangular"></div>
+    <div id="authError"></div>
+  </div>
+</div>
+
+<div class="breadcrumb">
+  <a href="index.html">Dashboard</a>
+  <span class="breadcrumb-sep">›</span>
+  <span>Trades</span>
+</div>
+
+<div class="header">
+  <h1>Trades</h1>
+</div>
+
+<div id="statusMsg"></div>
+
+<!-- ══ Date Picker ══ -->
+<div class="picker-controls">
+  <div class="picker-wrap" id="pickerWrap">
+    <button class="picker-trigger" id="pickerTrigger">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span id="pickerLabel">From – To</span>
+    </button>
+    <div class="picker-dropdown" id="pickerDropdown" style="display:none">
+      <div class="picker-presets" id="pickerPresets"></div>
+      <div class="picker-right">
+        <div class="picker-cals">
+          <div class="cal" id="cal1"></div>
+          <div class="cal" id="cal2"></div>
+        </div>
+        <div class="picker-footer">
+          <span class="picker-footer-label" id="pickerFooterLabel">—</span>
+          <div class="picker-actions">
+            <button class="picker-cancel" id="pickerCancel">Cancel</button>
+            <button class="picker-apply" id="pickerApply">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="quick-bar" id="quickBar">
+    <button class="quick-btn" data-days="30">30 Days</button>
+    <button class="quick-btn" data-days="60">60 Days</button>
+    <button class="quick-btn" data-days="90">90 Days</button>
+  </div>
+</div>
+
+<!-- ══ Trades Table ══ -->
+<div class="table-wrap">
+  <!-- Symbol filter -->
+  <div class="sym-filter-row">
+    <span class="sym-label">Symbol:</span>
+    <div class="sym-dropdown-wrap" id="symDropdownWrap">
+      <input type="text" class="sym-search" id="symSearch" placeholder="Search symbols…" autocomplete="off">
+      <div class="sym-list" id="symList"></div>
+      <div class="sym-chips" id="symChips"></div>
+    </div>
+    <button class="sym-clear" id="symClear" style="display:none">Clear all</button>
+  </div>
+
+  <!-- Volume filter -->
+  <div class="vol-filter-row">
+    <span class="vol-label">Volume:</span>
+    <input type="number" class="vol-input" id="volMin" placeholder="Min" min="0" step="1">
+    <span class="vol-sep">–</span>
+    <input type="number" class="vol-input" id="volMax" placeholder="Max" min="0" step="1">
+    <button class="vol-preset" data-vol-min="0"    data-vol-max="99">  &lt; 100</button>
+    <button class="vol-preset" data-vol-min="100"  data-vol-max="499"> 100–499</button>
+    <button class="vol-preset" data-vol-min="500"  data-vol-max="999"> 500–999</button>
+    <button class="vol-preset" data-vol-min="1000" data-vol-max="">   1000+</button>
+    <button class="vol-clear" id="volClear">Clear</button>
+  </div>
+
+  <!-- Outlier / threshold filters -->
+  <div class="outlier-row">
+    <div class="outlier-group">
+      <span class="outlier-label">Exclude wins above ($)</span>
+      <input type="number" class="outlier-input" id="outlierMaxWin" min="0" step="1" placeholder="No cap">
+    </div>
+    <div class="outlier-group">
+      <span class="outlier-label">Exclude losses beyond ($)</span>
+      <input type="number" class="outlier-input" id="outlierMaxLoss" min="0" step="1" placeholder="No cap">
+    </div>
+  </div>
+  <div class="outlier-row">
+    <div class="outlier-group">
+      <span class="outlier-label">Show only P&amp;L above ($)</span>
+      <input type="number" class="outlier-input" id="threshMin" step="0.01" placeholder="—">
+    </div>
+    <div class="outlier-group">
+      <span class="outlier-label">Show only P&amp;L below ($)</span>
+      <input type="number" class="outlier-input" id="threshMax" step="0.01" placeholder="—">
+    </div>
+    <span class="outlier-status" id="outlierStatus"></span>
+  </div>
+
+  <!-- Table header -->
+  <div class="stats-section-header">
+    Trade List
+    <span class="table-meta" id="tableMeta"></span>
+  </div>
+
+  <!-- Table -->
+  <div style="overflow-x:auto">
+    <table class="trades-table">
+      <thead>
+        <tr>
+          <th data-col="date">Date <span class="sort-arrow">↕</span></th>
+          <th data-col="entry_time">Open Time <span class="sort-arrow">↕</span></th>
+          <th data-col="symbol">Symbol <span class="sort-arrow">↕</span></th>
+          <th data-col="qty">Volume <span class="sort-arrow">↕</span></th>
+          <th data-col="entry_price">Entry Price <span class="sort-arrow">↕</span></th>
+          <th data-col="exit_price">Exit Price <span class="sort-arrow">↕</span></th>
+          <th data-col="pnl">P&amp;L <span class="sort-arrow">↕</span></th>
+        </tr>
+      </thead>
+      <tbody id="tradesBody">
+        <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination-row">
+    <div class="page-size-wrap">
+      <span>Rows per page:</span>
+      <select class="page-size-select" id="pageSizeSelect">
+        <option value="10" selected>10</option>
+        <option value="20">20</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="250">250</option>
+      </select>
+    </div>
+    <span class="page-info" id="pageInfo"></span>
+    <div class="page-nav" id="pageNav"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ─── State ─── */
+let rawRoundtrips = [];
+let rawDayStats   = [];
+let filteredTrades = [];
+let sortCol = 'date';
+let sortDir = 'desc';
+let currentPage = 1;
+let pageSize = 10;
+
+function setStatus(msg) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.style.marginBottom = msg ? '16px' : '0';
+}
+
+/* ─── Data loading ─── */
+async function loadAllData() {
+  setStatus('Loading…');
+  const idx = await fetch('calendar/calendar_index.json').then(r => r.json());
+  rawRoundtrips = [];
+  rawDayStats   = [];
+
+  for (const year of idx.years) {
+    let raw;
+    try { raw = await fetch(`calendar/calendar_data_${year}.json`).then(r => r.json()); }
+    catch { continue; }
+    const months = raw[String(year)] ?? raw;
+    for (const [month, mdata] of Object.entries(months)) {
+      if (!mdata?.days) continue;
+      for (const [day, ddata] of Object.entries(mdata.days)) {
+        if (!ddata.roundtrips?.length) continue;
+        const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        rawDayStats.push({ date: dateStr, pnl: ddata.pnl ?? 0 });
+        for (const rt of ddata.roundtrips) {
+          rawRoundtrips.push({ date: dateStr, ...rt });
+        }
+      }
+    }
+  }
+
+  setStatus('');
+  initSymbolFilter();
+  _updateTriggerLabel();
+  applyFilters();
+}
+
+/* ─── Symbol filter ─── */
+let selectedSyms = new Set();  // empty = all
+let allSyms = [];
+
+function initSymbolFilter() {
+  allSyms = [...new Set(rawRoundtrips.map(r => r.symbol))].sort();
+}
+
+function renderSymList(query) {
+  const list = document.getElementById('symList');
+  const q = query.trim().toUpperCase();
+  const matches = q ? allSyms.filter(s => s.includes(q)) : allSyms;
+  list.innerHTML = '';
+  for (const s of matches) {
+    const opt = document.createElement('div');
+    const sel = selectedSyms.has(s);
+    opt.className = 'sym-option' + (sel ? ' selected' : '');
+    opt.innerHTML = `<span class="sym-check">${sel ? '✓' : ''}</span>${s}`;
+    opt.addEventListener('mousedown', e => { e.preventDefault(); toggleSym(s); });
+    list.appendChild(opt);
+  }
+  if (!matches.length) {
+    const empty = document.createElement('div');
+    empty.className = 'sym-option'; empty.style.color = '#4b5563'; empty.style.cursor = 'default';
+    empty.textContent = 'No matches';
+    list.appendChild(empty);
+  }
+}
+
+function renderChips() {
+  const chips = document.getElementById('symChips');
+  const clearBtn = document.getElementById('symClear');
+  chips.innerHTML = '';
+  for (const s of [...selectedSyms].sort()) {
+    const chip = document.createElement('span');
+    chip.className = 'sym-chip';
+    chip.innerHTML = `${s}<button class="sym-chip-x" data-sym="${s}" title="Remove">×</button>`;
+    chips.appendChild(chip);
+  }
+  clearBtn.style.display = selectedSyms.size > 1 ? '' : 'none';
+}
+
+function toggleSym(sym) {
+  if (selectedSyms.has(sym)) selectedSyms.delete(sym);
+  else selectedSyms.add(sym);
+  renderChips();
+  renderSymList(document.getElementById('symSearch').value);
+  applyFilters();
+}
+
+document.getElementById('symChips').addEventListener('click', e => {
+  const x = e.target.closest('.sym-chip-x');
+  if (!x) return;
+  selectedSyms.delete(x.dataset.sym);
+  renderChips();
+  renderSymList(document.getElementById('symSearch').value);
+  applyFilters();
+});
+
+const symSearch = document.getElementById('symSearch');
+symSearch.addEventListener('focus', () => {
+  renderSymList(symSearch.value);
+  document.getElementById('symList').classList.add('open');
+});
+symSearch.addEventListener('input', () => {
+  renderSymList(symSearch.value);
+  document.getElementById('symList').classList.add('open');
+});
+symSearch.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { document.getElementById('symList').classList.remove('open'); symSearch.blur(); }
+  if (e.key === 'Enter') {
+    const q = symSearch.value.trim().toUpperCase();
+    const match = allSyms.find(s => s === q) ?? allSyms.find(s => s.startsWith(q)) ?? null;
+    if (match) { toggleSym(match); symSearch.value = ''; renderSymList(''); }
+  }
+});
+document.getElementById('symClear').addEventListener('click', () => {
+  selectedSyms.clear(); renderChips();
+  renderSymList(symSearch.value); applyFilters();
+});
+document.addEventListener('click', e => {
+  if (!document.getElementById('symDropdownWrap').contains(e.target) &&
+      !document.getElementById('symSearch').contains(e.target))
+    document.getElementById('symList').classList.remove('open');
+});
+
+/* ─── Volume filter ─── */
+let volMin = null, volMax = null;
+
+document.getElementById('volMin').addEventListener('input', () => {
+  const v = document.getElementById('volMin').value;
+  volMin = v !== '' ? parseInt(v) : null;
+  document.getElementById('volMin').classList.toggle('active', volMin !== null);
+  document.querySelectorAll('.vol-preset').forEach(b => b.classList.remove('active'));
+  applyFilters();
+});
+document.getElementById('volMax').addEventListener('input', () => {
+  const v = document.getElementById('volMax').value;
+  volMax = v !== '' ? parseInt(v) : null;
+  document.getElementById('volMax').classList.toggle('active', volMax !== null);
+  document.querySelectorAll('.vol-preset').forEach(b => b.classList.remove('active'));
+  applyFilters();
+});
+document.getElementById('volClear').addEventListener('click', () => {
+  volMin = null; volMax = null;
+  document.getElementById('volMin').value = '';
+  document.getElementById('volMax').value = '';
+  document.getElementById('volMin').classList.remove('active');
+  document.getElementById('volMax').classList.remove('active');
+  document.querySelectorAll('.vol-preset').forEach(b => b.classList.remove('active'));
+  applyFilters();
+});
+document.querySelectorAll('.vol-preset').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mn = btn.dataset.volMin !== '' ? parseInt(btn.dataset.volMin) : null;
+    const mx = btn.dataset.volMax !== '' ? parseInt(btn.dataset.volMax) : null;
+    volMin = mn; volMax = mx;
+    document.getElementById('volMin').value = mn ?? '';
+    document.getElementById('volMax').value = mx ?? '';
+    document.getElementById('volMin').classList.toggle('active', mn !== null);
+    document.getElementById('volMax').classList.toggle('active', mx !== null);
+    document.querySelectorAll('.vol-preset').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilters();
+  });
+});
+
+/* ─── Outlier / threshold filters ─── */
+['outlierMaxWin','outlierMaxLoss','threshMin','threshMax'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    const el = document.getElementById(id);
+    el.classList.toggle('active', el.value !== '');
+    applyFilters();
+  });
+});
+
+/* ─── Apply all filters ─── */
+function applyFilters() {
+  let rts = rawRoundtrips;
+
+  // Date range
+  if (_appliedFrom) rts = rts.filter(r => r.date >= _appliedFrom);
+  if (_appliedTo)   rts = rts.filter(r => r.date <= _appliedTo);
+
+  // Symbol
+  if (selectedSyms.size > 0) rts = rts.filter(r => selectedSyms.has(r.symbol));
+
+  // Volume
+  if (volMin !== null) rts = rts.filter(r => (r.qty ?? 0) >= volMin);
+  if (volMax !== null) rts = rts.filter(r => (r.qty ?? 0) <= volMax);
+
+  // Outlier exclusions
+  const maxWin  = parseFloat(document.getElementById('outlierMaxWin').value);
+  const maxLoss = parseFloat(document.getElementById('outlierMaxLoss').value);
+  const thMin   = parseFloat(document.getElementById('threshMin').value);
+  const thMax   = parseFloat(document.getElementById('threshMax').value);
+
+  const beforeCount = rts.length;
+  if (!isNaN(maxWin))  rts = rts.filter(r => r.pnl <= maxWin);
+  if (!isNaN(maxLoss)) rts = rts.filter(r => r.pnl >= -maxLoss);
+  const excluded = beforeCount - rts.length;
+
+  // Custom threshold
+  if (!isNaN(thMin)) rts = rts.filter(r => r.pnl >= thMin);
+  if (!isNaN(thMax)) rts = rts.filter(r => r.pnl <= thMax);
+
+  document.getElementById('outlierStatus').textContent =
+    excluded > 0 ? `${excluded} trade${excluded !== 1 ? 's' : ''} excluded` : '';
+
+  // Sort
+  rts = [...rts].sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (sortCol === 'date') { const r = va.localeCompare(vb); return sortDir === 'asc' ? r : -r; }
+    if (typeof va === 'string') { va = va ?? ''; vb = vb ?? ''; const r = va.localeCompare(vb); return sortDir === 'asc' ? r : -r; }
+    va = va ?? 0; vb = vb ?? 0;
+    return sortDir === 'asc' ? va - vb : vb - va;
+  });
+
+  filteredTrades = rts;
+  currentPage = 1;
+  renderTable();
+}
+
+/* ─── Table rendering ─── */
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function fmtDate(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return `${MONTHS_SHORT[m-1]} ${d}, ${y}`;
+}
+function fmtPrice(v) {
+  if (v == null) return '—';
+  return '$' + parseFloat(v).toFixed(4).replace(/\.?0+$/, '').replace(/(\.\d{2})\d*$/, (_, g) => {
+    return parseFloat(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  });
+}
+function fmtPriceVal(v) {
+  if (v == null) return '—';
+  return '$' + parseFloat(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+function fmtPnl(v) {
+  const abs = Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (v >= 0 ? '+$' : '-$') + abs;
+}
+
+function renderTable() {
+  const total = filteredTrades.length;
+  const start = (currentPage - 1) * pageSize;
+  const end   = Math.min(start + pageSize, total);
+  const page  = filteredTrades.slice(start, end);
+
+  const tbody = document.getElementById('tradesBody');
+  tbody.innerHTML = '';
+
+  if (!page.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No trades match the current filters.</td></tr>';
+    document.getElementById('tableMeta').textContent = '0 trades';
+    document.getElementById('pageInfo').textContent = '';
+    document.getElementById('pageNav').innerHTML = '';
+    return;
+  }
+
+  for (const t of page) {
+    const tr = document.createElement('tr');
+    const pnlCls = t.pnl > 0 ? 'pnl-pos' : t.pnl < 0 ? 'pnl-neg' : '';
+    tr.innerHTML = `
+      <td>${fmtDate(t.date)}</td>
+      <td>${t.entry_time ?? '—'}</td>
+      <td class="sym-cell">${t.symbol ?? '—'}</td>
+      <td>${t.qty != null ? t.qty.toLocaleString() : '—'}</td>
+      <td>${fmtPriceVal(t.entry_price)}</td>
+      <td>${fmtPriceVal(t.exit_price)}</td>
+      <td class="${pnlCls}">${fmtPnl(t.pnl)}</td>
+    `;
+    tr.addEventListener('click', () => openCandlestick(t));
+    tbody.appendChild(tr);
+  }
+
+  document.getElementById('tableMeta').textContent = `${total.toLocaleString()} trade${total !== 1 ? 's' : ''}`;
+  document.getElementById('pageInfo').textContent = `${start + 1}–${end} of ${total.toLocaleString()}`;
+  renderPagination(total);
+}
+
+function openCandlestick(t) {
+  const [y, m, d] = t.date.split('-').map(Number);
+  window.location.href = `candlestick.html?year=${y}&month=${m}&day=${d}&symbol=${encodeURIComponent(t.symbol)}`;
+}
+
+/* ─── Pagination ─── */
+function renderPagination(total) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const nav = document.getElementById('pageNav');
+  nav.innerHTML = '';
+
+  const btn = (label, page, disabled = false, active = false) => {
+    const b = document.createElement('button');
+    b.className = 'page-btn' + (active ? ' active' : '');
+    b.textContent = label;
+    b.disabled = disabled;
+    if (!disabled && !active) b.addEventListener('click', () => { currentPage = page; renderTable(); });
+    nav.appendChild(b);
+  };
+
+  btn('‹', currentPage - 1, currentPage <= 1);
+
+  const MAX_BTNS = 7;
+  let start = Math.max(1, currentPage - Math.floor(MAX_BTNS / 2));
+  let end   = Math.min(totalPages, start + MAX_BTNS - 1);
+  if (end - start < MAX_BTNS - 1) start = Math.max(1, end - MAX_BTNS + 1);
+
+  if (start > 1)          { btn('1', 1); if (start > 2) btn('…', null, true); }
+  for (let p = start; p <= end; p++) btn(String(p), p, false, p === currentPage);
+  if (end < totalPages)   { if (end < totalPages - 1) btn('…', null, true); btn(String(totalPages), totalPages); }
+
+  btn('›', currentPage + 1, currentPage >= totalPages);
+}
+
+/* ─── Sort ─── */
+document.querySelectorAll('.trades-table th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (sortCol === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortCol = col; sortDir = col === 'date' ? 'desc' : 'asc'; }
+    document.querySelectorAll('.trades-table th[data-col]').forEach(h => {
+      const active = h.dataset.col === sortCol;
+      h.classList.toggle('sorted', active);
+      const arrow = h.querySelector('.sort-arrow');
+      if (arrow) arrow.textContent = active ? (sortDir === 'asc' ? '↑' : '↓') : '↕';
+    });
+    applyFilters();
+  });
+});
+
+/* ─── Page size ─── */
+document.getElementById('pageSizeSelect').addEventListener('change', e => {
+  pageSize = parseInt(e.target.value);
+  currentPage = 1;
+  renderTable();
+});
+
+/* ═══════════════════════════════════════════
+   Date Picker (mirrored from reports.html)
+═══════════════════════════════════════════ */
+const PRESETS = [
+  { key: 'today',      label: 'Today' },
+  { key: 'yesterday',  label: 'Yesterday' },
+  { key: 'last-7',     label: 'Last 7 Days' },
+  { key: 'last-30',    label: 'Last 30 Days' },
+  { key: 'this-month', label: 'This Month' },
+  { key: 'last-month', label: 'Last Month' },
+  { key: 'last-12mo',  label: 'Last 12 Months' },
+  { key: 'ytd',        label: 'YTD' },
+  { key: 'last-year',  label: 'Last Year' },
+  { key: 'all-time',   label: 'All Time' },
+  { key: 'custom',     label: 'Custom Range' },
+];
+
+let _yearPickMode = false;
+let _pOpen        = false;
+let _pendFrom     = null;
+let _pendTo       = null;
+let _appliedFrom  = null;
+let _appliedTo    = null;
+let _clickStage   = 0;
+let _activePreset = 'all-time';
+let _calBase      = (() => { const d = new Date(); d.setDate(1); return d; })();
+
+function _getPresetRange(key) {
+  const tradingDays = [...new Set(rawDayStats.map(d => d.date))].sort();
+  const latestTrade = tradingDays[tradingDays.length - 1] ?? '';
+  const prevTrade   = tradingDays[tradingDays.length - 2] ?? latestTrade;
+  const now = new Date();
+  const y = now.getFullYear(), mo = now.getMonth(), d = now.getDate();
+  const fmt = dt => dt.toISOString().slice(0, 10);
+  const ymd = (yr, m, dy) => fmt(new Date(yr, m, dy));
+  switch (key) {
+    case 'today':      return { from: latestTrade, to: latestTrade };
+    case 'yesterday':  return { from: prevTrade,   to: prevTrade };
+    case 'last-7':     return { from: fmt(new Date(y, mo, d - 6)),  to: ymd(y, mo, d) };
+    case 'last-30':    return { from: fmt(new Date(y, mo, d - 29)), to: ymd(y, mo, d) };
+    case 'this-month': return { from: ymd(y, mo, 1), to: ymd(y, mo, d) };
+    case 'last-month': { const lm = mo === 0 ? 11 : mo - 1, ly = mo === 0 ? y - 1 : y; return { from: ymd(ly, lm, 1), to: ymd(ly, lm, new Date(y, mo, 0).getDate()) }; }
+    case 'last-12mo':  { const f = new Date(y, mo, d); f.setFullYear(y - 1); return { from: fmt(f), to: ymd(y, mo, d) }; }
+    case 'ytd':        return { from: ymd(y, 0, 1), to: ymd(y, mo, d) };
+    case 'last-year':  return { from: ymd(y - 1, 0, 1), to: ymd(y - 1, 11, 31) };
+    default:           return { from: '', to: '' };
+  }
+}
+
+function applyPreset(key) {
+  _activePreset = key;
+  const r = _getPresetRange(key);
+  _appliedFrom = r.from || null;
+  _appliedTo   = r.to   || null;
+  _pendFrom = _appliedFrom;
+  _pendTo   = _appliedTo;
+  _updateTriggerLabel();
+  applyFilters();
+}
+
+function _fmtShort(s) {
+  if (!s) return '—';
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function _fmtRange(from, to) {
+  if (!from && !to) return '—';
+  if (!to || from === to) return _fmtShort(from);
+  return `${_fmtShort(from)} – ${_fmtShort(to)}`;
+}
+
+function _renderPresets() {
+  const el = document.getElementById('pickerPresets');
+  el.innerHTML = '';
+  for (const p of PRESETS) {
+    const div = document.createElement('div');
+    const isActive = p.key === _activePreset;
+    div.className = 'preset-item' + (isActive ? ' active' : '');
+    div.innerHTML = `${p.label}${isActive ? '<span class="preset-check">✓</span>' : ''}`;
+    div.addEventListener('click', () => {
+      _activePreset = p.key;
+      if (p.key !== 'custom') {
+        const r = _getPresetRange(p.key);
+        _pendFrom = r.from || null; _pendTo = r.to || null; _clickStage = 0;
+        if (_pendFrom) { const [cy, cm] = _pendFrom.split('-').map(Number); _calBase = new Date(cy, cm - 1, 1); }
+      } else {
+        _pendFrom = null; _pendTo = null; _clickStage = 0;
+      }
+      _renderPresets(); _renderCals(); _updateFooter();
+    });
+    el.appendChild(div);
+  }
+}
+
+const _DOW    = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+const _MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function _renderCalMonth(container, year, month, showPrev, showNext) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  container.innerHTML = '';
+  const hdr = document.createElement('div');
+  hdr.className = 'cal-header';
+  const pBtn = document.createElement('button');
+  pBtn.className = 'cal-nav'; pBtn.textContent = '‹';
+  if (!showPrev) pBtn.style.visibility = 'hidden';
+  pBtn.addEventListener('click', () => { _calBase = new Date(_calBase.getFullYear(), _calBase.getMonth() - 1, 1); _renderCals(); });
+  const nBtn = document.createElement('button');
+  nBtn.className = 'cal-nav'; nBtn.textContent = '›';
+  if (!showNext) nBtn.style.visibility = 'hidden';
+  nBtn.addEventListener('click', () => { _calBase = new Date(_calBase.getFullYear(), _calBase.getMonth() + 1, 1); _renderCals(); });
+  const lbl = document.createElement('span');
+  lbl.className = 'cal-month-label';
+  lbl.textContent = `${_MONTHS[month]} ${year}`;
+  lbl.addEventListener('click', () => { _yearPickMode = true; _renderCals(); });
+  hdr.append(pBtn, lbl, nBtn);
+  container.appendChild(hdr);
+
+  const grid = document.createElement('div');
+  grid.className = 'cal-grid';
+  for (const d of _DOW) { const dh = document.createElement('div'); dh.className = 'cal-dow'; dh.textContent = d; grid.appendChild(dh); }
+
+  const firstDow    = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrev  = new Date(year, month, 0).getDate();
+
+  for (let i = firstDow - 1; i >= 0; i--) {
+    const c = document.createElement('div'); c.className = 'cal-day other-month'; c.textContent = daysInPrev - i; grid.appendChild(c);
+  }
+  for (let dy = 1; dy <= daysInMonth; dy++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2,'0')}-${String(dy).padStart(2,'0')}`;
+    const c = document.createElement('div'); c.className = 'cal-day'; c.textContent = dy;
+    if (dateStr === todayStr) c.classList.add('is-today');
+    const lo = _pendFrom && _pendTo ? (_pendFrom <= _pendTo ? _pendFrom : _pendTo) : _pendFrom;
+    const hi = _pendFrom && _pendTo ? (_pendFrom <= _pendTo ? _pendTo : _pendFrom) : _pendFrom;
+    if (lo && hi) {
+      if (dateStr === lo && dateStr === hi) c.classList.add('range-start', 'range-end');
+      else if (dateStr === lo) c.classList.add('range-start');
+      else if (dateStr === hi) c.classList.add('range-end');
+      else if (dateStr > lo && dateStr < hi) c.classList.add('in-range');
+    } else if (lo && dateStr === lo) c.classList.add('range-start', 'range-end');
+    c.addEventListener('click', () => {
+      if (_clickStage === 0) {
+        _pendFrom = dateStr; _pendTo = null; _clickStage = 1;
+        _activePreset = 'custom'; _renderPresets(); _renderCals(); _updateFooter();
+      } else {
+        if (dateStr >= _pendFrom) _pendTo = dateStr;
+        else { _pendTo = _pendFrom; _pendFrom = dateStr; }
+        _clickStage = 0; _activePreset = 'custom'; _renderPresets(); _renderCals(); _updateFooter();
+      }
+    });
+    grid.appendChild(c);
+  }
+  const filled = firstDow + daysInMonth;
+  const tail = filled % 7 === 0 ? 0 : 7 - (filled % 7);
+  for (let dy = 1; dy <= tail; dy++) {
+    const c = document.createElement('div'); c.className = 'cal-day other-month'; c.textContent = dy; grid.appendChild(c);
+  }
+  container.appendChild(grid);
+}
+
+function _renderYearGrid(container, selYear) {
+  container.innerHTML = '';
+  const years = [...new Set(rawDayStats.map(d => +d.date.slice(0, 4)))].sort();
+  const minY = years.length ? years[0] : selYear - 3;
+  const maxY = years.length ? years[years.length - 1] : selYear;
+  const todayY = new Date().getFullYear();
+  const hdr = document.createElement('div'); hdr.className = 'cal-header';
+  const back = document.createElement('button'); back.className = 'cal-nav'; back.textContent = '‹'; back.title = 'Back';
+  back.addEventListener('click', () => { _yearPickMode = false; _renderCals(); });
+  const lbl = document.createElement('span'); lbl.className = 'cal-month-label'; lbl.style.cursor = 'default'; lbl.textContent = 'Select Year';
+  const spc = document.createElement('span'); spc.style.width = '24px';
+  hdr.append(back, lbl, spc); container.appendChild(hdr);
+  const grid = document.createElement('div'); grid.className = 'year-grid';
+  for (let y = minY; y <= Math.max(maxY, todayY); y++) {
+    const cell = document.createElement('div'); cell.className = 'year-cell';
+    if (y === selYear) cell.classList.add('sel-year');
+    else if (y === todayY) cell.classList.add('cur-year');
+    cell.textContent = y;
+    cell.addEventListener('click', () => { _calBase = new Date(y, _calBase.getMonth(), 1); _yearPickMode = false; _renderCals(); });
+    grid.appendChild(cell);
+  }
+  container.appendChild(grid);
+}
+
+function _renderCals() {
+  const m1y = _calBase.getFullYear(), m1m = _calBase.getMonth();
+  if (_yearPickMode) {
+    document.getElementById('cal2').style.display = 'none';
+    _renderYearGrid(document.getElementById('cal1'), m1y);
+    return;
+  }
+  document.getElementById('cal2').style.display = '';
+  const m2 = new Date(m1y, m1m + 1, 1);
+  _renderCalMonth(document.getElementById('cal1'), m1y, m1m, true, false);
+  _renderCalMonth(document.getElementById('cal2'), m2.getFullYear(), m2.getMonth(), false, true);
+}
+
+function _updateFooter() { document.getElementById('pickerFooterLabel').textContent = _fmtRange(_pendFrom, _pendTo); }
+
+function _updateTriggerLabel() {
+  let lo = _appliedFrom, hi = _appliedTo;
+  if (!lo || !hi) {
+    const dates = [...new Set(rawRoundtrips.map(r => r.date))].sort();
+    if (!lo && dates.length) lo = dates[0];
+    if (!hi && dates.length) hi = dates[dates.length - 1];
+  }
+  document.getElementById('pickerLabel').textContent = _fmtRange(lo, hi);
+  document.getElementById('pickerTrigger').classList.toggle('has-range', !!(lo || hi));
+}
+
+function _openPicker() {
+  _pOpen = true;
+  _pendFrom = _appliedFrom; _pendTo = _appliedTo; _clickStage = 0;
+  if (_pendFrom) { const [cy, cm] = _pendFrom.split('-').map(Number); _calBase = new Date(cy, cm - 1, 1); }
+  _renderPresets(); _renderCals(); _updateFooter();
+  document.getElementById('pickerDropdown').style.display = 'flex';
+}
+function _closePicker() {
+  _pOpen = false; _yearPickMode = false;
+  document.getElementById('pickerDropdown').style.display = 'none';
+}
+function _clearQuickBar() { document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active')); }
+function _applyPicker() {
+  _appliedFrom = _pendFrom; _appliedTo = _pendTo;
+  _closePicker(); _clearQuickBar(); _updateTriggerLabel();
+  applyFilters();
+}
+
+document.getElementById('pickerTrigger').addEventListener('click', e => { e.stopPropagation(); _pOpen ? _closePicker() : _openPicker(); });
+document.getElementById('pickerDropdown').addEventListener('click', e => e.stopPropagation());
+document.getElementById('pickerCancel').addEventListener('click', () => _closePicker());
+document.getElementById('pickerApply').addEventListener('click', () => _applyPicker());
+document.addEventListener('click', e => { if (_pOpen && !document.getElementById('pickerWrap').contains(e.target)) _closePicker(); });
+
+document.getElementById('quickBar').addEventListener('click', e => {
+  const btn = e.target.closest('.quick-btn');
+  if (!btn) return;
+  const days = parseInt(btn.dataset.days);
+  const now  = new Date();
+  const to   = now.toISOString().slice(0, 10);
+  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1)).toISOString().slice(0, 10);
+  _appliedFrom = from; _appliedTo = to; _pendFrom = from; _pendTo = to;
+  _activePreset = 'custom'; _clearQuickBar(); btn.classList.add('active');
+  _updateTriggerLabel(); applyFilters();
+});
+
+/* ─── Boot ─── */
+loadAllData();
+</script>
+</body>
+</html>

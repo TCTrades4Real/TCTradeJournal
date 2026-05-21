@@ -67,6 +67,24 @@ python fetch_ohlcv.py
 
 ---
 
+## Dashboard FTP Deploy
+
+After modifying any file in `dashboard/` (HTML, JS) — including `nav.js`, `auth.js`, and all `.html` pages — run:
+
+```bash
+python ftp_dashboard.py
+```
+
+This uploads the changed files to `tctrades.com` using the credentials in `.vscode/sftp.json`. The script accepts optional file paths to upload only specific files:
+
+```bash
+python ftp_dashboard.py dashboard/candlestick.html dashboard/nav.js
+```
+
+**Always run this after saving dashboard edits.** Do not skip it.
+
+---
+
 ## External Integrations
 
 | Service | Purpose |

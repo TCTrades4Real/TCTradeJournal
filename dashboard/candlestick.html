@@ -470,6 +470,7 @@
   <span class="legend-item"><span class="legend-dot" style="background:rgb(22,26,52);border:1px solid #2e3248"></span> After-hours</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(128,255,255)"></span> 9 EMA</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(0,128,255)"></span> 20 EMA</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(220,50,50)"></span> 200 EMA</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(246,197,72)"></span> VWAP</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(33,150,243)"></span> MACD</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(255,152,0)"></span> Signal</span>
@@ -1624,6 +1625,16 @@
     });
     ema20Series.setData(calcEMA(bars, 20));
 
+    /* ── 200 EMA ────────────────────────────────────── */
+    const ema200Series = chartInstance.addLineSeries({
+      color:           'rgb(220,50,50)',
+      lineWidth:       2,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    });
+    ema200Series.setData(calcEMA(bars, 200));
+
     /* ── VWAP ───────────────────────────────────────── */
     const vwapSeries = chartInstance.addLineSeries({
       color:           'rgb(246,197,72)',
@@ -1669,12 +1680,14 @@
     macdSignalSeries.setData(macdData.signalLine);
 
     /* ── Hover tooltip ──────────────────────────────── */
-    const ema9Data  = calcEMA(bars, 9);
-    const ema20Data = calcEMA(bars, 20);
+    const ema9Data   = calcEMA(bars, 9);
+    const ema20Data  = calcEMA(bars, 20);
+    const ema200Data = calcEMA(bars, 200);
     const vwapData  = calcVWAP(bars);
     const barMap      = Object.fromEntries(bars.map(b => [b.time, b]));
     const ema9Map     = Object.fromEntries(ema9Data.map(p => [p.time, p.value]));
     const ema20Map    = Object.fromEntries(ema20Data.map(p => [p.time, p.value]));
+    const ema200Map   = Object.fromEntries(ema200Data.map(p => [p.time, p.value]));
     const vwapMap     = Object.fromEntries(vwapData.map(p => [p.time, p.value]));
     const macdLineMap = Object.fromEntries(macdData.macdLine.map(p => [p.time, p.value]));
     const macdSigMap  = Object.fromEntries(macdData.signalLine.map(p => [p.time, p.value]));
@@ -1689,8 +1702,9 @@
       const bar = barMap[param.time];
       if (!bar) { tooltip.classList.remove('visible'); return; }
 
-      const e9  = ema9Map[param.time];
-      const e20 = ema20Map[param.time];
+      const e9   = ema9Map[param.time];
+      const e20  = ema20Map[param.time];
+      const e200 = ema200Map[param.time];
       const vw  = vwapMap[param.time];
       const mc  = macdLineMap[param.time];
       const ms  = macdSigMap[param.time];
@@ -1708,6 +1722,7 @@
         <div class="tip-divider"></div>
         <div class="tip-row"><span class="tip-label" style="color:rgb(128,255,255)">EMA9</span><span class="tip-val">${fmtP(e9)}</span></div>
         <div class="tip-row"><span class="tip-label" style="color:rgb(0,128,255)">EMA20</span><span class="tip-val">${fmtP(e20)}</span></div>
+        <div class="tip-row"><span class="tip-label" style="color:rgb(220,50,50)">EMA200</span><span class="tip-val">${fmtP(e200)}</span></div>
         <div class="tip-row"><span class="tip-label" style="color:rgb(246,197,72)">VWAP</span><span class="tip-val">${fmtP(vw)}</span></div>
         <div class="tip-divider"></div>
         <div class="tip-row"><span class="tip-label" style="color:rgb(33,150,243)">MACD</span><span class="tip-val">${fmtP(mc)}</span></div>

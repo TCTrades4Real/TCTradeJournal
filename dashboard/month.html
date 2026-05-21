@@ -214,6 +214,29 @@
       font-weight: 400;
       color: #fff;
       margin-top: 4px;
+      padding-bottom: 3px;
+    }
+
+    .cell-wl-divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.15);
+      margin: 4px 0;
+    }
+
+    .cell-wl-row {
+      font-size: 12px;
+      font-weight: 400;
+      color: #aaa;
+      padding-top: 3px;
+    }
+    .cell-wl-sep { color: #666; }
+
+    .cell-wl-ratio {
+      font-size: 12px;
+      font-weight: 400;
+      color: #aaa;
+      margin-top: 1px;
+      padding-bottom: 3px;
     }
 
     /* Week total column */
@@ -471,7 +494,6 @@
 
   let allData = {};
   let curYear, curMonth;
-
   function fmtHold(totalSecs) {
     const mins = Math.floor(totalSecs / 60);
     const secs = totalSecs % 60;
@@ -782,10 +804,20 @@
             trdEl.className = 'cell-trades';
             trdEl.textContent = `Trades ${dayData.trades}`;
 
+            const dayWins   = dayRts.filter(rt => rt.pnl > 0).length;
+            const dayLosses = dayRts.filter(rt => rt.pnl < 0).length;
+            const dayTotal  = dayWins + dayLosses;
+            const dayWLPct  = dayTotal > 0 ? Math.round(dayWins / dayTotal * 100) + '%' : '—';
+
+            const wlRatioEl = document.createElement('div');
+            wlRatioEl.className = 'cell-wl-ratio';
+            wlRatioEl.textContent = `Win/Loss Ratio: ${dayWLPct}`;
+
             const realEl = document.createElement('div');
             realEl.className = 'cell-real';
             realEl.appendChild(pnlEl);
             realEl.appendChild(trdEl);
+            realEl.appendChild(wlRatioEl);
 
             const bodyEl = document.createElement('div');
             bodyEl.className = 'cell-body';
@@ -818,8 +850,18 @@
         trdEl.className = 'cell-trades';
         trdEl.textContent = `Trades ${weekTrades}`;
 
+        const weekWins   = weekRoundtrips.filter(rt => rt.pnl > 0).length;
+        const weekLosses = weekRoundtrips.filter(rt => rt.pnl < 0).length;
+        const weekWLTotal = weekWins + weekLosses;
+        const weekWLPct  = weekWLTotal > 0 ? Math.round(weekWins / weekWLTotal * 100) + '%' : '—';
+
+        const weekWLRatioEl = document.createElement('div');
+        weekWLRatioEl.className = 'cell-wl-ratio';
+        weekWLRatioEl.textContent = `Win/Loss Ratio: ${weekWLPct}`;
+
         inner.appendChild(pnlEl);
         inner.appendChild(trdEl);
+        inner.appendChild(weekWLRatioEl);
 
         totalTd.appendChild(inner);
       }
