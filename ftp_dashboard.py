@@ -1,4 +1,9 @@
-"""Upload dashboard HTML/JS files to tctrades.com via FTP."""
+"""Upload dashboard files to tctrades.com via FTP.
+
+Paths are relative to the repo root. Files under dashboard/ preserve their
+subdirectory structure on the server (e.g. dashboard/backtest/foo.json
+uploads to {remotePath}/backtest/foo.json).
+"""
 import ftplib, json, pathlib, sys
 
 cfg      = json.loads(pathlib.Path(".vscode/sftp.json").read_text())
@@ -9,6 +14,7 @@ password = cfg["password"]
 remote   = cfg["remotePath"].rstrip("/")
 
 FILES = [
+    "dashboard/account_balance.json",
     "dashboard/index.html",
     "dashboard/month.html",
     "dashboard/day.html",
@@ -18,11 +24,27 @@ FILES = [
     "dashboard/trades.html",
     "dashboard/nav.js",
     "dashboard/auth.js",
+    "dashboard/backtest/backtest_index.json",
+    "dashboard/backtest/backtest_trades.json",
+    "dashboard/backtest/backtest_trades_2025.json",
+    "dashboard/backtest/backtest_trades_2026.json",
 ]
 
 specific = sys.argv[1:]  # optional: pass specific file paths to upload only those
+targets  = specific if specific else FILES
 
-targets = specific if specific else FILES
+def ensure_remote_dir(ftp, remote_dir):
+    """Create remote directory tree if it doesn't exist."""
+    parts = remote_dir.split("/")
+    path  = ""
+    for part in parts:
+        if not part:
+            continue
+        path += "/" + part
+        try:
+            ftp.mkd(path)
+        except ftplib.error_perm:
+            pass  # already exists
 
 print(f"Connecting to {host}:{port} ...")
 with ftplib.FTP() as ftp:
@@ -33,8 +55,16 @@ with ftplib.FTP() as ftp:
         if not p.exists():
             print(f"  SKIP (not found): {local}")
             continue
+        # Preserve subdirectory under dashboard/ on the server
+        try:
+            rel = p.relative_to("dashboard")
+            remote_path = f"{remote}/{rel.as_posix()}"
+        except ValueError:
+            remote_path = f"{remote}/{p.name}"
+        remote_dir = remote_path.rsplit("/", 1)[0]
+        ensure_remote_dir(ftp, remote_dir)
         with open(p, "rb") as fh:
-            ftp.storbinary(f"STOR {remote}/{p.name}", fh)
-        print(f"  Uploaded: {p.name}")
+            ftp.storbinary(f"STOR {remote_path}", fh)
+        print(f"  Uploaded: {rel if 'rel' in dir() else p.name}")
 
 print("Done.")

@@ -7,21 +7,49 @@
   <title>Day Detail</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #6366f1;
+      --primary-dim: #4f46e5;
+      --primary-light: #818cf8;
+      --bg-dark: #0f0f0f;
+      --bg-card: #141414;
+      --bg-input: #1f1f1f;
+      --text-primary: #e0e0e0;
+      --text-secondary: #6b7280;
+      --accent-red: #f43f5e;
+      --accent-blue: #3b82f6;
+      --accent-gold: #f59e0b;
+      --accent-green: #22c55e;
+      --accent-purple: #a855f7;
+      --grid-color: rgba(30, 30, 30, 0.8);
+      --glass-border: #222222;
+      --glass-bg: #141414;
+      --bg-gradient-start: #0f0f0f;
+      --bg-gradient-mid: #0f0f0f;
+      --bg-gradient-end: #0f0f0f;
+      --radial-glow-1: transparent;
+      --radial-glow-2: transparent;
+      --chart-bg: #141414;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 
     body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: #0f0f0f;
-      color: #f0f0f0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
+      color: var(--text-primary);
+      font-size: 15px;
       min-height: 100vh;
       padding: 16px;
       max-width: 1200px;
       margin: 0 auto;
+      position: relative;
+      overflow-x: hidden;
     }
+    body::before { display: none; }
     @media (min-width: 640px)  { body { padding: 24px; } }
     @media (min-width: 1024px) { body { padding: 28px 32px; } }
 
@@ -39,7 +67,7 @@
       text-decoration: none;
       transition: color 0.15s;
     }
-    .breadcrumb a:hover { color: #f0f0f0; }
+    .breadcrumb a:hover { color: var(--text-primary); }
     .breadcrumb-sep { opacity: 0.4; }
 
     /* ── Header ─────────────────────────────────────── */
@@ -65,9 +93,9 @@
     }
 
     .nav-day-btn {
-      background: transparent;
-      border: 1px solid #333;
-      color: #f0f0f0;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      color: var(--text-primary);
       border-radius: 6px;
       padding: 6px 14px;
       font-size: 13px;
@@ -95,8 +123,11 @@
 
     /* ── Left panel ──────────────────────────────────── */
     .left-panel {
-      background: #141414;
-      border: 1px solid #222;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       padding: 16px;
       display: flex;
@@ -116,15 +147,15 @@
       justify-content: center;
       width: 36px;
       height: 36px;
-      border: 1px solid #333;
+      border: 1px solid var(--glass-border);
       border-radius: 6px;
-      background: transparent;
-      color: #9ca3af;
+      background: var(--glass-bg);
+      color: var(--text-secondary);
       cursor: pointer;
       flex-shrink: 0;
       transition: background 0.15s, color 0.15s;
     }
-    .icon-btn:hover { background: #1e1e1e; color: #f0f0f0; }
+    .icon-btn:hover { background: #1e1e1e; color: var(--text-primary); }
     .icon-btn svg { width: 16px; height: 16px; display: block; }
 
     .day-pnl {
@@ -133,14 +164,14 @@
     }
     .pnl-pos { color: #22c55e; }
     .pnl-neg { color: rgb(220, 38, 38); }
-    .pnl-zero { color: #9ca3af; }
+    .pnl-zero { color: var(--text-secondary); }
 
     /* Symbol table */
     .sym-table-wrap {
-      border: 1px solid #2a2a2a;
+      border: 1px solid var(--glass-border);
       border-radius: 8px;
       padding: 4px 12px 4px 12px;
-      background: #0f0f0f;
+      background: rgba(8, 8, 26, 0.4);
     }
 
     .sym-table {
@@ -150,24 +181,80 @@
     }
     .sym-table th, .sym-table td { width: 20%; }
     .sym-table th {
-      color: #9ca3af;
+      color: var(--text-secondary);
       font-size: 15px;
       font-weight: 400;
       text-align: left;
       padding: 4px 8px 8px 0;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid var(--glass-border);
     }
     .sym-table th:not(:first-child) { text-align: right; }
     .sym-table td {
       padding: 8px 8px 8px 0;
       font-size: 15px;
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
     }
     .sym-table td:not(:first-child) { text-align: right; }
     .sym-table tr:last-child td { border-bottom: none; }
     .sym-name { color: #ffffff; font-weight: 500; display: flex; align-items: center; gap: 8px; }
     .sym-pos   { color: #22c55e; }
     .sym-neg   { color: rgb(220, 38, 38); }
+
+    /* Simulation display */
+    .sim-display         { color: #6b7280; opacity: 0.6; }
+    .sim-display.sym-pos { color: #22c55e; opacity: 0.6; }
+    .sim-display.sym-neg { color: rgb(220, 38, 38); opacity: 0.6; }
+
+    /* Simulation input */
+    .sim-input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 15px;
+      text-align: right;
+      color: inherit;
+      padding: 0;
+      outline: none;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    .sim-input::-webkit-outer-spin-button,
+    .sim-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .sim-input:focus { background: rgba(255,255,255,0.04); border-radius: 3px; }
+    .sim-input::placeholder { color: #3a3a3a; }
+    .sim-input:disabled { cursor: default; pointer-events: none; }
+    .sim-input:disabled::placeholder { color: transparent; }
+
+    /* Edit mode — column highlight */
+    .sym-table-wrap.sim-editing .sim-col-header { color: #22c55e; }
+    .sym-table-wrap.sim-editing .sim-input {
+      border: 1px solid #166534;
+      border-radius: 4px;
+      padding: 1px 4px;
+      background: rgba(34,197,94,0.06);
+    }
+    .sym-table-wrap.sim-editing .sim-input:focus {
+      border-color: #22c55e;
+      background: rgba(34,197,94,0.12);
+    }
+
+    /* Sim action buttons */
+    .sim-btn-reset {
+      background: var(--bg-input); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;
+      color: var(--text-secondary); font-size: 13px; font-family: inherit;
+      padding: 6px 14px; cursor: pointer; transition: background 0.12s, color 0.12s;
+    }
+    .sim-btn-reset:hover { background: #242424; color: var(--text-primary); }
+    .sim-btn-edit {
+      background: #22c55e; border: none; border-radius: 6px;
+      color: #000; font-size: 13px; font-weight: 600; font-family: inherit;
+      padding: 6px 14px; cursor: pointer; transition: background 0.12s;
+    }
+    .sim-btn-edit:hover { background: #16a34a; }
+    .sim-btn-edit.active { background: #22c55e; color: #000; }
+    .sim-btn-edit.active:hover { background: #16a34a; }
+    .sim-btn-row { display: flex; gap: 6px; align-self: flex-end; }
 
     /* Colored checkboxes in symbol table */
     .sym-cb {
@@ -194,8 +281,11 @@
 
     /* ── Right panel (chart) ─────────────────────────── */
     .chart-panel {
-      background: #141414;
-      border: 1px solid #222;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       padding: 16px;
       display: flex;
@@ -217,8 +307,11 @@
 
     /* ── Stats bar ───────────────────────────────────── */
     .stats-bar {
-      background: #141414;
-      border: 1px solid #222;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       padding: 16px 20px;
       margin-bottom: 24px;
@@ -232,7 +325,7 @@
       flex-wrap: wrap;
       gap: 0;
       padding: 12px 0;
-      border-bottom: 1px solid #1e1e1e;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
     }
     .stat-row:last-child { border-bottom: none; padding-bottom: 0; }
     .stat-row:first-child { padding-top: 0; }
@@ -244,26 +337,27 @@
     }
 
     .stat-value {
-      font-size: 18px;
+      font-size: 19px;
       font-weight: 500;
       color: #ffffff;
-      line-height: 1.2;
     }
     .stat-value.pos { color: #ffffff; }
     .stat-value.neg { color: #ffffff; }
 
     .stat-label {
-      font-size: 14px;
-      color: #9ca3af;
+      font-size: 12px;
+      color: var(--text-secondary);
       margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
       display: flex;
       align-items: center;
       gap: 4px;
     }
     .stats-tab-bar { display: flex; gap: 4px; margin-bottom: 14px; }
-    .stats-tab { padding: 5px 14px; font-size: 12px; font-weight: 600; color: #6b7280; cursor: pointer; border: 1px solid #2a2a2a; border-radius: 6px; background: transparent; letter-spacing: 0.04em; text-transform: uppercase; transition: all 0.15s; }
-    .stats-tab:hover { color: #e0e0e0; border-color: #444; }
-    .stats-tab.active { color: #ffffff; background: #1e1e2e; border-color: #6366f1; }
+    .stats-tab { padding: 5px 14px; font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border: 1px solid #2a2a2a; border-radius: 6px; background: transparent; letter-spacing: 0.04em; text-transform: uppercase; transition: all 0.15s; }
+    .stats-tab:hover { color: var(--text-primary); border-color: #3a3a3a; }
+    .stats-tab.active { color: #ffffff; background: #1a1a1a; border-color: #6366f1; }
 
     .sym-worst-badge {
       font-size: 10px;
@@ -274,7 +368,7 @@
 
     /* ── Error / empty ───────────────────────────────── */
     .error { color: rgb(220, 38, 38); padding: 20px; }
-    .no-data { color: #6b7280; padding: 40px; text-align: center; font-size: 16px; }
+    .no-data { color: var(--text-secondary); padding: 40px; text-align: center; font-size: 16px; }
 
     /* ── Auth overlay ───────────────────────────────── */
     .auth-overlay {
@@ -282,11 +376,13 @@
       display: flex; align-items: center; justify-content: center; z-index: 9999;
     }
     .auth-card {
-      background: #1a1a1a; border: 1px solid #333; border-radius: 10px;
+      background: var(--bg-card); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border); border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       padding: 40px; text-align: center; width: 300px;
     }
     .auth-title { font-size: 18px; color: #fff; margin-bottom: 6px; }
-    .auth-sub   { color: #9ca3af; font-size: 13px; margin-bottom: 24px; }
+    .auth-sub   { color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
     #authError  { color: #f87171; font-size: 12px; margin-top: 12px; min-height: 16px; }
   </style>
   <script src="auth.js"></script>
@@ -345,9 +441,12 @@
   ];
   const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
-  let allData = {};
+  let allData    = {};
+  const simCache = {};
+  let simData       = {};
+  let btChartPoints = [];
   let curYear, curMonth, curDay;
-  let chartInstance = null;
+  let chartInstance  = null;
   let checkedSymbols = null;
 
   /* ── Formatters ─────────────────────────────────── */
@@ -400,7 +499,7 @@
   }
 
   /* ── Render ─────────────────────────────────────── */
-  function render() {
+  async function render() {
     const dayData = (allData[curYear]?.[curMonth]?.days?.[curDay]) || null;
 
     // Title
@@ -436,6 +535,10 @@
     }
 
     checkedSymbols = null; // reset on each new day
+    await ensureSimYear(curYear);
+    const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
+    simData       = buildSimFromBacktest(simCache[curYear], dateStr);
+    btChartPoints = buildBtChartPoints(dateStr);
     renderLeft(dayData);
     updateFiltered(dayData);
   }
@@ -500,7 +603,7 @@
     // Fall back to pre-computed data if roundtrips not in JSON yet
     if (!dayData.roundtrips || dayData.roundtrips.length === 0) {
       renderStats(dayData);
-      renderChart(dayData.chart || []);
+      renderChart(dayData.chart || [], btChartPoints);
       return;
     }
     const rts = dayData.roundtrips.filter(rt => checkedSymbols ? checkedSymbols.has(rt.symbol) : true);
@@ -511,7 +614,43 @@
       pnlEl.textContent = fmtPnl(computed.pnl);
     }
     renderStats(computed);
-    renderChart(computed.chart);
+    renderChart(computed.chart, btChartPoints);
+  }
+
+  function buildBtChartPoints(dateStr) {
+    const _trades = simTrades(curYear);
+    if (!_trades.length) return [];
+    const trades = _trades
+      .filter(t => t.date === dateStr)
+      .sort((a, b) => a.exit_time.localeCompare(b.exit_time));
+    let cum = 0;
+    return trades.map(t => { cum += t.pnl; return { t: t.exit_time, pnl: Math.round(cum * 100) / 100 }; });
+  }
+
+  function buildSimFromBacktest(backtest, dateStr) {
+    const result = {};
+    if (!backtest?.trades) return result;
+    for (const t of backtest.trades) {
+      if (t.date !== dateStr) continue;
+      result[t.symbol] = (result[t.symbol] || 0) + t.pnl;
+    }
+    return result;
+  }
+
+  async function ensureSimYear(year) {
+    if (simCache[year]) return;
+    try {
+      const resp = await fetch(`backtest/backtest_trades_${year}.json`);
+      if (!resp.ok) throw new Error(resp.status);
+      simCache[year] = await resp.json();
+    } catch (e) { simCache[year] = { trades: [] }; }
+  }
+  function simTrades(year) { return simCache[year]?.trades || []; }
+
+  function fmtSimPnl(val) {
+    if (val === undefined || val === null) return '—';
+    const s = val >= 0 ? '+$' : '-$';
+    return s + Math.abs(val).toFixed(2);
   }
 
   function renderLeft(dayData) {
@@ -533,18 +672,28 @@
       const cbClass = sd.pnl >= 0 ? 'cb-pos' : 'cb-neg';
       const checked = checkedSymbols.has(sym) ? 'checked' : '';
       const warnBadge = sym === worstSymbol ? `<span class="sym-worst-badge" title="Worst symbol today: ${fmtPnl(sd.pnl)}">⚠</span>` : '';
+      const simVal = simData[sym];
+      const simCls = simVal === undefined ? '' : simVal > 0 ? 'sym-pos' : simVal < 0 ? 'sym-neg' : '';
       rows += `<tr>
         <td><span class="sym-name"><input type="checkbox" class="sym-cb ${cbClass}" data-sym="${sym}" ${checked} />${sym}${warnBadge}</span></td>
         <td>${sd.trades}</td>
         <td>${sd.shares.toLocaleString('en-US')}</td>
         <td class="${pClass}">${fmtPnl(sd.pnl)}</td>
+        <td><span class="sim-display ${simCls}">${fmtSimPnl(simVal)}</span></td>
       </tr>`;
     }
+
+    const simDayTotal = Object.values(simData).reduce((s, v) => s + v, 0);
+    const simDayCls   = simDayTotal > 0 ? 'sym-pos' : simDayTotal < 0 ? 'sym-neg' : '';
+    const simDayHtml  = Object.keys(simData).length
+      ? `<span class="sim-display ${simDayCls}" style="font-size:20px;opacity:0.6">${fmtSimPnl(simDayTotal)}</span>`
+      : '';
 
     document.getElementById('leftPanel').innerHTML = `
       <div class="pnl-row">
         <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
           <div class="day-pnl ${pnlClass}">${fmtPnl(pnl)}</div>
+          ${simDayHtml}
         </div>
         <button class="icon-btn" title="Candlestick view" onclick="window.location.href='candlestick.html?year=${curYear}&month=${curMonth}&day=${curDay}'">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v4"/><rect width="4" height="6" x="7" y="9" rx="1"/><path d="M9 15v2"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v3"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/></svg>
@@ -553,10 +702,11 @@
       <div class="sym-table-wrap">
         <table class="sym-table" style="table-layout:fixed">
           <colgroup>
-            <col style="width:28%">
+            <col style="width:22%">
+            <col style="width:14%">
             <col style="width:18%">
             <col style="width:22%">
-            <col style="width:32%">
+            <col style="width:24%">
           </colgroup>
           <thead>
             <tr>
@@ -564,11 +714,13 @@
               <th style="text-align:right">Trades</th>
               <th style="text-align:right">Shares</th>
               <th style="text-align:right">Realized</th>
+              <th class="sim-col-header" style="text-align:right">Simulation</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
-      </div>`;
+      </div>
+      `;
 
     const allSymbols = Object.keys(symbols);
 
@@ -603,6 +755,7 @@
     });
 
     syncSelectAll();
+
   }
 
   const STAT_ICONS = {
@@ -676,7 +829,7 @@
       `;
   }
 
-  function renderChart(chartPoints) {
+  function renderChart(chartPoints, btPoints) {
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
     if (!chartPoints || chartPoints.length === 0) return;
@@ -702,9 +855,29 @@
     }
 
     function toMins(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
-    const processed = insertZeroCrossings(chartPoints);
-    const allLabels = processed.map(p => p.t).sort((a, b) => toMins(a) - toMins(b));
-    const values    = allLabels.map(l => processed.find(p => p.t === l)?.pnl ?? null);
+    const processed  = insertZeroCrossings(chartPoints);
+    const realTimes  = new Set(processed.map(p => p.t));
+    const btTimes    = new Set((btPoints || []).map(p => p.t));
+    const allLabels  = [...new Set([...realTimes, ...btTimes])].sort((a, b) => toMins(a) - toMins(b));
+
+    const realByTime = {};
+    for (const p of processed) realByTime[p.t] = p.pnl;
+    let lastReal = null;
+    const values = allLabels.map(l => {
+      if (realByTime[l] !== undefined) lastReal = realByTime[l];
+      return lastReal;
+    });
+
+    let btValues = null;
+    if (btPoints?.length) {
+      const btByTime = {};
+      for (const p of btPoints) btByTime[p.t] = p.pnl;
+      let lastBt = null;
+      btValues = allLabels.map(l => {
+        if (btByTime[l] !== undefined) lastBt = btByTime[l];
+        return lastBt;
+      });
+    }
 
     const canvas = document.getElementById('pnlChart');
     const ctx    = canvas.getContext('2d');
@@ -729,27 +902,39 @@
       }
     };
 
+    const datasets = [{
+      label: 'Realized',
+      data: values,
+      fill: 'origin',
+      backgroundColor: 'rgba(34,197,94,0.15)',
+      borderColor: '#22c55e',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      tension: 0,
+      segment: {
+        borderColor: ctx => {
+          const mid = (ctx.p0.parsed.y + ctx.p1.parsed.y) / 2;
+          return mid >= 0 ? '#22c55e' : 'rgb(220, 38, 38)';
+        }
+      }
+    }];
+
+    if (btValues) {
+      datasets.push({
+        label: 'Backtest',
+        data: btValues,
+        fill: false,
+        borderColor: 'rgba(168,85,247,0.75)',
+        borderWidth: 1.5,
+        borderDash: [5, 3],
+        pointRadius: 0,
+        tension: 0,
+      });
+    }
+
     chartInstance = new Chart(ctx, {
       type: 'line',
-      data: {
-        labels: allLabels,
-        datasets: [{
-          label: 'Realized',
-          data: values,
-          fill: 'origin',
-          backgroundColor: 'rgba(34,197,94,0.15)',
-          borderColor: '#22c55e',
-          borderWidth: 1.5,
-          pointRadius: 0,
-          tension: 0,
-          segment: {
-            borderColor: ctx => {
-              const mid = (ctx.p0.parsed.y + ctx.p1.parsed.y) / 2;
-              return mid >= 0 ? '#22c55e' : 'rgb(220, 38, 38)';
-            }
-          }
-        }]
-      },
+      data: { labels: allLabels, datasets },
       plugins: [splitFill],
       options: {
         responsive: true,
@@ -766,10 +951,13 @@
             callbacks: {
               label: ctx => {
                 const v = ctx.parsed.y;
+                if (v === null) return null;
                 const sign = v < 0 ? '-' : '';
-                return ` ${sign}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                const label = ctx.dataset.label === 'Backtest' ? 'BT' : 'Real';
+                return ` ${label}: ${sign}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
               },
               labelColor: ctx => {
+                if (ctx.dataset.label === 'Backtest') return { borderColor: 'rgba(168,85,247,0.75)', backgroundColor: 'rgba(168,85,247,0.75)' };
                 const color = ctx.parsed.y >= 0 ? '#22c55e' : 'rgb(220, 38, 38)';
                 return { borderColor: color, backgroundColor: color };
               }

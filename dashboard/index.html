@@ -7,20 +7,48 @@
   <title>Calendar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #6366f1;
+      --primary-dim: #4f46e5;
+      --primary-light: #818cf8;
+      --bg-dark: #0f0f0f;
+      --bg-card: #141414;
+      --bg-input: #1f1f1f;
+      --text-primary: #F4F4F7;
+      --text-secondary: #6b7280;
+      --accent-red: #f43f5e;
+      --accent-blue: #3b82f6;
+      --accent-gold: #f59e0b;
+      --accent-green: #22c55e;
+      --accent-purple: #a855f7;
+      --grid-color: rgba(30, 30, 30, 0.8);
+      --glass-border: #222222;
+      --glass-bg: #141414;
+      --bg-gradient-start: #0f0f0f;
+      --bg-gradient-mid: #0f0f0f;
+      --bg-gradient-end: #0f0f0f;
+      --radial-glow-1: transparent;
+      --radial-glow-2: transparent;
+      --chart-bg: #141414;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 
     body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: #0f0f0f;
-      color: #e0e0e0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
+      color: var(--text-primary);
+      font-size: 15px;
       min-height: 100vh;
       padding: 16px;
       max-width: 1200px;
       margin: 0 auto;
+      position: relative;
+      overflow-x: hidden;
     }
+    body::before { display: none; }
     @media (min-width: 640px) { body { padding: 24px; } }
     @media (min-width: 1024px) { body { padding: 28px 32px; } }
 
@@ -38,7 +66,7 @@
       text-decoration: none;
       transition: color 0.15s;
     }
-    .breadcrumb a:hover { color: #f0f0f0; }
+    .breadcrumb a:hover { color: var(--text-primary); }
     .breadcrumb-sep { opacity: 0.4; }
 
     /* ── Header ─────────────────────────────────────── */
@@ -58,9 +86,6 @@
     }
 
     .year-badge-stack {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -76,8 +101,9 @@
       border: 1px solid transparent;
       display: inline-flex;
       align-items: center;
-      justify-content: center;
+      justify-content: space-between;
       gap: 12px;
+      min-width: 140px;
     }
 
 
@@ -87,7 +113,8 @@
       align-items: center;
       justify-content: center;
       border-radius: 8px;
-      background: #1a1a1a;
+      background: var(--bg-input);
+      border: 1px solid var(--glass-border);
       padding: 4px;
     }
 
@@ -97,7 +124,7 @@
       justify-content: center;
       border: none;
       background: transparent;
-      color: #9ca3af;
+      color: var(--text-secondary);
       padding: 4px 16px;
       font-size: 18px;
       font-weight: 400;
@@ -107,11 +134,11 @@
       white-space: nowrap;
     }
     .year-btn.active {
-      background: #0f0f0f;
+      background: rgba(8, 8, 26, 0.6);
       color: #ffffff;
       box-shadow: 0 1px 3px rgba(0,0,0,0.5);
     }
-    .year-btn:hover:not(.active) { color: #e0e0e0; }
+    .year-btn:hover:not(.active) { color: var(--text-primary); }
 
     /* ── Year grid ───────────────────────────────────── */
     .year-grid {
@@ -123,7 +150,7 @@
     @media (min-width: 1024px) { .year-grid { grid-template-columns: repeat(4, 1fr); } }
 
     /* ── Month card ──────────────────────────────────── */
-    .month-card { background: #0f0f0f; }
+    .month-card { background: transparent; }
 
     .month-header {
       display: flex;
@@ -136,7 +163,7 @@
     .month-label {
       font-size: 14px;
       font-weight: 400;
-      color: #e0e0e0;
+      color: var(--text-primary);
       flex: 1;
       min-width: 0;
     }
@@ -154,13 +181,17 @@
       justify-content: space-between;
       gap: 8px;
       line-height: 1;
+      min-width: 120px;
       transition: opacity 0.15s;
     }
     .month-badge:hover { opacity: 0.85; }
     .badge-pos  { background: rgb(2, 53, 37);  color: #fafaf9; border-color: rgb(3, 98, 68); }
     .badge-neg  { background: rgb(77, 13, 13); color: #fafaf9; border-color: rgb(143, 25, 25); }
-    .badge-zero { background: #2a2a2a; color: #6b7280; border-color: #3f3f3f; }
+    .badge-zero { background: rgba(42,42,42,0.5); color: var(--text-secondary); border-color: rgba(63,63,63,0.5); }
     .badge-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; opacity: 0.7; text-transform: uppercase; }
+    .badge-sim-pos  { background: rgba(2,53,37,0.5);  border: 1px dashed rgb(3,98,68);   color: #ffffff; }
+    .badge-sim-neg  { background: rgba(77,13,13,0.5); border: 1px dashed rgb(143,25,25); color: #ffffff; }
+    .badge-sim-zero { background: rgba(30,30,30,0.5); border: 1px dashed #555;           color: #ffffff; }
 
     .pill-stack {
       display: flex;
@@ -171,9 +202,9 @@
 
 
     .expand-btn {
-      background: #1e1e1e;
-      border: 1px solid #3f3f3f;
-      color: #9ca3af;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      color: var(--text-secondary);
       cursor: pointer;
       padding: 4px;
       line-height: 0;
@@ -181,7 +212,7 @@
       flex-shrink: 0;
       transition: background 0.15s, color 0.15s;
     }
-    .expand-btn:hover { background: #2a2a2a; color: #e0e0e0; }
+    .expand-btn:hover { background: #1e1e1e; color: var(--text-primary); }
     .expand-btn svg { width: 14px; height: 14px; display: block; }
 
     /* ── Mini calendar table ─────────────────────────── */
@@ -189,36 +220,42 @@
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
+      border: 1px solid #A1A1AA;
     }
 
     .mini-cal th {
-      color: #9ca3af;
+      background: #0f0f0f;
+      color: #ffffff;
       font-size: 10px;
-      font-weight: 400;
+      font-weight: 600;
       text-align: center;
       padding: 4px 2px;
-      border: 1px solid rgb(161, 161, 170);
+      border: 1px solid #A1A1AA;
     }
 
     .mini-cal td {
-      border: 1px solid rgb(161, 161, 170);
+      border: 1px solid #A1A1AA;
       text-align: center;
       padding: 4px 2px;
       font-size: 14px;
-      color: #e0e0e0;
+      color: var(--text-primary);
       height: 26px;
     }
 
-    .day-empty              { background: rgb(41, 37, 36); }  /* padding cells muted */
-    .day-nodata             { background: transparent; }      /* no-trade weekday = transparent */
-    .day-nodata.day-weekend { background: rgb(41, 37, 36); } /* no-trade weekend = muted */
+    .day-empty              { background: #0f0f0f; }
+    .day-empty.day-weekend  { background: #292524; }
+    .day-nodata             { background: #111111; }
+    .day-nodata.day-weekend { background: #292524; }
     .day-win  { background: rgb(2, 53, 37);  color: #fafaf9; }
     .day-loss { background: rgb(77, 13, 13); color: #fafaf9; }
 
     /* ── Stats bar ───────────────────────────────────── */
     .stats-bar {
-      background: #141414;
-      border: 1px solid #222;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       padding: 16px 20px;
       margin-bottom: 24px;
@@ -231,17 +268,17 @@
       flex-wrap: wrap;
       gap: 0;
       padding: 12px 0;
-      border-bottom: 1px solid #1e1e1e;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
     }
     .stat-row:last-child { border-bottom: none; padding-bottom: 0; }
     .stat-row:first-child { padding-top: 0; }
     .stat-item { flex: 1 1 120px; min-width: 100px; padding: 4px 12px 4px 0; }
-    .stat-value { font-size: 18px; font-weight: 500; color: #ffffff; line-height: 1.2; }
-    .stat-label { font-size: 14px; color: #9ca3af; margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+    .stat-value { font-size: 19px; font-weight: 500; color: #ffffff; }
+    .stat-label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px; }
     .stats-tab-bar { display: flex; gap: 4px; margin-bottom: 14px; }
-    .stats-tab { padding: 5px 14px; font-size: 12px; font-weight: 600; color: #6b7280; cursor: pointer; border: 1px solid #2a2a2a; border-radius: 6px; background: transparent; letter-spacing: 0.04em; text-transform: uppercase; transition: all 0.15s; }
-    .stats-tab:hover { color: #e0e0e0; border-color: #444; }
-    .stats-tab.active { color: #ffffff; background: #1e1e2e; border-color: #6366f1; }
+    .stats-tab { padding: 5px 14px; font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border: 1px solid #2a2a2a; border-radius: 6px; background: transparent; letter-spacing: 0.04em; text-transform: uppercase; transition: all 0.15s; }
+    .stats-tab:hover { color: var(--text-primary); border-color: #3a3a3a; }
+    .stats-tab.active { color: #ffffff; background: #1a1a1a; border-color: #6366f1; }
 
     /* ── Auth overlay ───────────────────────────────── */
     .auth-overlay {
@@ -249,14 +286,14 @@
       display: flex; align-items: center; justify-content: center; z-index: 9999;
     }
     .auth-card {
-      background: #1a1a1a; border: 1px solid #333; border-radius: 10px;
+      background: var(--bg-card); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border); border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       padding: 40px; text-align: center; width: 300px;
     }
     .auth-title   { font-size: 18px; color: #fff; margin-bottom: 6px; }
-    .auth-sub     { color: #9ca3af; font-size: 13px; margin-bottom: 24px; }
+    .auth-sub     { color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
     #authError    { color: #f87171; font-size: 12px; margin-top: 12px; min-height: 16px; }
-
-
   </style>
   <script src="auth.js"></script>
 </head>
@@ -286,9 +323,11 @@
   <h1>Calendar</h1>
   <div class="year-badge-stack">
     <span class="year-badge badge-zero" id="yearBadge"></span>
-    <span class="year-badge badge-zero" id="yearSimBadge" style="display:none"></span>
+    <span class="year-badge badge-sim-zero" id="yearSimBadge" style="display:none"></span>
   </div>
-  <div class="year-selector" id="yearSelector"></div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:8px;">
+    <div class="year-selector" id="yearSelector"></div>
+  </div>
 </div>
 
 <div class="year-grid" id="yearGrid"></div>
@@ -301,7 +340,7 @@
   ];
 
   let allData        = {};
-  let simData        = {};
+  const simCache = {};
   let selectedYear   = null;
   let availableYears = [];
 
@@ -444,21 +483,20 @@
     const hasTrades = Object.values(yearData).some(m => Object.keys(m.days || {}).length > 0);
     const badge = document.getElementById('yearBadge');
     badge.className = 'year-badge ' + (!hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg');
-    badge.innerHTML = `<span>${fmtBadge(total)}</span>`;
+    badge.innerHTML = `<span class="badge-label">REAL</span><span>${fmtBadge(total)}</span>`;
 
-    let simTotal = 0;
-    for (const [mStr, monthData] of Object.entries(yearData)) {
-      for (const dStr of Object.keys(monthData.days || {})) {
-        const entries = Object.values(simData[`${year}_${mStr}_${dStr}`] || {});
-        simTotal += entries.reduce((s, v) => s + v, 0);
-      }
-    }
-    simTotal = Math.round(simTotal * 100) / 100;
     const simBadge = document.getElementById('yearSimBadge');
-    if (simTotal !== 0) {
-      simBadge.style.display = '';
-      simBadge.className = 'year-badge ' + (simTotal >= 0 ? 'badge-pos' : 'badge-neg');
+    const yearPrefix = `${year}-`;
+    let simTotal = 0, simCount = 0;
+    for (const t of simTrades(year)) {
+      simTotal += t.pnl; simCount++;
+    }
+    if (simCount > 0) {
+      simTotal = Math.round(simTotal * 100) / 100;
+      const simCls = simTotal >= 0 ? 'badge-sim-pos' : 'badge-sim-neg';
+      simBadge.className = 'year-badge ' + simCls;
       simBadge.innerHTML = `<span class="badge-label">SIM</span><span>${fmtBadge(simTotal)}</span>`;
+      simBadge.style.display = '';
     } else {
       simBadge.style.display = 'none';
     }
@@ -478,6 +516,7 @@
         return;
       }
     }
+    await ensureSimYear(year);
     renderYearSelector(availableYears);
     const yearData = allData[year] || {};
     updateYearBadge(year, yearData);
@@ -487,6 +526,31 @@
   }
 
   /* ── Year grid ──────────────────────────────────── */
+  async function ensureSimYear(year) {
+    if (simCache[year]) return;
+    try {
+      const resp = await fetch(`backtest/backtest_trades_${year}.json`);
+      if (!resp.ok) throw new Error(resp.status);
+      simCache[year] = await resp.json();
+    } catch (e) { simCache[year] = { trades: [] }; }
+  }
+  function simTrades(year) { return simCache[year]?.trades || []; }
+
+  function simMonthTotal(year, month) {
+    const prefix = `${year}-${String(month).padStart(2,'0')}-`;
+    let total = 0, found = false;
+    for (const t of simTrades(year)) {
+      if (t.date.startsWith(prefix)) { total += t.pnl; found = true; }
+    }
+    return found ? total : null;
+  }
+
+  function fmtSimPnl(val) {
+    if (val === null || val === undefined) return null;
+    const s = val >= 0 ? '+$' : '-$';
+    return s + Math.abs(val).toFixed(2);
+  }
+
   function renderGrid(yearData, year) {
     const grid = document.getElementById('yearGrid');
     grid.innerHTML = '';
@@ -513,27 +577,22 @@
 
     const realBadge = document.createElement('span');
     realBadge.className = 'month-badge ' + (!hasTrades ? 'badge-zero' : total >= 0 ? 'badge-pos' : 'badge-neg');
-    realBadge.innerHTML = `<span>${hasTrades ? fmtBadge(total) : '$0.00'}</span>`;
+    realBadge.innerHTML = `<span class="badge-label">REAL</span><span>${hasTrades ? fmtBadge(total) : '$0.00'}</span>`;
     realBadge.title = 'View month detail';
     realBadge.onclick = () => { window.location.href = `month.html?year=${year}&month=${month}`; };
 
-    let monthSimTotal = 0;
-    for (const dStr of Object.keys(monthData.days)) {
-      const entries = Object.values(simData[`${year}_${month}_${dStr}`] || {});
-      monthSimTotal += entries.reduce((s, v) => s + v, 0);
-    }
-    monthSimTotal = Math.round(monthSimTotal * 100) / 100;
+    const simTotal = simMonthTotal(year, month);
+    const simFmt   = fmtSimPnl(simTotal);
 
     const pillStack = document.createElement('div');
     pillStack.className = 'pill-stack';
     pillStack.appendChild(realBadge);
 
-    if (monthSimTotal !== 0) {
+    if (simFmt !== null) {
       const simBadge = document.createElement('span');
-      simBadge.className = 'month-badge ' + (monthSimTotal >= 0 ? 'badge-pos' : 'badge-neg');
-      simBadge.innerHTML = `<span class="badge-label">SIM</span><span>${fmtBadge(monthSimTotal)}</span>`;
-      simBadge.title = 'View month detail';
-      simBadge.onclick = () => { window.location.href = `month.html?year=${year}&month=${month}`; };
+      simBadge.className = 'month-badge ' + (simTotal >= 0 ? 'badge-pos' : 'badge-neg');
+      simBadge.style.opacity = '0.6';
+      simBadge.innerHTML = `<span class="badge-label">BT</span><span>${simFmt}</span>`;
       pillStack.appendChild(simBadge);
     }
 
@@ -576,7 +635,7 @@
 
         const isWeekend = col === 0 || col === 6;
         if (cellIndex < firstDow || dayNum > daysInMonth) {
-          td.className = 'day-empty';
+          td.className = 'day-empty' + (isWeekend ? ' day-weekend' : '');
         } else {
           const dayData = monthData.days[String(dayNum)];
           if (!dayData) {
@@ -600,10 +659,7 @@
 /* ── Load data ──────────────────────────────────── */
   async function init() {
     try {
-      const [idx] = await Promise.all([
-        fetch('calendar/calendar_index.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
-        fetch('sim_data.json?_=' + Date.now()).then(r => r.ok ? r.json() : {}).then(d => { simData = d; }).catch(() => {}),
-      ]);
+      const idx = await fetch('calendar/calendar_index.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
       availableYears = idx.years.map(String).sort((a, b) => a - b);
       if (availableYears.length === 0) {
         document.getElementById('yearGrid').textContent = 'No data found.';

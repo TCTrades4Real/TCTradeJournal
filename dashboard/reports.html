@@ -6,21 +6,49 @@
   <title>Reports</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #6366f1;
+      --primary-dim: #4f46e5;
+      --primary-light: #818cf8;
+      --bg-dark: #0f0f0f;
+      --bg-card: #141414;
+      --bg-input: #1f1f1f;
+      --text-primary: #e0e0e0;
+      --text-secondary: #6b7280;
+      --accent-red: #f43f5e;
+      --accent-blue: #3b82f6;
+      --accent-gold: #f59e0b;
+      --accent-green: #22c55e;
+      --accent-purple: #a855f7;
+      --grid-color: rgba(30, 30, 30, 0.8);
+      --glass-border: #222222;
+      --glass-bg: #141414;
+      --bg-gradient-start: #0f0f0f;
+      --bg-gradient-mid: #0f0f0f;
+      --bg-gradient-end: #0f0f0f;
+      --radial-glow-1: transparent;
+      --radial-glow-2: transparent;
+      --chart-bg: #141414;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 
     body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: #0f0f0f;
-      color: #e0e0e0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--text-primary);
       font-size: 15px;
       min-height: 100vh;
       padding: 16px;
       max-width: 1200px;
       margin: 0 auto;
+      position: relative;
+      overflow-x: hidden;
     }
+    body::before { display: none; }
     @media (min-width: 640px)  { body { padding: 24px; } }
     @media (min-width: 1024px) { body { padding: 28px 32px; } }
 
@@ -30,17 +58,19 @@
       display: flex; align-items: center; justify-content: center; z-index: 9999;
     }
     .auth-card {
-      background: #1a1a1a; border: 1px solid #333; border-radius: 10px;
+      background: var(--bg-card); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border); border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       padding: 40px; text-align: center; width: 300px;
     }
     .auth-title { font-size: 18px; color: #fff; margin-bottom: 6px; }
-    .auth-sub   { color: #9ca3af; font-size: 13px; margin-bottom: 24px; }
+    .auth-sub   { color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
     #authError  { color: #f87171; font-size: 12px; margin-top: 12px; min-height: 16px; }
 
     /* ── Breadcrumb ── */
     .breadcrumb { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; font-size: 13px; color: #9ca3af; }
     .breadcrumb a { color: #9ca3af; text-decoration: none; transition: color 0.15s; }
-    .breadcrumb a:hover { color: #e0e0e0; }
+    .breadcrumb a:hover { color: var(--text-primary); }
     .breadcrumb-sep { opacity: 0.4; }
 
     /* ── Page header ── */
@@ -52,14 +82,14 @@
       display: flex;
       gap: 2px;
       margin-bottom: 24px;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid var(--glass-border);
       padding-bottom: 0;
     }
     .tab-btn {
       background: none;
       border: none;
       border-bottom: 2px solid transparent;
-      color: #6b7280;
+      color: var(--text-secondary);
       font-size: 14.5px;
       font-family: inherit;
       font-weight: 500;
@@ -68,17 +98,17 @@
       cursor: pointer;
       transition: color 0.15s, border-color 0.15s;
     }
-    .tab-btn:hover { color: #e0e0e0; }
+    .tab-btn:hover { color: var(--text-primary); }
     .tab-btn.active { color: #ffffff; border-bottom-color: #22c55e; }
 
     /* ── Loading / spinner ── */
-    #statusMsg { color: #6b7280; font-size: 14px; }
+    #statusMsg { color: var(--text-secondary); font-size: 14px; }
     .loading-state {
       display: flex; flex-direction: column; align-items: center;
-      justify-content: center; height: 380px; gap: 12px; color: #6b7280;
+      justify-content: center; height: 380px; gap: 12px; color: var(--text-secondary);
     }
     .spinner {
-      width: 28px; height: 28px; border: 2px solid #2a2a2a;
+      width: 28px; height: 28px; border: 2px solid rgba(255,255,255,0.1);
       border-top-color: #555; border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -88,75 +118,50 @@
        TAB 1 — PnL vs Entry Volume
     ══════════════════════════════════════ */
     .stats-row { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
-    .stat-card { background: #141414; border: 1px solid #222; border-radius: 8px; padding: 12px 18px; min-width: 120px; }
-    .stat-label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .stat-card { background: var(--bg-card); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 12px 18px; min-width: 120px; }
+    .stat-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
     .stat-value { font-size: 19px; font-weight: 500; color: #ffffff; }
 
     .chart-wrap {
-      background: #141414; border: 1px solid #222; border-radius: 10px;
+      background: var(--bg-card); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05); border-radius: 10px;
       padding: 20px; margin-bottom: 28px; position: relative; height: 420px;
     }
 
-    .table-wrap { background: #141414; border: 1px solid #222; border-radius: 10px; overflow: hidden; }
+    .table-wrap { background: var(--bg-card); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--glass-border); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05); border-radius: 10px; overflow: hidden; }
     .table-header {
-      padding: 14px 16px; border-bottom: 1px solid #222;
+      padding: 14px 16px; border-bottom: 1px solid var(--glass-border);
       display: flex; align-items: center; justify-content: space-between;
     }
     .table-title { font-size: 17px; font-weight: 600; color: #ffffff; }
-    .table-count { font-size: 13px; color: #6b7280; }
+    .table-count { font-size: 13px; color: var(--text-secondary); }
 
     .filter-row {
       display: flex; gap: 10px; padding: 10px 16px;
-      border-bottom: 1px solid #1a1a1a; flex-wrap: wrap;
+      border-bottom: 1px solid rgba(255,255,255,0.05); flex-wrap: wrap;
     }
     .filter-btn {
-      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
-      color: #9ca3af; font-size: 13px; padding: 4px 12px; cursor: pointer;
+      background: var(--bg-input); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;
+      color: var(--text-secondary); font-size: 13px; padding: 4px 12px; cursor: pointer;
       transition: background 0.15s, color 0.15s, border-color 0.15s; font-family: inherit;
     }
-    .filter-btn:hover, .filter-btn.active { background: #252525; color: #ffffff; border-color: #3a3a3a; }
-    .filter-btn.active { border-color: #555; }
+    .filter-btn:hover, .filter-btn.active { background: #2a2a2a; color: #ffffff; border-color: #3a3a3a; }
+    .filter-btn.active { border-color: #3a3a3a; }
 
-    .vol-filter-row {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 16px; border-bottom: 1px solid #1a1a1a; flex-wrap: wrap;
-    }
-    .vol-label { font-size: 13px; color: #6b7280; white-space: nowrap; }
-    .vol-input {
-      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
-      color: #ffffff; font-size: 13px; padding: 4px 10px; width: 96px;
-      font-family: inherit; outline: none; transition: border-color 0.15s;
-    }
-    .vol-input:focus { border-color: #555; }
-    .vol-input.active { border-color: #22c55e; color: #22c55e; }
-    .vol-sep { color: #3a3a3a; font-size: 13px; }
-    .vol-preset {
-      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
-      color: #6b7280; font-size: 12px; padding: 3px 8px; cursor: pointer;
-      font-family: inherit; transition: background 0.15s, color 0.15s, border-color 0.15s;
-    }
-    .vol-preset:hover { background: #252525; color: #e0e0e0; border-color: #3a3a3a; }
-    .vol-preset.active { border-color: #22c55e; color: #22c55e; }
-    .vol-clear {
-      background: none; border: none; color: #4b5563; font-size: 12px;
-      cursor: pointer; padding: 3px 6px; font-family: inherit; transition: color 0.15s;
-    }
-    .vol-clear:hover { color: #9ca3af; }
 
     .table-scroll { max-height: 400px; overflow-y: auto; }
 
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     thead th {
-      text-align: left; padding: 8px 12px; color: #6b7280; font-weight: 500;
-      border-bottom: 1px solid #222; cursor: pointer; user-select: none; white-space: nowrap;
+      text-align: left; padding: 8px 12px; color: var(--text-secondary); font-weight: 500;
+      border-bottom: 1px solid var(--glass-border); cursor: pointer; user-select: none; white-space: nowrap;
     }
-    thead th:hover { color: #9ca3af; }
-    thead th.sorted { color: #e0e0e0; }
+    thead th:hover { color: var(--text-secondary); }
+    thead th.sorted { color: var(--text-primary); }
     thead th .sort-arrow { margin-left: 4px; opacity: 0.5; }
     thead th.sorted .sort-arrow { opacity: 1; }
-    tbody tr { border-bottom: 1px solid #1a1a1a; }
-    tbody tr:hover { background: #1a1a1a; }
-    tbody td { padding: 7px 12px; color: #e0e0e0; }
+    tbody tr { border-bottom: 1px solid rgba(255,255,255,0.05); }
+    tbody tr:hover { background: var(--glass-bg); }
+    tbody td { padding: 7px 12px; color: var(--text-primary); }
     .sym-cell { font-weight: 600; color: #ffffff; }
     .win-bright  { color: #22c55e; font-weight: 600; }
     .loss-bright { color: rgb(220, 38, 38); font-weight: 600; }
@@ -177,9 +182,12 @@
       color: #6b7280; font-size: 13px; font-family: inherit; font-weight: 500;
       padding: 8px 16px; cursor: pointer; white-space: nowrap;
       transition: background 0.15s, color 0.15s;
+      width: auto; border-radius: 0; margin-top: 0; box-shadow: none;
+      letter-spacing: normal; overflow: visible; position: static;
     }
+    .quick-btn::before { display: none; }
     .quick-btn:last-child { border-right: none; }
-    .quick-btn:hover { background: #242424; color: #e0e0e0; }
+    .quick-btn:hover { background: #242424; color: #e0e0e0; transform: none; box-shadow: none; }
     .quick-btn.active { background: #2a2a2a; color: #ffffff; }
 
     .picker-trigger {
@@ -188,22 +196,21 @@
       color: #9ca3af; font-size: 13.5px; font-family: inherit;
       padding: 8px 16px; cursor: pointer;
       transition: border-color 0.15s, color 0.15s;
+      width: auto; margin-top: 0; box-shadow: none; letter-spacing: normal;
+      overflow: visible; position: static; font-weight: 500;
     }
-    .picker-trigger:hover { border-color: #3a3a3a; color: #e0e0e0; }
+    .picker-trigger::before { display: none; }
+    .picker-trigger:hover { border-color: #3a3a3a; color: #e0e0e0; transform: none; box-shadow: none; }
     .picker-trigger.has-range { color: #ffffff; }
 
     .picker-dropdown {
       position: absolute; top: calc(100% + 6px); left: 0;
       background: #141414; border: 1px solid #2a2a2a; border-radius: 10px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.7);
-      display: flex; z-index: 1000;
+      display: flex; z-index: 2000;
     }
 
-    .picker-presets {
-      width: 170px; flex-shrink: 0;
-      border-right: 1px solid #1e1e1e;
-      padding: 8px 0;
-    }
+    .picker-presets { width: 170px; flex-shrink: 0; border-right: 1px solid #1e1e1e; padding: 8px 0; }
     .preset-item {
       display: flex; align-items: center; justify-content: space-between;
       padding: 8px 14px; font-size: 13px; color: #9ca3af;
@@ -214,7 +221,7 @@
     .preset-item.active { color: #ffffff; }
     .preset-check { color: #22c55e; }
 
-    .picker-right { flex: 1; display: flex; flex-direction: column; min-width: 480px; }
+    .picker-right { flex: 1; display: flex; flex-direction: column; min-width: 720px; }
 
     .picker-cals {
       display: flex; gap: 24px; padding: 16px 20px;
@@ -282,14 +289,17 @@
     .picker-apply:hover { background: #16a34a; }
 
     .stats-section {
-      background: #141414;
-      border: 1px solid #222;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       overflow: hidden;
     }
     .stats-section-header {
       display: flex; align-items: center; gap: 8px;
-      padding: 14px 20px; border-bottom: 1px solid #222;
+      padding: 14px 20px; border-bottom: 1px solid var(--glass-border);
       font-size: 17px; font-weight: 600; color: #ffffff;
     }
     .info-icon {
@@ -308,19 +318,19 @@
       align-items: center;
       justify-content: space-between;
       padding: 10px 20px;
-      border-bottom: 1px solid #1a1a1a;
-      border-right: 1px solid #1a1a1a;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      border-right: 1px solid rgba(255,255,255,0.05);
       gap: 12px;
       transition: background 0.15s;
     }
-    .stat-cell:hover { background: #1a1a1a; }
+    .stat-cell:hover { background: var(--glass-bg); }
     .stat-cell:nth-child(3n) { border-right: none; }
     .stat-cell:nth-last-child(-n+3) { border-bottom: none; }
     .stat-cell-name {
       font-family: 'Inter', sans-serif;
       font-size: 0.85rem;
       font-weight: 600;
-      color: #6b7280;
+      color: var(--text-secondary);
       letter-spacing: 0.02em;
       white-space: nowrap;
     }
@@ -328,7 +338,7 @@
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       font-size: 14px;
       font-weight: 400;
-      color: #e0e0e0;
+      color: var(--text-primary);
       text-align: right;
       white-space: nowrap;
       display: flex;
@@ -337,17 +347,36 @@
     }
     .stat-cell-val.pos { color: #22c55e; }
     .stat-cell-val.neg { color: rgb(220, 38, 38); }
-    .stat-cell-val.na  { color: #4b5563; }
+    .stat-cell-val.na  { color: var(--text-secondary); }
+    .legend-search-wrap { position: relative; }
+    .legend-search-input { background: var(--bg-input); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: var(--text-secondary); font-size: 13.5px; padding: 8px 16px; width: 260px; font-family: inherit; outline: none; transition: border-color 0.15s, color 0.15s; }
+    .legend-search-input:focus { border-color: var(--glass-border); color: var(--text-primary); }
+    .legend-search-input:not(:placeholder-shown) { color: #ffffff; }
+    .legend-sym-list { position: absolute; top: calc(100% - 6px); left: 18px; background: var(--bg-card); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); min-width: 280px; max-height: 160px; overflow-y: auto; z-index: 500; display: none; }
+    .legend-sym-list.open { display: block; }
+    .legend-sym-option { padding: 7px 12px; font-size: 13px; color: var(--text-secondary); cursor: pointer; transition: background 0.1s, color 0.1s; user-select: none; }
+    .legend-sym-option:hover { background: var(--glass-bg); color: #fff; }
+    .legend-sym-option.selected { color: #22c55e; }
+    .legend-detail { padding: 20px 22px; display: none; }
+    .legend-detail-name { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 14px; }
+    .legend-detail-block { margin-bottom: 14px; }
+    .legend-detail-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #22c55e; margin-bottom: 4px; }
+    .legend-detail-text { font-size: 13px; color: #d1d5db; line-height: 1.6; }
+    .legend-detail-formula { font-size: 13px; color: #a3e635; background: var(--bg-input); border: 1px solid rgba(255,255,255,0.08); border-radius: 5px; padding: 8px 12px; font-family: 'Courier New', monospace; line-height: 1.5; white-space: pre-wrap; }
+    .legend-empty { padding: 24px; text-align: center; font-size: 13px; color: var(--text-secondary); }
     .arrow-link {
-      color: #6b7280; font-size: 12px; cursor: pointer;
+      color: var(--text-secondary); font-size: 12px; cursor: pointer;
       transition: color 0.15s; text-decoration: none;
     }
-    .arrow-link:hover { color: #9ca3af; }
+    .arrow-link:hover { color: var(--text-secondary); }
 
     /* ── Window stats panel (screenshot style) ── */
     .win-stats-wrap {
-      background: #141414;
-      border: 1px solid #222;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       padding: 20px 24px;
       margin-top: 24px;
@@ -355,7 +384,7 @@
     .win-stats-title {
       font-size: 13px;
       font-weight: 500;
-      color: #6b7280;
+      color: var(--text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.06em;
       margin-bottom: 16px;
@@ -364,7 +393,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 0;
-      border-bottom: 1px solid #1e1e1e;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
       padding-bottom: 14px;
       margin-bottom: 14px;
     }
@@ -386,7 +415,7 @@
     .ws-val.neg { color: rgb(220, 38, 38); }
     .ws-lbl {
       font-size: 12px;
-      color: #6b7280;
+      color: var(--text-secondary);
       white-space: nowrap;
     }
 
@@ -399,8 +428,11 @@
     }
     @media (max-width: 700px) { .equity-row { grid-template-columns: 1fr; } }
     .equity-card {
-      background: #141414;
-      border: 1px solid #222;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       padding: 16px 20px;
     }
@@ -412,7 +444,7 @@
       margin-left: -20px;
       margin-right: -20px;
       padding: 14px 20px;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid var(--glass-border);
       margin-bottom: 14px;
       display: flex;
       align-items: center;
@@ -454,23 +486,23 @@
     }
     .year-pills { display: flex; gap: 6px; flex-wrap: wrap; }
     .year-pill {
-      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
-      color: #9ca3af; font-size: 13px; padding: 5px 14px; cursor: pointer;
+      background: var(--bg-input); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;
+      color: var(--text-secondary); font-size: 13px; padding: 5px 14px; cursor: pointer;
       font-family: inherit; transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
-    .year-pill:hover { background: #252525; color: #e0e0e0; border-color: #3a3a3a; }
+    .year-pill:hover { background: #2a2a2a; color: var(--text-primary); border-color: #3a3a3a; }
     .year-pill.active { background: #22c55e; color: #000; border-color: #22c55e; font-weight: 600; }
 
-    .annual-tf-wrap { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #6b7280; }
+    .annual-tf-wrap { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
     .annual-tf-select {
-      background: #1f1f1f; border: 1px solid #2a2a2a; border-radius: 6px;
-      color: #9ca3af; font-size: 13px; font-family: inherit; padding: 5px 28px 5px 12px;
+      background: var(--bg-input); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px;
+      color: var(--text-secondary); font-size: 13px; font-family: inherit; padding: 5px 28px 5px 12px;
       cursor: pointer; outline: none; appearance: none; -webkit-appearance: none;
       transition: border-color 0.15s, color 0.15s;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E");
       background-repeat: no-repeat; background-position: right 10px center;
     }
-    .annual-tf-select:hover { border-color: #3a3a3a; color: #e0e0e0; }
+    .annual-tf-select:hover { border-color: var(--glass-border); color: var(--text-primary); }
 
     /* ══════════════════════════════════════
        TAB 4 — Time Analysis
@@ -484,8 +516,11 @@
     @media (max-width: 580px)  { .time-grid { grid-template-columns: 1fr; } }
 
     .time-panel {
-      background: #141414;
-      border: 1px solid #222;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       overflow: hidden;
       display: flex;
@@ -493,12 +528,12 @@
     }
     .time-panel-hdr {
       padding: 14px 16px;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid var(--glass-border);
       font-size: 13px;
       font-weight: 600;
-      color: #6b7280;
+      color: var(--text-secondary);
       letter-spacing: 0.02em;
-      background: #0f0f0f;
+      background: rgba(8, 8, 26, 0.4);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -509,21 +544,21 @@
       align-items: center;
       padding: 8px 16px;
       gap: 10px;
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
       transition: background 0.15s;
     }
     .tp-row:last-child { border-bottom: none; }
-    .tp-row:hover { background: #1a1a1a; }
+    .tp-row:hover { background: var(--glass-bg); }
     .tp-label {
       font-size: 13px;
-      color: #9ca3af;
+      color: var(--text-secondary);
       min-width: 36px;
       white-space: nowrap;
     }
     .tp-bar-wrap {
       flex: 1;
       height: 5px;
-      background: #1e1e1e;
+      background: rgba(255,255,255,0.05);
       border-radius: 3px;
       overflow: hidden;
     }
@@ -533,7 +568,7 @@
     .tp-amount {
       font-size: 14px;
       font-weight: 400;
-      color: #e0e0e0;
+      color: var(--text-primary);
       text-align: right;
       min-width: 68px;
       white-space: nowrap;
@@ -543,7 +578,7 @@
     .tp-amount.zero { color: #4b5563; }
     .tp-pct {
       font-size: 12px;
-      color: #6b7280;
+      color: var(--text-secondary);
       min-width: 40px;
       text-align: right;
       white-space: nowrap;
@@ -560,8 +595,11 @@
     @media (max-width: 700px) { .score-layout { grid-template-columns: 1fr; } }
 
     .score-card {
-      background: #141414;
-      border: 1px solid #222;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       padding: 16px 20px;
     }
@@ -572,7 +610,7 @@
       margin-left: -20px;
       margin-right: -20px;
       padding: 14px 20px;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid var(--glass-border);
       margin-bottom: 14px;
     }
     .score-radar-wrap { position: relative; height: 340px; margin-top: 12px; }
@@ -602,30 +640,32 @@
     .score-row {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 20px;
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
       transition: background 0.15s;
     }
     .score-row:last-child { border-bottom: none; }
-    .score-row:hover { background: #1a1a1a; }
+    .score-row:hover { background: var(--glass-bg); }
     .score-row-label {
       font-family: 'Inter', sans-serif;
       font-size: 0.85rem; font-weight: 600;
-      color: #6b7280; letter-spacing: 0.02em;
+      color: var(--text-secondary); letter-spacing: 0.02em;
       min-width: 130px;
     }
     .score-row-bar-wrap {
-      flex: 1; height: 5px; background: #1e1e1e; border-radius: 3px; overflow: hidden;
+      flex: 1; height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;
     }
     .score-row-bar { height: 100%; border-radius: 3px; background: #6366f1; transition: width 0.5s; }
     .score-row-val {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px; font-weight: 400; color: #e0e0e0;
+      font-size: 14px; font-weight: 400; color: var(--text-primary);
       min-width: 30px; text-align: right;
     }
-    .score-weight { font-size: 11px; color: #4b5563; min-width: 32px; text-align: right; }
+    .score-weight { font-size: 11px; color: var(--text-secondary); min-width: 32px; text-align: right; }
 
     .score-legend {
-      background: #141414; border: 1px solid #222; border-radius: 10px;
+      background: var(--bg-card); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
       padding: 16px 20px; margin-top: 20px; overflow: hidden;
     }
     .score-legend-title {
@@ -635,7 +675,7 @@
       margin-left: -20px;
       margin-right: -20px;
       padding: 14px 20px;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid var(--glass-border);
       margin-bottom: 20px;
     }
     .score-legend-grid {
@@ -652,28 +692,31 @@
       font-size: 11px; font-weight: 400; color: #6366f1;
       background: rgba(99,102,241,0.12); border-radius: 4px; padding: 1px 6px;
     }
-    .score-legend-desc { font-size: 13.5px; color: #6b7280; line-height: 1.55; }
+    .score-legend-desc { font-size: 13.5px; color: var(--text-secondary); line-height: 1.55; }
 
     /* ══════════════════════════════════════
        TAB — Win/Loss Days
     ══════════════════════════════════════ */
     .wld-wrap {
-      background: #141414;
-      border: 1px solid #222;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       overflow: hidden;
     }
     .wld-header {
       display: grid;
       grid-template-columns: 1.4fr 1fr 1fr;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid var(--glass-border);
       padding: 18px 20px;
-      background: #0f0f0f;
+      background: rgba(8, 8, 26, 0.4);
     }
     .wld-col-head {
       font-size: 13px;
       font-weight: 600;
-      color: #6b7280;
+      color: var(--text-secondary);
       letter-spacing: 0.02em;
       text-align: right;
     }
@@ -684,30 +727,30 @@
       display: grid;
       grid-template-columns: 1.4fr 1fr 1fr;
       padding: 8px 20px;
-      border-bottom: 1px solid #1a1a1a;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
       align-items: center;
       gap: 12px;
     }
     .wld-row:last-child { border-bottom: none; }
-    .wld-row:hover { background: #1a1a1a; }
+    .wld-row:hover { background: var(--glass-bg); }
     .wld-name {
       font-size: 14px;
-      color: #9ca3af;
+      color: var(--text-secondary);
     }
     .wld-val {
       font-size: 14px;
       font-weight: 400;
-      color: #e0e0e0;
+      color: var(--text-primary);
       text-align: right;
       white-space: nowrap;
     }
     .wld-val.pos { color: #22c55e; }
     .wld-val.neg { color: rgb(220,38,38); }
-    .wld-val.na  { color: #4b5563; font-weight: 400; }
+    .wld-val.na  { color: var(--text-secondary); font-weight: 400; }
     .wld-val-date {
       font-size: 12px;
       font-weight: 400;
-      color: #4b5563;
+      color: var(--text-secondary);
       margin-left: 5px;
     }
   </style>
@@ -767,6 +810,7 @@
         <div class="picker-cals">
           <div class="cal" id="cal1"></div>
           <div class="cal" id="cal2"></div>
+          <div class="cal" id="cal3"></div>
         </div>
         <div class="picker-footer">
           <span class="picker-footer-label" id="pickerFooterLabel">—</span>
@@ -785,8 +829,32 @@
   </div>
 </div>
 
+</div>
+
 <!-- ══ TAB: Trading Stats ══ -->
 <div id="tab-stats">
+  <div class="legend-search-wrap" id="legendSearchWrap" style="margin-bottom:20px;display:flex;align-items:center;gap:8px">
+    <span style="font-size:13px;color:var(--text-secondary);white-space:nowrap">Stat Lookup:</span>
+    <input type="text" class="legend-search-input" id="legendSearch" placeholder="Search stat definitions…" autocomplete="off">
+    <button id="legendClear" style="display:none;background:none;border:none;color:#4b5563;font-size:13px;cursor:pointer;padding:3px 6px;font-family:inherit;transition:color 0.15s" onmouseover="this.style.color='#9ca3af'" onmouseout="this.style.color='#4b5563'">Clear</button>
+    <div class="legend-sym-list" id="legendList"></div>
+  </div>
+  <div class="legend-detail" id="legendDetail" style="display:none;margin-bottom:20px;background:var(--bg-card);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:8px">
+    <div class="legend-detail-name" id="legendDetailName"></div>
+    <div class="legend-detail-block">
+      <div class="legend-detail-label">What it measures</div>
+      <div class="legend-detail-text" id="legendDetailWhat"></div>
+    </div>
+    <div class="legend-detail-block" id="legendDetailFormulaBlock">
+      <div class="legend-detail-label">How it's calculated</div>
+      <div class="legend-detail-formula" id="legendDetailFormula"></div>
+    </div>
+    <div class="legend-detail-block">
+      <div class="legend-detail-label">Why it matters for day traders</div>
+      <div class="legend-detail-text" id="legendDetailWhy"></div>
+    </div>
+  </div>
+
   <div class="stats-section" id="statsSection" style="display:none">
     <div class="stats-section-header">
       Stats
@@ -806,6 +874,16 @@
     <div class="equity-card">
       <div class="equity-title">Cumulative P&amp;L <span class="info-icon" title="Running total of all trade P&L compounded day by day over the selected period">i</span></div>
       <div class="equity-chart-wrap" style="height:380px"><canvas id="cumulChart"></canvas></div>
+    </div>
+  </div>
+  <div class="equity-row" id="mfeScatterRow" style="display:none">
+    <div class="equity-card">
+      <div class="equity-title">MFE vs P&amp;L <span class="info-icon" title="Each dot is one trade. X = final P&L, Y = Maximum Favorable Excursion (max interim profit). Points far above the diagonal left money on the table — exits too early. Points on/near the diagonal captured most of the move.">i</span></div>
+      <div class="equity-chart-wrap" style="height:340px"><canvas id="mfeChart"></canvas></div>
+    </div>
+    <div class="equity-card">
+      <div class="equity-title">MAE vs P&amp;L <span class="info-icon" title="Each dot is one trade. X = final P&L, Y = Maximum Adverse Excursion (max interim loss). Winners in the lower-right had small adverse moves. Losers high on the Y axis went deeply against you before stopping out — potential stop-placement or overhold issue.">i</span></div>
+      <div class="equity-chart-wrap" style="height:340px"><canvas id="maeChart"></canvas></div>
     </div>
   </div>
 </div>
@@ -995,13 +1073,14 @@ function fmtSecsMinutes(s) {
    Data loading
 ═══════════════════════════════════════════ */
 async function loadAllData() {
-  const idx = await fetch('calendar/calendar_index.json').then(r => r.json());
+  const _cb = '?v=' + Date.now();
+  const idx = await fetch('calendar/calendar_index.json' + _cb).then(r => r.json());
   rawRoundtrips = [];
   rawDayStats   = [];
 
   for (const year of idx.years) {
     let raw;
-    try { raw = await fetch(`calendar/calendar_data_${year}.json`).then(r => r.json()); }
+    try { raw = await fetch(`calendar/calendar_data_${year}.json` + _cb).then(r => r.json()); }
     catch { continue; }
     const months = raw[String(year)] ?? raw;
     for (const [month, mdata] of Object.entries(months)) {
@@ -1050,21 +1129,19 @@ function computeStats(rts, days) {
   const winRate = rts.length ? WINS.length / rts.length : 0;
   const lossRate = rts.length ? LOSS.length / rts.length : 0;
   const profitFactor = grossLoss > 0 ? grossWin / grossLoss : null;
-  const kelly = avgLoss !== 0 ? winRate - lossRate / Math.abs(avgLoss / avgWin) : null;
+  const kelly = avgWin !== 0 && avgLoss !== 0 ? winRate - lossRate / (avgWin / Math.abs(avgLoss)) : null;
 
   // SQN = (E(R) / StdDev(R)) * sqrt(n)   where R = pnl per trade
   const sqn = pnlStd > 0 ? (avgTrade / pnlStd) * Math.sqrt(rts.length) : null;
 
-  // Probability of random chance: simplified t-stat p-value
-  // t = avgPnl / (stddev / sqrt(n))
+  // Probability of random chance: one-tailed t-test (matches Tradervue)
+  // H1: mean > 0, so one-tailed upper tail
   const tStat = pnlStd > 0 ? avgTrade / (pnlStd / Math.sqrt(rts.length)) : null;
-  // Two-tailed p-value approximation
   let pValue = null;
   if (tStat !== null) {
     const x = Math.abs(tStat), df = rts.length - 1;
-    // Simple approximation using normal distribution for large n
     if (df > 30) {
-      pValue = 2 * (1 - erf(x / Math.SQRT2) / 2 - 0.5) * 100;
+      pValue = (1 - erf(x / Math.SQRT2)) / 2 * 100;
       pValue = Math.max(0, pValue);
     }
   }
@@ -1099,6 +1176,18 @@ function computeStats(rts, days) {
   const se = n > 2 ? Math.sqrt(sse / (n - 2) / sxx) : 0;
   const kRatio = se > 0 ? slope / (se * Math.sqrt(n)) : null;
 
+  // MFE / MAE — only present when compute_mfe_mae.py has been run
+  const rtsM     = rts.filter(r => r.mfe != null && r.mae != null);
+  const hasMfe   = rtsM.length > 0;
+  const avgMFE   = hasMfe ? mean(rtsM.map(r => r.mfe)) : null;
+  const avgMAE   = hasMfe ? mean(rtsM.map(r => r.mae)) : null;
+  // Entry efficiency: % of MFE captured on winning trades
+  const winsMfe  = rtsM.filter(r => r.pnl > SCRATCH_THRESH && r.mfe > 0.01);
+  const entryEff = winsMfe.length ? mean(winsMfe.map(r => Math.min(r.pnl / r.mfe * 100, 100))) : null;
+  // Trade efficiency: pnl / (mfe + mae) — net captured as % of full price range
+  const rtsRange = rtsM.filter(r => (r.mfe + r.mae) > 0.01);
+  const tradeEff = rtsRange.length ? mean(rtsRange.map(r => r.pnl / (r.mfe + r.mae) * 100)) : null;
+
   return {
     totalPnl, grossWin, grossLoss, totalShares,
     largestGain, largestLoss,
@@ -1114,6 +1203,7 @@ function computeStats(rts, days) {
     holdLoss:  LOSS.length ? mean(LOSS.map(r => r.hold_secs ?? 0)) : null,
     maxW, maxL,
     pnlStd, sqn, pValue, tStat, kelly, kRatio, profitFactor,
+    hasMfe, avgMFE, avgMAE, entryEff, tradeEff,
   };
 }
 
@@ -1183,22 +1273,33 @@ function renderStatsTable(s) {
   const kellyCls = s.kelly != null ? pnlClass(s.kelly) : 'neg';
   grid.appendChild(cell('Kelly Percentage', kellyStr, kellyCls));
   grid.appendChild(cell('K-Ratio', s.kRatio != null ? s.kRatio.toFixed(2) : 'n/a', s.kRatio != null ? pnlClass(s.kRatio) : 'na'));
-  grid.appendChild(cell('Profit Factor', s.profitFactor != null ? s.profitFactor.toFixed(2) : 'n/a', s.profitFactor != null ? pnlClass(s.profitFactor - 1) : 'na'));
+  const winLossRatio = s.avgLoss !== 0 ? s.avgWin / Math.abs(s.avgLoss) : null;
+  grid.appendChild(cell('Win/Loss Ratio', winLossRatio != null ? winLossRatio.toFixed(2) : 'n/a', winLossRatio != null ? pnlClass(winLossRatio - 1) : 'na'));
 
   // Row 9
   grid.appendChild(cell('Total Commissions', '$0.00'));
-  grid.appendChild(cell('Total Fees', 'n/a', 'na'));
   grid.appendChild(cell('Trading Days', String(s.nDays)));
+  grid.appendChild(cell('Profit Factor', s.profitFactor != null ? s.profitFactor.toFixed(2) : 'n/a', s.profitFactor != null ? pnlClass(s.profitFactor - 1) : 'na'));
 
   // Row 10
   grid.appendChild(cell('Gross Profit', dollar(s.grossWin),    'pos'));
   grid.appendChild(cell('Gross Loss',   dollar(-s.grossLoss), 'neg'));
   grid.appendChild(cell('Total Shares Traded', s.totalShares.toLocaleString()));
 
+  // Row 11 — MFE / MAE
+  grid.appendChild(cell('Avg Position MFE (Runup)',    s.avgMFE != null ? dollar(s.avgMFE, false) : 'n/a', s.avgMFE != null ? 'pos' : 'na'));
+  grid.appendChild(cell('Avg Position MAE (Drawdown)', s.avgMAE != null ? dollar(s.avgMAE, false) : 'n/a', s.avgMAE != null ? 'neg' : 'na'));
+  grid.appendChild(cell('', ''));
+
+  // Row 12 — Efficiency
+  grid.appendChild(cell('Entry Efficiency', s.entryEff != null ? s.entryEff.toFixed(1) + '%' : 'n/a', s.entryEff != null ? pnlClass(s.entryEff) : 'na'));
+  grid.appendChild(cell('Trade Efficiency', s.tradeEff != null ? s.tradeEff.toFixed(1) + '%' : 'n/a', s.tradeEff != null ? pnlClass(s.tradeEff) : 'na'));
+  grid.appendChild(cell('', ''));
+
   document.getElementById('statsSection').style.display = 'block';
 }
 
-let _ddChart = null, _cumChart = null;
+let _ddChart = null, _cumChart = null, _mfeChart = null, _maeChart = null;
 
 function renderEquityCharts(rts) {
   // Aggregate to end-of-day PnL
@@ -1427,6 +1528,107 @@ function _renderInstruments() {
     document.getElementById('botSymChart'),
     makeHoriz(bot20.map(e => e.sym), bot20.map(e => e.pnl), 'rgba(239,68,68,0.75)', 'Loss')
   );
+}
+
+/* ═══════════════════════════════════════════
+   MFE / MAE Scatter Charts
+═══════════════════════════════════════════ */
+function renderMfeScatter(rts) {
+  const hasMfe = rts.some(r => r.mfe != null && r.mae != null);
+  document.getElementById('mfeScatterRow').style.display = hasMfe ? '' : 'none';
+  if (!hasMfe) return;
+
+  const WIN_COLOR  = 'rgba(34,197,94,0.7)';
+  const LOSS_COLOR = 'rgba(239,68,68,0.7)';
+  const SCRT_COLOR = 'rgba(107,114,128,0.5)';
+
+  function dotColor(pnl) {
+    if (pnl >  0.01) return WIN_COLOR;
+    if (pnl < -0.01) return LOSS_COLOR;
+    return SCRT_COLOR;
+  }
+
+  function scatterOpts(xLabel, yLabel, tooltipExtra) {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a1a', borderColor: '#333', borderWidth: 1,
+          titleColor: '#ffffff', bodyColor: '#9ca3af', padding: 10,
+          callbacks: {
+            title: () => '',
+            label: item => {
+              const r = item.raw;
+              return [
+                `Symbol: ${r.sym}`,
+                `P&L: ${dollar(r.x)}`,
+                tooltipExtra(r),
+              ];
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: { display: true, text: xLabel, color: '#6b7280', font: { size: 11 } },
+          ticks: {
+            color: '#6b7280', font: { size: 11 },
+            callback: v => (v >= 0 ? '' : '-') + '$' + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: 0 }),
+          },
+          grid: { color: ctx => ctx.tick.value === 0 ? 'rgba(255,255,255,0.25)' : '#1e1e1e', lineWidth: ctx => ctx.tick.value === 0 ? 1.5 : 1 },
+        },
+        y: {
+          title: { display: true, text: yLabel, color: '#6b7280', font: { size: 11 } },
+          ticks: {
+            color: '#6b7280', font: { size: 11 },
+            callback: v => '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 }),
+          },
+          grid: { color: '#1e1e1e' },
+        },
+      },
+    };
+  }
+
+  // MFE vs PnL: x=pnl, y=mfe
+  const mfePoints = rts.filter(r => r.mfe != null).map(r => ({
+    x: +r.pnl.toFixed(2), y: +r.mfe.toFixed(2), sym: r.symbol ?? '', pnl: r.pnl,
+  }));
+
+  if (_mfeChart) { _mfeChart.destroy(); _mfeChart = null; }
+  _mfeChart = new Chart(document.getElementById('mfeChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        data: mfePoints,
+        backgroundColor: mfePoints.map(p => dotColor(p.pnl)),
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      }],
+    },
+    options: scatterOpts('P&L ($)', 'MFE ($)', r => `MFE: ${dollar(r.y, false)}`),
+  });
+
+  // MAE vs PnL: x=pnl, y=mae
+  const maePoints = rts.filter(r => r.mae != null).map(r => ({
+    x: +r.pnl.toFixed(2), y: +r.mae.toFixed(2), sym: r.symbol ?? '', pnl: r.pnl,
+  }));
+
+  if (_maeChart) { _maeChart.destroy(); _maeChart = null; }
+  _maeChart = new Chart(document.getElementById('maeChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        data: maePoints,
+        backgroundColor: maePoints.map(p => dotColor(p.pnl)),
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      }],
+    },
+    options: scatterOpts('P&L ($)', 'MAE ($)', r => `MAE: ${dollar(r.y, false)}`),
+  });
 }
 
 /* ═══════════════════════════════════════════
@@ -1801,13 +2003,17 @@ function _renderCals() {
   const m1y = _calBase.getFullYear(), m1m = _calBase.getMonth();
   if (_yearPickMode) {
     document.getElementById('cal2').style.display = 'none';
+    document.getElementById('cal3').style.display = 'none';
     _renderYearGrid(document.getElementById('cal1'), m1y);
     return;
   }
   document.getElementById('cal2').style.display = '';
+  document.getElementById('cal3').style.display = '';
   const m2 = new Date(m1y, m1m + 1, 1);
+  const m3 = new Date(m1y, m1m + 2, 1);
   _renderCalMonth(document.getElementById('cal1'), m1y, m1m, true, false);
-  _renderCalMonth(document.getElementById('cal2'), m2.getFullYear(), m2.getMonth(), false, true);
+  _renderCalMonth(document.getElementById('cal2'), m2.getFullYear(), m2.getMonth(), false, false);
+  _renderCalMonth(document.getElementById('cal3'), m3.getFullYear(), m3.getMonth(), false, true);
 }
 
 function _updateFooter() {
@@ -1853,6 +2059,7 @@ function _applyPicker() {
   applyStatsDateFilter();
 }
 
+
 function applyStatsDateFilter() {
   let rts  = rawRoundtrips;
   let days = rawDayStats;
@@ -1872,6 +2079,8 @@ function applyStatsDateFilter() {
   const s = computeStats(rts, days);
   if (s) renderStatsTable(s);
   renderEquityCharts(rts);
+  renderMfeScatter(rts);
+
   if (_activeTab === 'time')        _renderTimeAnalysis();
   if (_activeTab === 'instruments') _renderInstruments();
   if (_activeTab === 'score')       _renderTradingScore();
@@ -1915,13 +2124,13 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.getElementById('tab-instruments').style.display  = _activeTab === 'instruments' ? '' : 'none';
     document.getElementById('tab-time').style.display         = _activeTab === 'time'        ? '' : 'none';
     document.getElementById('tab-score').style.display        = _activeTab === 'score'       ? '' : 'none';
-    const hideControls = _activeTab === 'annual';
-    document.querySelector('.picker-controls').style.display  = hideControls ? 'none' : '';
+    const hideDatePicker = _activeTab === 'annual';
+    document.querySelector('.picker-controls').style.display = hideDatePicker ? 'none' : '';
     if (_activeTab === 'time')        _renderTimeAnalysis();
     if (_activeTab === 'annual')      _renderAnnualStats();
     if (_activeTab === 'instruments') _renderInstruments();
     if (_activeTab === 'score')       _renderTradingScore();
-    if (_activeTab === 'charts') { if (_ddChart) _ddChart.resize(); if (_cumChart) _cumChart.resize(); }
+    if (_activeTab === 'charts') { if (_ddChart) _ddChart.resize(); if (_cumChart) _cumChart.resize(); if (_mfeChart) _mfeChart.resize(); if (_maeChart) _maeChart.resize(); }
     if (_activeTab === 'winloss') {
       let rts = rawRoundtrips, days = rawDayStats;
       if (_appliedFrom) { rts = rts.filter(r => r.date >= _appliedFrom); days = days.filter(d => d.date >= _appliedFrom); }
@@ -2188,6 +2397,261 @@ initAuth(async () => {
     console.error(e);
   }
 });
+
+/* ══════════════════════════════════════
+   Stat Definitions lookup
+══════════════════════════════════════ */
+const STAT_DEFS = [
+  {
+    name: 'Total Gain/Loss',
+    what: 'The net sum of P&L across every trade in the selected period. This is your bottom-line result.',
+    formula: 'Σ(P&L per trade)',
+    why: 'The single most important number — tells you whether you made or lost money. Use it to measure progress over time, compare periods, and set realistic daily/weekly targets.'
+  },
+  {
+    name: 'Largest Gain',
+    what: 'The single highest-P&L trade in the period.',
+    formula: 'max(P&L)',
+    why: 'Reveals whether your overall profitability is driven by a handful of outliers. If your largest gain is many times your average winner, your results may not be repeatable and you may be overexposed on occasional high-risk setups.'
+  },
+  {
+    name: 'Largest Loss',
+    what: 'The single worst-P&L trade in the period.',
+    formula: 'min(P&L)',
+    why: 'Day traders must know their worst-case single-trade loss. A large outlier loss relative to average losers signals a lack of stop discipline or a revenge-trade event — both dangerous patterns to identify and eliminate.'
+  },
+  {
+    name: 'Average Daily Gain/Loss',
+    what: 'Total P&L divided by the number of trading days in the period.',
+    formula: 'Total P&L ÷ Trading Days',
+    why: 'Sets a realistic daily expectation. If your average day is profitable but your total is negative, a few bad days are wiping out the gains — a classic consistency problem. Use this to size your daily loss limit.'
+  },
+  {
+    name: 'Average Daily Volume',
+    what: 'Total entry shares traded across all trades, divided by the number of trading days.',
+    formula: 'Σ(entry shares) ÷ Trading Days',
+    why: 'Tracks how much size you are putting on each day. Sudden spikes in volume alongside losses indicate overtrading or revenge trading — common blow-up patterns in day trading.'
+  },
+  {
+    name: 'Average Per-share Gain/Loss',
+    what: 'Total P&L divided by total entry shares traded. Represents your edge per share.',
+    formula: 'Total P&L ÷ Σ(entry shares)',
+    why: 'Normalizes performance by size. A trader who makes $500 on 10,000 shares has a thinner per-share edge than one who makes $500 on 1,000 shares. Useful for comparing yourself across different position sizes and stocks.'
+  },
+  {
+    name: 'Average Trade Gain/Loss',
+    what: 'Total P&L divided by total number of trades, including scratch trades.',
+    formula: 'Total P&L ÷ Total Trades',
+    why: 'Your expectancy per trade. A positive value means your system makes money on average each time you pull the trigger. This is the foundation of edge — if this is negative, no volume of trading will save you.'
+  },
+  {
+    name: 'Average Winning Trade',
+    what: 'Mean P&L of all trades with P&L > $0.',
+    formula: 'Σ(winning P&L) ÷ Number of winning trades',
+    why: 'Used to calculate your reward-to-risk ratio alongside Average Losing Trade. Day traders need this to confirm that winners are meaningfully larger than losers — otherwise a high win rate still results in a net loss.'
+  },
+  {
+    name: 'Average Losing Trade',
+    what: 'Mean P&L of all trades with P&L < $0.',
+    formula: 'Σ(losing P&L) ÷ Number of losing trades',
+    why: 'Defines the cost of being wrong. Keeping this number small relative to your average winner is the hallmark of disciplined risk management. Rising average losses are a warning sign that stops are being moved or ignored.'
+  },
+  {
+    name: 'Number of Winning Trades',
+    what: 'Count and percentage of trades with P&L > $0 (scratch trades excluded from percentage base).',
+    formula: 'Count(P&L > 0) and Count(P&L > 0) ÷ (Total − Scratch) × 100',
+    why: 'Win rate alone does not determine profitability — it must be weighed against the reward-to-risk ratio. A 40% win rate can be highly profitable with a 3:1 average win/loss. Track trends: a falling win rate often signals deteriorating execution or setups.'
+  },
+  {
+    name: 'Number of Losing Trades',
+    what: 'Count and percentage of trades with P&L < $0 (scratch trades excluded from percentage base).',
+    formula: 'Count(P&L < 0) and Count(P&L < 0) ÷ (Total − Scratch) × 100',
+    why: 'Pairs with win rate and average loss to diagnose strategy health. A rising loss rate combined with larger losses is a double warning — both frequency and magnitude of losses are moving the wrong way.'
+  },
+  {
+    name: 'Scratch Trades',
+    what: 'Trades that closed at exactly $0 P&L. Shown as count and percentage of all trades.',
+    formula: 'Count(P&L = 0) ÷ Total Trades × 100',
+    why: 'Breaking even on a trade is often a skill — getting out for flat when a trade goes against you is better than taking a loss. But a very high scratch rate can signal hesitation or lack of conviction. Context matters.'
+  },
+  {
+    name: 'Avg Hold Time (winning trades)',
+    what: 'Mean time from entry to exit for all trades with P&L > $0.',
+    formula: 'Mean(exit_time − entry_time) for winning trades',
+    why: 'Reveals how long your winning trades take to play out. Comparing this to your losing hold time is critical — if you hold losers longer than winners, you are cutting winners short and letting losers run, a common and costly bias.'
+  },
+  {
+    name: 'Avg Hold Time (losing trades)',
+    what: 'Mean time from entry to exit for all trades with P&L < $0.',
+    formula: 'Mean(exit_time − entry_time) for losing trades',
+    why: 'Should ideally be shorter than or equal to winning hold time. Long losing hold times relative to winners indicate failure to respect stops — one of the most destructive patterns in day trading.'
+  },
+  {
+    name: 'Avg Hold Time (scratch trades)',
+    what: 'Mean time from entry to exit for trades that closed at $0 P&L.',
+    formula: 'Mean(exit_time − entry_time) for scratch trades',
+    why: 'Scratch trades often represent fast bailouts. If scratch hold time is very short, it can indicate reactive exits before a thesis plays out. If very long, it may indicate holding through a full move only to give it all back.'
+  },
+  {
+    name: 'Max Consecutive Wins',
+    what: 'The longest unbroken streak of trades with P&L > $0 in the period.',
+    formula: 'max streak length where each trade P&L > 0',
+    why: 'Useful for setting realistic expectations and avoiding overconfidence. Long win streaks can lead to oversizing. Knowing your historical max streak helps you stay disciplined — a streak ending is normal, not a reason to panic or revenge trade.'
+  },
+  {
+    name: 'Max Consecutive Losses',
+    what: 'The longest unbroken streak of trades with P&L < $0 in the period.',
+    formula: 'max streak length where each trade P&L < 0',
+    why: 'The most important drawdown input for day traders. If your historical max losing streak is 6, your risk rules (daily loss limit, per-trade stop size) must ensure 6 back-to-back losses at max size does not blow your account or violate your rules.'
+  },
+  {
+    name: 'Trade P&L Std Deviation',
+    what: 'Standard deviation of individual trade P&L values. Measures how consistently your trades cluster around the average.',
+    formula: 'σ = √[ Σ(P&L − mean)² ÷ N ]',
+    why: 'A low std deviation means results are predictable and manageable. A high one means wild swings — some huge wins, some huge losses. Day traders with high std deviation have less consistent edge and are more vulnerable to random variance destroying a period.'
+  },
+  {
+    name: 'System Quality Number (SQN)',
+    what: 'A composite measure of both the size and consistency of your edge across trades.',
+    formula: 'SQN = (Average Trade ÷ Std Dev) × √N\n\nBenchmarks: 1.6–1.9 = below avg | 2.0–2.4 = avg | 2.5–2.9 = good | 3.0+ = excellent',
+    why: 'SQN rewards both a positive average trade AND consistent results — you cannot game it with a few lucky outliers. Day traders should target SQN ≥ 2.0 before scaling size. A rising SQN over time is the best evidence your skills are improving.'
+  },
+  {
+    name: 'Probability of Random Chance',
+    what: 'One-tailed t-test p-value: the probability that your results could be produced by a purely random strategy.',
+    formula: 'p = (1 − erf(t / √2)) / 2 × 100\nwhere t = (Average Trade ÷ Std Dev) × √N\n\nInterpretation: < 5% = statistically significant edge',
+    why: 'Prevents you from mistaking luck for skill. Even a profitable run can occur randomly over small sample sizes. Below 5% means there is less than a 5% chance your results are random — your edge is real. Requires a large trade sample (100+) to be meaningful.'
+  },
+  {
+    name: 'Kelly Percentage',
+    what: 'The theoretically optimal fraction of your capital to risk on each trade to maximize long-run growth.',
+    formula: 'K = Win% − (Loss% ÷ (Avg Win ÷ |Avg Loss|))\n\nPositive = edge exists. Most traders use Half-Kelly (K ÷ 2) in practice.',
+    why: 'Full Kelly maximizes geometric growth but produces extreme drawdowns. In day trading it is most useful as a sizing sanity check — if Kelly says 2% and you are risking 20%, you are dramatically oversized. Negative Kelly means no mathematical edge at current win rate and reward/risk.'
+  },
+  {
+    name: 'K-Ratio',
+    what: 'Measures the smoothness and consistency of your equity curve growth over time.',
+    formula: 'K-Ratio = slope(linear regression of cumulative P&L) ÷ (std error of regression × √N)\n\nPositive = upward trend. > 1.0 = strong consistency.',
+    why: 'A high K-Ratio means your equity grew steadily rather than in fits and starts. Day traders who rely on a few huge months with bad months in between have low K-Ratios — high variance makes drawdowns unpredictable. A rising K-Ratio over time signals genuine, sustainable improvement.'
+  },
+  {
+    name: 'Profit Factor',
+    what: 'Total gross profit divided by total gross loss (in absolute value). The ratio of dollars won to dollars lost.',
+    formula: 'Profit Factor = Gross Profit ÷ |Gross Loss|\n\nBenchmarks: < 1.0 = losing | 1.0–1.5 = marginal | 1.5–2.0 = solid | > 2.0 = excellent',
+    why: 'One of the cleanest single-number summaries of strategy quality. Unlike win rate, it accounts for both frequency and size of wins and losses. Day traders should target at least 1.5. If Profit Factor is declining over time, the edge is eroding.'
+  },
+  {
+    name: 'Gross Profit',
+    what: 'The sum of P&L from all winning trades only.',
+    formula: 'Σ(P&L) where P&L > 0',
+    why: 'The raw dollar output of your winners. Used to compute Profit Factor and to understand how much of your total gain is driven by wins vs. how much is being given back by losses.'
+  },
+  {
+    name: 'Gross Loss',
+    what: 'The absolute sum of P&L from all losing trades only.',
+    formula: 'Σ(|P&L|) where P&L < 0',
+    why: 'The raw cost of your losers. Comparing Gross Loss to Gross Profit shows whether your wins are outpacing your losses in aggregate. A rising Gross Loss over time while Gross Profit stays flat is a deterioration signal.'
+  },
+  {
+    name: 'Trading Days',
+    what: 'The number of distinct calendar days on which at least one trade was executed in the selected period.',
+    formula: 'Count of unique dates with at least one trade',
+    why: 'Context for all daily averages. Also useful for tracking trading frequency and identifying over- or under-trading periods. Fewer days with better stats is usually preferable to more days with marginal results.'
+  },
+  {
+    name: 'Total Shares Traded',
+    what: 'The sum of entry-side shares across all trades (not round-trip — counted once per trade).',
+    formula: 'Σ(entry_qty per trade)',
+    why: 'A proxy for total market exposure over the period. Helps you understand the relationship between size and results. Combined with Total P&L, it gives you an overall per-share efficiency figure across the entire period.'
+  },
+  {
+    name: 'Avg Position MFE (Runup)',
+    what: 'Average Maximum Favorable Excursion across all trades — the average peak unrealized profit reached during each trade before closing.',
+    formula: 'mean( max(high) − entry × qty ) for long  |  mean( entry − min(low) × qty ) for short',
+    why: 'Shows how much open profit your trades typically generate at their best point. A large gap between MFE and your average win means you are exiting too early and leaving significant money on the table. Requires compute_mfe_mae.py to have been run against OHLCV data.'
+  },
+  {
+    name: 'Avg Position MAE (Drawdown)',
+    what: 'Average Maximum Adverse Excursion across all trades — the average worst-point unrealized loss experienced during each trade.',
+    formula: 'mean( entry − min(low) × qty ) for long  |  mean( max(high) − entry × qty ) for short',
+    why: 'Reveals how far trades move against you on average before closing. If your MAE is consistently much larger than your actual loss on losing trades, your stops may be too wide. For winners, a high MAE relative to the profit suggests they survived large adverse moves — those recoveries may not be repeatable. Requires compute_mfe_mae.py.'
+  },
+  {
+    name: 'Entry Efficiency',
+    what: 'The average percentage of MFE captured on winning trades — how close your exits were to the peak of each winner.',
+    formula: 'mean( P&L / MFE × 100 ) for winning trades where MFE > 0',
+    why: '100% means you exited at the exact high (impossible in practice). A consistently low score (e.g. 40%) means you are getting out well before winners peak. Use this alongside MFE charts to refine exit timing and trailing-stop strategy. Requires compute_mfe_mae.py.'
+  },
+  {
+    name: 'Trade Efficiency',
+    what: 'Net P&L as a percentage of the total price range experienced during each trade (MFE + MAE combined).',
+    formula: 'mean( P&L / (MFE + MAE) × 100 ) for all trades where (MFE + MAE) > 0',
+    why: 'Measures overall quality of both entry and exit relative to the full range the trade traveled. A positive score means you captured more of the favorable move than you gave back to adverse moves. Negative means adverse moves dominated. Unlike Entry Efficiency, this penalizes both poor exits and poor entries. Requires compute_mfe_mae.py.'
+  }
+];
+
+(function () {
+  const input   = document.getElementById('legendSearch');
+  const list    = document.getElementById('legendList');
+  const detail  = document.getElementById('legendDetail');
+  const empty   = document.getElementById('legendEmpty');
+  const clearBtn = document.getElementById('legendClear');
+  let _selected = null;
+
+  function setClearVisible(v) { clearBtn.style.display = v ? '' : 'none'; }
+
+  function renderList(q) {
+    const term = (q || '').trim().toLowerCase();
+    const matches = term ? STAT_DEFS.filter(d => d.name.toLowerCase().includes(term)) : STAT_DEFS;
+    list.innerHTML = '';
+    if (!matches.length) {
+      const el = document.createElement('div');
+      el.className = 'legend-sym-option'; el.style.color = '#4b5563'; el.style.cursor = 'default';
+      el.textContent = 'No matches';
+      list.appendChild(el);
+    } else {
+      matches.forEach(def => {
+        const el = document.createElement('div');
+        el.className = 'legend-sym-option' + (_selected === def ? ' selected' : '');
+        el.textContent = def.name;
+        el.addEventListener('mousedown', e => { e.preventDefault(); selectDef(def); });
+        list.appendChild(el);
+      });
+    }
+    list.classList.add('open');
+  }
+
+  function selectDef(def) {
+    _selected = def;
+    input.value = def.name;
+    setClearVisible(true);
+    list.classList.remove('open');
+    document.getElementById('legendDetailName').textContent    = def.name;
+    document.getElementById('legendDetailWhat').textContent    = def.what;
+    document.getElementById('legendDetailFormula').textContent = def.formula;
+    document.getElementById('legendDetailWhy').textContent     = def.why;
+    detail.style.display = 'block';
+    empty.style.display  = 'none';
+  }
+
+  input.addEventListener('focus', () => renderList(input.value));
+  input.addEventListener('input', () => { setClearVisible(input.value !== ''); renderList(input.value); });
+  clearBtn.addEventListener('click', () => { input.value = ''; _selected = null; setClearVisible(false); detail.style.display = 'none'; list.classList.remove('open'); input.focus(); });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { list.classList.remove('open'); input.blur(); }
+    if (e.key === 'Enter') {
+      const q = input.value.trim().toLowerCase();
+      const match = STAT_DEFS.find(d => d.name.toLowerCase() === q)
+                 ?? STAT_DEFS.find(d => d.name.toLowerCase().startsWith(q))
+                 ?? (STAT_DEFS.filter(d => d.name.toLowerCase().includes(q))[0] ?? null);
+      if (match) selectDef(match);
+    }
+  });
+  document.addEventListener('click', e => {
+    if (!document.getElementById('legendSearchWrap').contains(e.target))
+      list.classList.remove('open');
+  });
+})();
 </script>
 </body>
 </html>

@@ -905,7 +905,7 @@
         .preset-item:hover { background: #1e1e1e; color: #e0e0e0; }
         .preset-item.active { color: #ffffff; }
         .preset-check { color: #22c55e; }
-        .picker-right { flex: 1; display: flex; flex-direction: column; min-width: 480px; }
+        .picker-right { flex: 1; display: flex; flex-direction: column; min-width: 720px; }
         .picker-cals { display: flex; gap: 24px; padding: 16px 20px; border-bottom: 1px solid #1e1e1e; }
         .cal { flex: 1; }
         .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -1010,6 +1010,7 @@
                 <div class="picker-cals">
                   <div class="cal" id="cal1"></div>
                   <div class="cal" id="cal2"></div>
+                  <div class="cal" id="cal3"></div>
                 </div>
                 <div class="picker-footer">
                   <span class="picker-footer-label" id="pickerFooterLabel">—</span>
@@ -1033,7 +1034,7 @@
                 <h2 class="card-title">Parameters <span class="info-icon" title="Simulation inputs: account size, win rate, risk/reward ratio, breakeven rate, trades per month, and simulation count. Adjust these to model different trading scenarios.">i</span></h2>
                 
                 <label for="initialBalance">Initial Balance ($)</label>
-                <input type="number" id="initialBalance" value="5000" min="100" step="100">
+                <input type="number" id="initialBalance" value="4886" min="100" step="100">
                 
                 <label for="riskPercent">Risk per Trade (%)</label>
                 <input type="number" id="riskPercent" value="1" min="0.01" max="10" step="0.005" readonly>
@@ -1056,16 +1057,13 @@
                 <label for="numSimulations">Simulations</label>
                 <input type="number" id="numSimulations" value="1000" min="100" max="10000" step="100" readonly>
 
-                <div style="display:flex;gap:8px;margin-top:8px;">
-                  <div style="flex:1">
-                    <label for="outlierMaxWin">Exclude wins above ($)</label>
-                    <input type="number" id="outlierMaxWin" min="0" step="1" placeholder="No cap">
-                  </div>
-                  <div style="flex:1">
-                    <label for="outlierMaxLoss">Exclude losses beyond ($)</label>
-                    <input type="number" id="outlierMaxLoss" min="0" step="1" placeholder="No cap">
-                  </div>
-                </div>
+                <hr style="border:none;border-top:1px solid #2a2a2a;margin:12px 0;">
+
+                <label for="outlierMaxWin">Exclude wins above ($)</label>
+                <input type="number" id="outlierMaxWin" min="0" step="1" placeholder="No cap">
+
+                <label for="outlierMaxLoss">Cap losses at ($)</label>
+                <input type="number" id="outlierMaxLoss" min="0" step="1" placeholder="No cap">
                 <div id="outlierStatus" style="font-size:12px;color:#6b7280;min-height:16px;margin-bottom:4px;"></div>
 
                 <div class="button-checkbox-row">
@@ -1989,13 +1987,27 @@
             const t = to   || todayStr;
             let rts = _allRoundtrips.filter(r => r.date >= f && r.date <= t);
 
-            const maxWin  = parseFloat(document.getElementById('outlierMaxWin').value)  || Infinity;
-            const maxLoss = parseFloat(document.getElementById('outlierMaxLoss').value) || Infinity;
+            const balance = parseFloat(document.getElementById('initialBalance').value) || 5000;
+
+            const maxWin      = parseFloat(document.getElementById('outlierMaxWin').value)  || Infinity;
+            const lossCap     = parseFloat(document.getElementById('outlierMaxLoss').value) || Infinity;
+
             const beforeCount = rts.length;
-            rts = rts.filter(r => r.pnl <= maxWin && r.pnl >= -maxLoss);
+            rts = rts.filter(r => r.pnl <= maxWin);
             const excluded = beforeCount - rts.length;
-            document.getElementById('outlierStatus').textContent =
-              excluded > 0 ? `${excluded} trade${excluded !== 1 ? 's' : ''} excluded` : '';
+
+            let capped = 0;
+            if (lossCap < Infinity) {
+                rts = rts.map(r => {
+                    if (r.pnl < -lossCap) { capped++; return Object.assign({}, r, { pnl: -lossCap }); }
+                    return r;
+                });
+            }
+
+            const statusParts = [];
+            if (excluded > 0) statusParts.push(`${excluded} win${excluded !== 1 ? 's' : ''} excluded`);
+            if (capped > 0) statusParts.push(`${capped} loss${capped !== 1 ? 'es' : ''} capped at $${lossCap.toFixed(2)}`);
+            document.getElementById('outlierStatus').textContent = statusParts.join(' · ');
 
             const statusEl = document.getElementById('timeframeStatus');
             if (rts.length === 0) {
@@ -2015,7 +2027,6 @@
             const avgLoss = losers.length  ? losers.reduce((sum, r)  => sum + Math.abs(r.pnl), 0) / losers.length : 0;
             const rr      = avgLoss > 0 ? (avgWin / avgLoss).toFixed(2) : '1.00';
 
-            const balance = parseFloat(document.getElementById('initialBalance').value) || 5000;
             const riskPct = losers.length ? (avgLoss / balance * 100).toFixed(2) : '0.50';
 
             const firstDate = new Date(rts[0].date);
@@ -2037,6 +2048,10 @@
             document.getElementById('totalMonths').value = 12 - _now.getMonth();
             document.body.style.setProperty('margin-right', '0px', 'important');
             _wirePicker();
+            fetch('account_balance.json')
+                .then(r => r.ok ? r.json() : null)
+                .then(d => { if (d?.balance) document.getElementById('initialBalance').value = Math.round(d.balance); })
+                .catch(() => {});
             loadCalendarData().then(() => {
                 // Default: This Month
                 const r = _getPresetRange('this-month');
@@ -2212,8 +2227,11 @@
 
         function _renderCals() {
           const y = _calBase.getFullYear(), m = _calBase.getMonth();
+          const m2y = m === 11 ? y + 1 : y, m2m = (m + 1) % 12;
+          const m3y = m2m === 11 ? m2y + 1 : m2y, m3m = (m2m + 1) % 12;
           _renderCalMonth(document.getElementById('cal1'), y, m, true, false);
-          _renderCalMonth(document.getElementById('cal2'), m === 11 ? y + 1 : y, (m + 1) % 12, false, true);
+          _renderCalMonth(document.getElementById('cal2'), m2y, m2m, false, false);
+          _renderCalMonth(document.getElementById('cal3'), m3y, m3m, false, true);
         }
 
         function _updateFooter() {

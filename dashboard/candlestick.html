@@ -7,21 +7,49 @@
   <title>Candlestick Chart</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #6366f1;
+      --primary-dim: #4f46e5;
+      --primary-light: #818cf8;
+      --bg-dark: #0f0f0f;
+      --bg-card: #141414;
+      --bg-input: #1f1f1f;
+      --text-primary: #e0e0e0;
+      --text-secondary: #6b7280;
+      --accent-red: #f43f5e;
+      --accent-blue: #3b82f6;
+      --accent-gold: #f59e0b;
+      --accent-green: #22c55e;
+      --accent-purple: #a855f7;
+      --grid-color: rgba(30, 30, 30, 0.8);
+      --glass-border: #222222;
+      --glass-bg: #141414;
+      --bg-gradient-start: #0f0f0f;
+      --bg-gradient-mid: #0f0f0f;
+      --bg-gradient-end: #0f0f0f;
+      --radial-glow-1: transparent;
+      --radial-glow-2: transparent;
+      --chart-bg: #141414;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 
     body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: #0f0f0f;
-      color: #f0f0f0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
+      color: var(--text-primary);
+      font-size: 15px;
       min-height: 100vh;
       padding: 16px;
       max-width: 1400px;
       margin: 0 auto;
+      position: relative;
+      overflow-x: hidden;
     }
+    body::before { display: none; }
     @media (min-width: 640px)  { body { padding: 24px; } }
     @media (min-width: 1024px) { body { padding: 28px 32px; } }
 
@@ -39,7 +67,7 @@
       text-decoration: none;
       transition: color 0.15s;
     }
-    .breadcrumb a:hover { color: #f0f0f0; }
+    .breadcrumb a:hover { color: var(--text-primary); }
     .breadcrumb-sep { opacity: 0.4; }
 
     /* ── Header ──────────────────────────────────────── */
@@ -52,7 +80,7 @@
     }
 
     .page-title {
-      font-size: 22px;
+      font-size: 30px;
       font-weight: 400;
       color: #ffffff;
       flex: 1;
@@ -62,9 +90,9 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      color: #9ca3af;
+      background: var(--bg-input);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text-secondary);
       border-radius: 8px;
       width: 36px;
       height: 36px;
@@ -74,7 +102,7 @@
       flex-shrink: 0;
       text-decoration: none;
     }
-    .nav-btn:hover { background: #252525; color: #e0e0e0; border-color: #555; }
+    .nav-btn:hover { background: #242424; color: var(--text-primary); border-color: #3a3a3a; }
     .nav-btn.disabled { opacity: 0.25; pointer-events: none; }
 
     /* ── Symbol pills ─────────────────────────────────── */
@@ -101,9 +129,9 @@
       gap: 10px;
       padding: 7px 12px;
       border-radius: 6px;
-      border: 1px solid #333;
-      background: #1a1a1a;
-      color: #9ca3af;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: var(--bg-input);
+      color: var(--text-secondary);
       font-size: 13px;
       font-weight: 500;
       font-family: inherit;
@@ -112,10 +140,10 @@
       white-space: nowrap;
       width: 100%;
     }
-    .sym-pill:hover { background: #2e2e2e; color: #ffffff; border-color: #666; }
+    .sym-pill:hover { background: #2a2a2a; color: #ffffff; border-color: #3a3a3a; }
     .sym-pill.active-pos,
     .sym-pill.active-neg,
-    .sym-pill.active-zero { background: #3a3a3a; border-color: #999; color: #ffffff; }
+    .sym-pill.active-zero { background: #2f2f2f; border-color: #888888; color: #ffffff; }
     .sym-pill-name { font-size: 13px; font-weight: 600; }
     .sym-pill-stack {
       display: flex;
@@ -144,6 +172,9 @@
     .pill-sub.neg  .pill-sub-label { color: rgb(252,165,165); }
     .pill-sub.zero .pill-sub-label { color: #9ca3af; }
 
+    /* ── Sim toggle switch ───────────────────────────── */
+
+
     /* ── Timeframe selector ──────────────────────────── */
     .tf-selector {
       display: flex;
@@ -151,9 +182,9 @@
       margin-bottom: 10px;
     }
     .tf-btn {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      color: #9ca3af;
+      background: var(--bg-input);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text-secondary);
       border-radius: 6px;
       padding: 7px 18px;
       font-size: 14px;
@@ -161,8 +192,8 @@
       cursor: pointer;
       transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
-    .tf-btn:hover { background: #252525; color: #e0e0e0; }
-    .tf-btn.active { background: #252525; color: #ffffff; border-color: #666; }
+    .tf-btn:hover { background: #242424; color: var(--text-primary); }
+    .tf-btn.active { background: #2a2a2a; color: #ffffff; border-color: #3a3a3a; }
 
 
     /* ── Toggle switch ───────────────────────────────── */
@@ -180,19 +211,19 @@
       position: relative;
       width: 44px;
       height: 24px;
-      background: #333;
+      background: rgba(255,255,255,0.1);
       border-radius: 12px;
       transition: background 0.2s;
       flex-shrink: 0;
     }
-    .toggle-track.on { background: #4b5563; }
+    .toggle-track.on { background: rgba(99, 102, 241, 0.4); }
     .toggle-thumb {
       position: absolute;
       top: 3px;
       left: 3px;
       width: 18px;
       height: 18px;
-      background: #6b7280;
+      background: var(--text-secondary);
       border-radius: 50%;
       transition: transform 0.2s, background 0.2s;
     }
@@ -206,7 +237,7 @@
       gap: 16px;
       margin-bottom: 8px;
       font-size: 12px;
-      color: #6b7280;
+      color: var(--text-secondary);
       flex-wrap: wrap;
     }
     .legend-item {
@@ -226,7 +257,7 @@
     /* ── Chart container ──────────────────────────────── */
     .chart-outer {
       background: #000000;
-      border: 1px solid #222;
+      border: 1px solid var(--glass-border);
       border-radius: 10px;
       overflow: hidden;
       position: relative;
@@ -245,12 +276,12 @@
       top: 8px;
       left: 8px;
       z-index: 20;
-      background: rgba(15,15,15,0.92);
-      border: 1px solid #2a2a2a;
+      background: rgba(8, 8, 26, 0.92);
+      border: 1px solid var(--glass-border);
       border-radius: 6px;
       padding: 8px 11px;
       font-size: 12px;
-      color: #e0e0e0;
+      color: var(--text-primary);
       pointer-events: none;
       display: none;
       line-height: 1.75;
@@ -260,22 +291,22 @@
     #dotTooltip {
       position: fixed;
       z-index: 9100;
-      background: rgba(15,15,15,0.92);
-      border: 1px solid #2a2a2a;
+      background: rgba(8, 8, 26, 0.92);
+      border: 1px solid var(--glass-border);
       border-radius: 6px;
       padding: 6px 10px;
       font-size: 12px;
-      color: #e0e0e0;
+      color: var(--text-primary);
       pointer-events: none;
       display: none;
       line-height: 1.6;
       white-space: nowrap;
     }
-    .tip-time { color: #6b7280; font-size: 11px; margin-bottom: 2px; }
+    .tip-time { color: var(--text-secondary); font-size: 11px; margin-bottom: 2px; }
     .tip-row { display: flex; justify-content: space-between; gap: 14px; }
     .tip-label { font-variant-numeric: tabular-nums; }
     .tip-val   { font-variant-numeric: tabular-nums; text-align: right; }
-    .tip-divider { border-top: 1px solid #222; margin: 4px 0; }
+    .tip-divider { border-top: 1px solid var(--glass-border); margin: 4px 0; }
 
     /* ── Status overlay ───────────────────────────────── */
     #chartStatus {
@@ -296,23 +327,23 @@
     .status-spinner {
       width: 28px;
       height: 28px;
-      border: 2px solid #333;
-      border-top-color: #9ca3af;
+      border: 2px solid rgba(255,255,255,0.1);
+      border-top-color: var(--text-secondary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .status-msg { color: #9ca3af; font-size: 14px; }
+    .status-msg { color: var(--text-secondary); font-size: 14px; }
     .status-msg.error { color: #f87171; }
-    .status-hint { color: #6b7280; font-size: 12px; max-width: 480px; line-height: 1.6; }
-    .status-hint code { background: #1e1e1e; padding: 1px 5px; border-radius: 3px; color: #d1d5db; }
+    .status-hint { color: var(--text-secondary); font-size: 12px; max-width: 480px; line-height: 1.6; }
+    .status-hint code { background: var(--bg-input); padding: 1px 5px; border-radius: 3px; color: #d1d5db; }
 
     /* ── Long Position Tool ─────────────────────────── */
     .tool-btn {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      color: #9ca3af;
+      background: var(--bg-input);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text-secondary);
       border-radius: 6px;
       padding: 7px 12px;
       font-size: 13px;
@@ -324,8 +355,8 @@
       gap: 5px;
       white-space: nowrap;
     }
-    .tool-btn:hover { background: #252525; color: #e0e0e0; }
-    .tool-btn.active { background: #172554; color: #93c5fd; border-color: #3b82f6; }
+    .tool-btn:hover { background: #242424; color: var(--text-primary); }
+    .tool-btn.active { background: #2a2a2a; color: #ffffff; border-color: #3a3a3a; }
 
     #longPosPanel {
       display: none;
@@ -333,33 +364,33 @@
       gap: 10px;
       margin-bottom: 8px;
       font-size: 12px;
-      color: #9ca3af;
+      color: var(--text-secondary);
     }
     #longPosPanel.visible { display: flex; }
     #longPosShares {
-      background: #1a1a1a;
-      border: 1px solid #2a2a2a;
+      background: var(--bg-input);
+      border: 1px solid rgba(255,255,255,0.08);
       border-radius: 4px;
-      color: #f0f0f0;
+      color: var(--text-primary);
       font-size: 12px;
       font-family: inherit;
       padding: 3px 7px;
       width: 72px;
       text-align: right;
     }
-    #longPosShares:focus { outline: none; border-color: #555; }
+    #longPosShares:focus { outline: none; border-color: var(--glass-border); }
     #longPosRR { color: #d1d5db; font-weight: 500; }
     .lp-clear {
       background: none;
-      border: 1px solid #333;
-      color: #6b7280;
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text-secondary);
       border-radius: 4px;
       padding: 2px 8px;
       font-size: 11px;
       font-family: inherit;
       cursor: pointer;
     }
-    .lp-clear:hover { color: #e0e0e0; border-color: #555; }
+    .lp-clear:hover { color: var(--text-primary); border-color: var(--glass-border); }
 
     /* ── Auth overlay ───────────────────────────────── */
     .auth-overlay {
@@ -367,13 +398,14 @@
       display: flex; align-items: center; justify-content: center; z-index: 9999;
     }
     .auth-card {
-      background: #1a1a1a; border: 1px solid #333; border-radius: 10px;
+      background: var(--bg-card); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border); border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       padding: 40px; text-align: center; width: 300px;
     }
     .auth-title { font-size: 18px; color: #fff; margin-bottom: 6px; }
-    .auth-sub   { color: #9ca3af; font-size: 13px; margin-bottom: 24px; }
+    .auth-sub   { color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
     #authError  { color: #f87171; font-size: 12px; margin-top: 12px; min-height: 16px; }
-
   </style>
   <script src="auth.js"></script>
 </head>
@@ -406,14 +438,14 @@
 
 <div class="page-header">
   <div class="page-title" id="pageTitle">Candlestick Chart</div>
-  <div style="display:flex;gap:6px;flex-shrink:0;">
+  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
     <button class="nav-btn disabled" id="btnPrev" title="Previous trading day">&#8592;</button>
     <button class="nav-btn disabled" id="btnNext" title="Next trading day">&#8594;</button>
   </div>
 </div>
 
 <div class="sym-pills" id="symPills"></div>
-
+<div style="height:16px;"></div>
 
 <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
   <div class="tf-selector" id="tfSelector" style="margin-bottom:0">
@@ -423,7 +455,7 @@
     <button class="tf-btn" data-tf="15">15m</button>
     <button class="tf-btn" data-tf="30">30m</button>
   </div>
-  <div style="width:1px;height:22px;background:#333;flex-shrink:0;"></div>
+  <div style="width:1px;height:22px;background:var(--glass-border);flex-shrink:0;"></div>
   <button class="tool-btn" id="btnLongPos" onclick="toggleLongPosTool()" title="Long Position (Esc to cancel)">
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
       <line x1="1" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -434,15 +466,7 @@
     </svg>
     Long position
   </button>
-  <div style="width:1px;height:22px;background:#333;flex-shrink:0;"></div>
-  <button class="tool-btn" id="btnHBDots" onclick="toggleHBDots()" title="Toggle breakout circles">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
-      <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/>
-      <circle cx="7" cy="7" r="1.5" fill="currentColor"/>
-    </svg>
-    Breakout
-  </button>
-  <div style="width:1px;height:22px;background:#333;flex-shrink:0;"></div>
+  <div style="width:1px;height:22px;background:var(--glass-border);flex-shrink:0;"></div>
   <button class="tool-btn" id="btnRuler" onclick="toggleRulerTool()" title="Ruler — measure price &amp; time (Esc to cancel)">
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
       <line x1="2" y1="12" x2="12" y2="2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -450,6 +474,22 @@
       <line x1="12" y1="2" x2="12" y2="5.5" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
     </svg>
     Ruler
+  </button>
+  <div style="width:1px;height:22px;background:var(--glass-border);flex-shrink:0;"></div>
+  <button class="tool-btn" id="btnExecMarkers" onclick="toggleExecMarkers()" title="Toggle actual trade markers">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+      <circle cx="4" cy="7" r="2.5" fill="currentColor"/>
+      <circle cx="10" cy="7" r="2.5" fill="currentColor"/>
+      <line x1="6.5" y1="7" x2="7.5" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    Trades
+  </button>
+  <button class="tool-btn active" id="btnBacktest" onclick="toggleBacktest()" title="Toggle backtest trade markers">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+      <polygon points="7,2 12,10 2,10" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+      <line x1="7" y1="10" x2="7" y2="14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.5"/>
+    </svg>
+    Backtest
   </button>
 </div>
 <div id="longPosPanel">
@@ -460,13 +500,10 @@
 </div>
 
 <div class="chart-legend" id="chartLegend" style="display:none">
-  <span class="legend-item"><span class="legend-dot" style="background:#089981"></span> Buy</span>
-  <span class="legend-item"><span class="legend-dot" style="background:#f23645"></span> Sell</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(239,68,68)"></span> Hard Stop</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(250,204,21)"></span> Trail Slow</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(148,163,184)"></span> EOD</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(156,163,175)"></span> Manual</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(50,43,30);border:1px solid #3a3530"></span> Pre-market</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(34,197,94)"></span> Buy</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(239,68,68)"></span> Sell (win)</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(249,115,22)"></span> Sell (loss)</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(22,26,52);border:1px solid #2e3248"></span> Pre-market</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(22,26,52);border:1px solid #2e3248"></span> After-hours</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(128,255,255)"></span> 9 EMA</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(0,128,255)"></span> 20 EMA</span>
@@ -474,8 +511,6 @@
   <span class="legend-item"><span class="legend-dot" style="background:rgb(246,197,72)"></span> VWAP</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(33,150,243)"></span> MACD</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(255,152,0)"></span> Signal</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(168,85,247)"></span> High ≥0.75% above prev high &amp; vol ≥25k &amp; prev range ≤5%</span>
-  <span class="legend-item" id="entryVolInfo" style="display:none;margin-left:8px;color:#9ca3af;"></span>
 </div>
 
 <div class="chart-outer">
@@ -502,6 +537,7 @@
   let chartInstance   = null;
   let candleSeriesRef = null;
   let markerCleanup   = null;
+  let execMarkersOn   = false;
   let activeSymbol    = null;
   let activeInterval  = 2;      // current timeframe in minutes
   let rawCandles      = null;   // 1m candles for active symbol
@@ -523,9 +559,9 @@
   let rulerLiveY   = 0;
   let activeBars   = null;        // aggregated bars at current timeframe (for snap)
 
-  let hbSvg        = null;        // high-breakout dot overlay
-  let showHBDots   = false;
-  let hbSubCleanup = null;
+
+  let btSvgCleanup = null;        // backtest trade markers
+  let btActive     = true;
 
   /* ── Formatters ──────────────────────────────────── */
   function ordinal(n) {
@@ -1001,11 +1037,6 @@
     if (rulerSvg)        { rulerSvg.remove(); rulerSvg = null; }
   }
 
-  function toggleHBDots() {
-    showHBDots = !showHBDots;
-    document.getElementById('btnHBDots').classList.toggle('active', showHBDots);
-    if (hbSvg) hbSvg.style.display = showHBDots ? '' : 'none';
-  }
 
   function toggleRulerTool() {
     rulerMode = !rulerMode;
@@ -1327,6 +1358,169 @@
     };
   }
 
+  /* ── Backtest trade markers ─────────────────────── */
+  const _btCache = {};
+  async function loadBacktestTrades(year) {
+    const key = year ?? '__all__';
+    if (_btCache[key]) return _btCache[key];
+    const urls = year
+      ? [`backtest/backtest_trades_${year}.json`, 'backtest/backtest_trades.json']
+      : ['backtest/backtest_trades.json'];
+    for (const url of urls) {
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) continue;
+        _btCache[key] = await resp.json();
+        return _btCache[key];
+      } catch (e) { /* try next */ }
+    }
+    console.warn('No backtest trades file found for year:', year);
+    _btCache[key] = { trades: [] };
+    return _btCache[key];
+  }
+
+  function _btData() { return _btCache[curYear] || _btCache['__all__'] || { trades: [] }; }
+
+  function btPnlMap(dateStr) {
+    const map = {};
+    for (const t of _btData().trades) {
+      if (t.date !== dateStr) continue;
+      map[t.symbol] = (map[t.symbol] || 0) + t.pnl;
+    }
+    return map;
+  }
+
+  function renderBacktestMarkers(symbol, dateStr, barsTimeMap) {
+    if (btSvgCleanup) { btSvgCleanup(); btSvgCleanup = null; }
+    if (!_btCache[curYear] && !_btCache['__all__']) return;
+    if (!chartInstance || !candleSeriesRef) return;
+
+    const trades = _btData().trades.filter(t => t.symbol === symbol && t.date === dateStr);
+    if (!trades.length) return;
+
+    const container = document.getElementById('chartMain');
+    container.style.position = 'relative';
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.id = 'btMarkerOverlay';
+    svg.setAttribute('style',
+      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:6;');
+    container.appendChild(svg);
+
+    const dotTooltip = document.getElementById('dotTooltip');
+
+    const resolved = [];
+    for (const t of trades) {
+      // Use exact bar timestamps from backtest (2-min bars); fall back to floor-search
+      const eTs = t.entry_ts ?? execToTimestamp(t.entry_time, barsTimeMap);
+      const xTs = t.exit_ts  ?? execToTimestamp(t.exit_time,  barsTimeMap);
+      if (eTs != null) resolved.push({ type: 'entry', ts: eTs, price: t.entry, trade: t });
+      if (xTs != null) resolved.push({ type: 'exit',  ts: xTs, price: t.exit,  trade: t });
+    }
+
+    function redraw() {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      if (!chartInstance || !candleSeriesRef) return;
+      const timeScale = chartInstance.timeScale();
+
+      let r;
+      try {
+        const spacing = chartInstance.timeScale().options().barSpacing;
+        r = Math.min(Math.max(spacing * 0.26, 10), 20);
+      } catch (_) { r = 6; }
+
+      for (const m of resolved) {
+        const x = timeScale.timeToCoordinate(m.ts);
+        const y = candleSeriesRef.priceToCoordinate(m.price);
+        if (x == null || y == null) continue;
+
+        const t = m.trade;
+        const pnlStr   = (t.pnl >= 0 ? '+' : '') + '$' + t.pnl.toFixed(2);
+        const pnlColor = t.pnl >= 0 ? 'rgb(34,197,94)' : 'rgb(239,68,68)';
+        const isEntry  = m.type === 'entry';
+        const label    = isEntry ? 'ENTRY' : 'EXIT';
+        const reason   = !isEntry && t.exit_reason ? ` (${t.exit_reason.toUpperCase()})` : '';
+
+        const color = isEntry ? 'rgb(168,85,247)' : 'rgb(216,180,254)';
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', x);
+        dot.setAttribute('cy', y);
+        dot.setAttribute('r', r);
+        dot.setAttribute('fill', color);
+        dot.style.pointerEvents = 'all';
+        dot.style.cursor = 'crosshair';
+
+        dot.addEventListener('mouseenter', e => {
+          dotTooltip.innerHTML =
+            `<span style="color:${color};font-weight:600">${label}${reason}</span>&nbsp;&nbsp;$${m.price.toFixed(2)}<br>` +
+            `<span style="color:#9ca3af;font-size:11px">${isEntry ? t.entry_time : t.exit_time}</span>` +
+            `&nbsp;&nbsp;<span style="color:${pnlColor};font-weight:600">${pnlStr}</span><br>` +
+            `<span style="color:#6b7280;font-size:11px">stop $${t.stop.toFixed(2)}&nbsp;&nbsp;tp $${t.tp.toFixed(2)}&nbsp;&nbsp;${t.shares}sh</span>`;
+          dotTooltip.style.display = 'block';
+          dotTooltip.style.left = (e.clientX + 14) + 'px';
+          dotTooltip.style.top  = (e.clientY - 48) + 'px';
+        });
+        dot.addEventListener('mousemove', e => {
+          dotTooltip.style.left = (e.clientX + 14) + 'px';
+          dotTooltip.style.top  = (e.clientY - 48) + 'px';
+        });
+        dot.addEventListener('mouseleave', () => {
+          dotTooltip.style.display = 'none';
+        });
+
+        svg.appendChild(dot);
+      }
+    }
+
+    redraw();
+    requestAnimationFrame(redraw);
+    chartInstance.timeScale().subscribeVisibleLogicalRangeChange(redraw);
+    try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(redraw); } catch (_) {}
+
+    btSvgCleanup = () => {
+      try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(redraw); } catch (_) {}
+      try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(redraw); } catch (_) {}
+      svg.remove();
+    };
+  }
+
+  function toggleExecMarkers() {
+    execMarkersOn = !execMarkersOn;
+    const btn = document.getElementById('btnExecMarkers');
+    if (btn) btn.classList.toggle('active', execMarkersOn);
+    if (execMarkersOn) {
+      if (activeExecs && activeExecs.length > 0 && chartInstance) {
+        const bars = rawCandles ? (activeInterval === 1 ? rawCandles : aggregateCandles(rawCandles, activeInterval)) : null;
+        if (bars) {
+          const timeMap     = buildTimeMap(rawCandles || bars);
+          const barsTimeMap = rawCandles ? buildTimeMap(bars) : timeMap;
+          renderExecMarkers(activeExecs, timeMap, barsTimeMap);
+        }
+      }
+    } else {
+      if (markerCleanup) { markerCleanup(); markerCleanup = null; }
+    }
+  }
+
+  async function toggleBacktest() {
+    btActive = !btActive;
+    const btn = document.getElementById('btnBacktest');
+    if (btn) btn.classList.toggle('active', btActive);
+
+    if (btActive) {
+      await loadBacktestTrades(curYear);
+      // Trigger re-render via the current chart state
+      if (activeSymbol && chartInstance) {
+        const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
+        const bars = rawCandles ? (activeInterval === 1 ? rawCandles : aggregateCandles(rawCandles, activeInterval)) : null;
+        const barsTimeMap = bars ? buildTimeMap(bars) : null;
+        renderBacktestMarkers(activeSymbol, dateStr, barsTimeMap);
+      }
+    } else {
+      if (btSvgCleanup) { btSvgCleanup(); btSvgCleanup = null; }
+    }
+  }
+
   /* ── Background zone primitive ──────────────────── */
   // Attaches to a series and draws colored rectangles behind candles
   // for specified time ranges (pre-market, after-hours).
@@ -1414,67 +1608,6 @@
     return { macdLine, signalLine, histogram };
   }
 
-  /* ── High-breakout dots (purple dot above candle when high >= prevHigh * 1.025) ── */
-  function renderHighBreakoutDots(bars) {
-    if (hbSubCleanup) { hbSubCleanup(); hbSubCleanup = null; }
-    if (hbSvg)        { hbSvg.remove(); hbSvg = null; }
-    if (!bars?.length || !chartInstance || !candleSeriesRef) return;
-
-    // Compute which bars qualify
-    const breakoutBars = [];
-    for (let i = 1; i < bars.length; i++) {
-      const prev = bars[i - 1];
-      if (
-        bars[i].high >= prev.high * 1.0075 &&
-        bars[i].volume >= 25000 &&
-        (prev.high - prev.low) / prev.low <= 0.05
-      ) breakoutBars.push({ bar: bars[i], dotPrice: prev.high * 1.0075 });
-    }
-    if (!breakoutBars.length) return;
-
-    const container = document.getElementById('chartMain');
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.id = 'hbOverlay';
-    svg.setAttribute('style',
-      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:4;');
-    container.appendChild(svg);
-    hbSvg = svg;
-    if (!showHBDots) svg.style.display = 'none';
-
-    function redraw() {
-      while (svg.firstChild) svg.removeChild(svg.firstChild);
-      if (!chartInstance || !candleSeriesRef) return;
-      const timeScale = chartInstance.timeScale();
-      let r;
-      try {
-        const spacing = chartInstance.timeScale().options().barSpacing;
-        r = Math.min(Math.max(spacing * 0.26, 10), 20);
-      } catch (_) { r = 6; }
-      for (const { bar, dotPrice } of breakoutBars) {
-        const x = timeScale.timeToCoordinate(bar.time);
-        const y = candleSeriesRef.priceToCoordinate(dotPrice);
-        if (x == null || y == null) continue;
-        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        dot.setAttribute('cx', x);
-        dot.setAttribute('cy', y);
-        dot.setAttribute('r', r);
-        dot.setAttribute('fill', 'rgb(168,85,247)');
-        svg.appendChild(dot);
-      }
-    }
-
-    redraw();
-    requestAnimationFrame(redraw);
-    chartInstance.timeScale().subscribeVisibleLogicalRangeChange(redraw);
-    try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(redraw); } catch (_) {}
-
-    hbSubCleanup = () => {
-      try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(redraw); } catch (_) {}
-      try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(redraw); } catch (_) {}
-      if (hbSvg) { hbSvg.remove(); hbSvg = null; }
-    };
-  }
-
   /* ── Timeframe switch ────────────────────────────── */
   function setTimeframe(mins) {
     activeInterval = mins;
@@ -1497,8 +1630,6 @@
     if (rulerSubCleanup)  { rulerSubCleanup();  rulerSubCleanup  = null; }
     if (rulerSvg)         { rulerSvg.remove();  rulerSvg         = null; }
     if (markerCleanup)    { markerCleanup();    markerCleanup    = null; }
-    if (hbSubCleanup)     { hbSubCleanup();     hbSubCleanup     = null; }
-    if (hbSvg)            { hbSvg.remove();     hbSvg            = null; }
     if (chartInstance) { chartInstance.remove(); chartInstance = null; }
     candleSeriesRef = null;
 
@@ -1566,7 +1697,7 @@
     candleSeriesRef = candleSeries;
 
     /* ── Pre-market / after-hours background zones ─── */
-    const PRE_COLOR  = 'rgb(50, 43, 30)';
+    const PRE_COLOR  = 'rgb(22, 26, 52)';
     const POST_COLOR = 'rgb(22, 26, 52)';
     let preStart = null, preEnd = null, postStart = null, postEnd = null;
     let seenOpen = false;
@@ -1743,31 +1874,12 @@
     // barsTimeMap: aggregated-bar timestamps for timeToCoordinate (must match chart data)
     const timeMap     = buildTimeMap(rawCandles || bars);
     const barsTimeMap = rawCandles ? buildTimeMap(bars) : timeMap;
-    if (executions && executions.length > 0) {
+    if (execMarkersOn && executions && executions.length > 0) {
       renderExecMarkers(executions, timeMap, barsTimeMap);
     }
-    renderHighBreakoutDots(bars);
-
-    /* ── Volume at first entry ──────────────────────── */
-    const entryVolEl = document.getElementById('entryVolInfo');
-    const firstBuy = executions?.find(e => e.side === 'buy');
-    if (firstBuy) {
-      const [fh, fm] = firstBuy.time.slice(0,5).split(':').map(Number);
-      const entryMins = fh * 60 + fm;
-      let cumVol = 0;
-      for (const c of candles) {
-        const et = tsToET(c.time);
-        const [ch, cm] = et.split(':').map(Number);
-        const cMins = ch * 60 + cm;
-        if (cMins < 7 * 60) continue;
-        if (cMins > entryMins) break;
-        cumVol += c.volume;
-      }
-      const fmtCumVol = cumVol >= 1e6 ? (cumVol/1e6).toFixed(2)+'M' : cumVol >= 1e3 ? (cumVol/1e3).toFixed(0)+'K' : String(cumVol);
-      entryVolEl.textContent = `Vol @ entry: ${fmtCumVol}`;
-      entryVolEl.style.display = '';
-    } else {
-      entryVolEl.style.display = 'none';
+    if (btActive) {
+      const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
+      renderBacktestMarkers(activeSymbol, dateStr, barsTimeMap);
     }
 
     hideStatus();
@@ -1803,6 +1915,8 @@
     activeExecs  = (dayData.executions || []).filter(e => e.symbol === symbol);
     activeTrades = groupExecutionsIntoTrades(activeExecs);
 
+    if (btActive) await loadBacktestTrades(curYear);
+
     // ── 1. Try local ohlcv_YYYY-MM-DD.json cache ─────
     const dateStr    = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
     const localData  = ohlcvCache[symbol];
@@ -1828,16 +1942,25 @@
     const container = document.getElementById('symPills');
     container.innerHTML = '';
 
+    const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
+    const btMap   = btPnlMap(dateStr);
+
     // Day pill
     const dayRealPnl = Object.values(symbols).reduce((s, sd) => s + (sd.pnl || 0), 0);
     const dayRealCls = dayRealPnl > 0 ? 'pos' : dayRealPnl < 0 ? 'neg' : 'zero';
+    const dayBtPnl   = Object.values(btMap).reduce((s, v) => s + v, 0);
+    const dayBtCls   = dayBtPnl > 0 ? 'pos' : dayBtPnl < 0 ? 'neg' : 'zero';
+    const dayBtHtml  = Object.keys(btMap).length
+      ? `<span class="pill-sub ${dayBtCls}"><span class="pill-sub-label">BT</span>${fmtPnl(dayBtPnl)}</span>`
+      : '';
     const dayPill = document.createElement('div');
     dayPill.className = 'sym-pill';
     dayPill.style.cssText = 'cursor:default;border-color:transparent;background:transparent;color:#ffffff;width:fit-content;flex-shrink:0;';
     dayPill.innerHTML = `
       <span class="sym-pill-name">Day</span>
       <span class="sym-pill-stack">
-        <span class="pill-sub ${dayRealCls}">${fmtPnl(dayRealPnl)}</span>
+        <span class="pill-sub ${dayRealCls}"><span class="pill-sub-label">REAL</span>${fmtPnl(dayRealPnl)}</span>
+        ${dayBtHtml}
       </span>`;
     container.appendChild(dayPill);
 
@@ -1854,15 +1977,24 @@
       pill.dataset.sym = sym;
       pill.dataset.pnl = sd.pnl;
       const realCls = sd.pnl > 0 ? 'pos' : sd.pnl < 0 ? 'neg' : 'zero';
+      const btPnl   = btMap[sym];
+      const btCls   = btPnl !== undefined ? (btPnl > 0 ? 'pos' : btPnl < 0 ? 'neg' : 'zero') : '';
+      const btHtml  = btPnl !== undefined
+        ? `<span class="pill-sub ${btCls}"><span class="pill-sub-label">BT</span>${fmtPnl(btPnl)}</span>`
+        : '';
       pill.innerHTML = `
         <span class="sym-pill-name">${sym}</span>
         <span class="sym-pill-stack">
-          <span class="pill-sub ${realCls}">${fmtPnl(sd.pnl)}</span>
+          <span class="pill-sub ${realCls}"><span class="pill-sub-label">REAL</span>${fmtPnl(sd.pnl)}</span>
+          ${btHtml}
         </span>`;
+
       pill.onclick = () => loadSymbol(sym, dayData);
+
       inner.appendChild(pill);
     }
     container.appendChild(inner);
+
     loadSymbol(defaultSym, dayData);
   }
 
@@ -2041,6 +2173,7 @@
 
       const symbols  = dayData.symbols;
       const firstSym = (paramSym && symbols[paramSym]) ? paramSym : Object.keys(symbols)[0];
+      await loadBacktestTrades(curYear);
       renderPills(symbols, firstSym, dayData);
     } catch (err) {
       showError(

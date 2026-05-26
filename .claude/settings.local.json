@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(python _no_avg_analysis.py)",
+      "Bash(python _stop_optimize.py)",
+      "Bash(python _trade_features.py)",
+      "Bash(python _entry_filter_sim.py)"
+    ]
+  }
+}

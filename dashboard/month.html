@@ -7,20 +7,48 @@
   <title>Month Detail</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #6366f1;
+      --primary-dim: #4f46e5;
+      --primary-light: #818cf8;
+      --bg-dark: #0f0f0f;
+      --bg-card: #141414;
+      --bg-input: #1f1f1f;
+      --text-primary: #F4F4F7;
+      --text-secondary: #6b7280;
+      --accent-red: #f43f5e;
+      --accent-blue: #3b82f6;
+      --accent-gold: #f59e0b;
+      --accent-green: #22c55e;
+      --accent-purple: #a855f7;
+      --grid-color: rgba(30, 30, 30, 0.8);
+      --glass-border: #222222;
+      --glass-bg: #141414;
+      --bg-gradient-start: #0f0f0f;
+      --bg-gradient-mid: #0f0f0f;
+      --bg-gradient-end: #0f0f0f;
+      --radial-glow-1: transparent;
+      --radial-glow-2: transparent;
+      --chart-bg: #141414;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 
     body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: #0f0f0f;
-      color: #e0e0e0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
+      color: var(--text-primary);
+      font-size: 15px;
       min-height: 100vh;
       padding: 16px;
       max-width: 1200px;
       margin: 0 auto;
+      position: relative;
+      overflow-x: hidden;
     }
+    body::before { display: none; }
     @media (min-width: 640px)  { body { padding: 24px; } }
     @media (min-width: 1024px) { body { padding: 28px 32px; } }
 
@@ -67,7 +95,7 @@
       text-decoration: none;
       transition: color 0.15s;
     }
-    .breadcrumb a:hover { color: #f0f0f0; }
+    .breadcrumb a:hover { color: var(--text-primary); }
     .breadcrumb-sep { opacity: 0.4; }
 
     h1 {
@@ -115,8 +143,8 @@
     }
 
     .nav-btn {
-      background: transparent;
-      border: 1px solid #333;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
       color: #ffffff;
       border-radius: 6px;
       width: 40px;
@@ -141,22 +169,24 @@
       min-width: 700px;
       border-collapse: collapse;
       table-layout: fixed;
+      border: 1px solid #A1A1AA;
     }
 
     .month-cal th {
-      color: #9ca3af;
+      background: #0f0f0f;
+      color: #ffffff;
       font-size: 13px;
-      font-weight: 400;
+      font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.04em;
       text-align: center;
       padding: 8px 4px;
-      border: 1px solid rgb(161, 161, 170);
+      border: 1px solid #A1A1AA;
     }
-    .month-cal th.total-col { color: #c0c0c0; }
+    .month-cal th.total-col { color: #ffffff; }
 
     .month-cal td {
-      border: 1px solid rgb(161, 161, 170);
+      border: 1px solid #A1A1AA;
       vertical-align: top;
       padding: 4px;
       height: 110px;
@@ -235,9 +265,39 @@
       font-size: 12px;
       font-weight: 400;
       color: #aaa;
+      padding-bottom: 6px;
       margin-top: 1px;
       padding-bottom: 3px;
     }
+
+    /* Simulation zone */
+    .cell-sim-zone {
+      border-top: 1px solid rgba(255,255,255,0.12);
+      padding-top: 6px;
+      margin-top: 6px;
+    }
+    .cell-sim-pill {
+      display: block;
+      padding: 4px 8px 5px;
+      border-radius: 6px;
+    }
+    .cell-sim-pill.sim-pos  { background: #011E15; }
+    .cell-sim-pill.sim-neg  { background: #2C0808; }
+    .cell-sim-pill.sim-zero { background: #1a1a1a; }
+    .cell-sim-pnl {
+      font-size: 18px;
+      font-weight: 400;
+      color: #fff;
+    }
+    .cell-sim-trades {
+      font-size: 12px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.5);
+      margin-top: 2px;
+    }
+    .badge-sim-pos { background: rgba(2,53,37,0.5);  border: 1px dashed rgb(3,98,68);   color: #ffffff; }
+    .badge-sim-neg { background: rgba(77,13,13,0.5); border: 1px dashed rgb(143,25,25); color: #ffffff; }
+    .badge-sim-zero { background: rgba(30,30,30,0.5); border: 1px dashed #555; color: #ffffff; }
 
     /* Week total column */
     .cell-total {
@@ -254,16 +314,16 @@
     }
 
     /* Cell state colors */
-    .mc-empty     { background: #0a0a0a; }
+    .mc-empty     { background: #0f0f0f; }
     .mc-nodata    { background: #111111; }
     .mc-win       { background: rgb(2, 53, 37); }
     .mc-loss      { background: rgb(77, 13, 13); }
     .mc-week-win  { background: rgb(2, 42, 29); }
     .mc-week-loss { background: rgb(60, 10, 10); }
-    .mc-week-zero { background: #1a1a1a; }
+    .mc-week-zero { background: rgba(30, 30, 30, 0.5); }
 
-    .mc-nodata.mc-weekend,
-    .mc-empty.mc-weekend { background: rgb(41, 37, 36); }
+    .mc-nodata.mc-weekend { background: #292524; }
+    .mc-empty.mc-weekend  { background: #292524; }
 
     /* ── Cell split divider ─────────────────────────── */
     .cell-divider {
@@ -277,7 +337,7 @@
       flex-direction: column;
       gap: 1px;
       border-radius: 0 0 6px 6px;
-      padding: 3px 6px 2px;
+      padding: 5px 10px;
     }
     .cell-stat-green { background: rgb(1, 30, 21); }
     .cell-stat-red   { background: rgb(44, 8, 8); }
@@ -327,7 +387,7 @@
     @media (min-width: 640px)  { .annual-grid { grid-template-columns: repeat(3, 1fr); } }
     @media (min-width: 1024px) { .annual-grid { grid-template-columns: repeat(4, 1fr); } }
 
-    .mini-card { background: #0f0f0f; }
+    .mini-card { background: transparent; }
 
     .mini-header {
       display: flex;
@@ -340,7 +400,7 @@
     .mini-label {
       font-size: 14px;
       font-weight: 400;
-      color: #e0e0e0;
+      color: var(--text-primary);
       flex: 1;
       min-width: 0;
     }
@@ -358,12 +418,12 @@
     }
     .mini-badge-pos  { background: rgb(2, 53, 37);  color: #fafaf9; border-color: rgb(3, 98, 68); }
     .mini-badge-neg  { background: rgb(77, 13, 13); color: #fafaf9; border-color: rgb(143, 25, 25); }
-    .mini-badge-zero { background: #2a2a2a; color: #6b7280; border-color: #3f3f3f; }
+    .mini-badge-zero { background: rgba(42, 42, 42, 0.5); color: var(--text-secondary); border-color: rgba(63, 63, 63, 0.5); }
 
     .mini-expand-btn {
-      background: #000000;
-      border: 1px solid #3f3f3f;
-      color: #9ca3af;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      color: var(--text-secondary);
       cursor: pointer;
       padding: 4px;
       line-height: 0;
@@ -371,40 +431,47 @@
       flex-shrink: 0;
       transition: background 0.15s, color 0.15s;
     }
-    .mini-expand-btn:hover { background: #2a2a2a; color: #e0e0e0; }
+    .mini-expand-btn:hover { background: #1e1e1e; color: var(--text-primary); }
     .mini-expand-btn svg { width: 14px; height: 14px; display: block; }
 
     .ann-cal {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
+      border: 1px solid #A1A1AA;
     }
     .ann-cal th {
-      color: #9ca3af;
+      background: #0f0f0f;
+      color: #ffffff;
       font-size: 10px;
+      font-weight: 600;
       font-weight: 400;
       text-align: center;
       padding: 4px 2px;
-      border: 1px solid rgb(161, 161, 170);
+      border: 1px solid #A1A1AA;
     }
     .ann-cal td {
-      border: 1px solid rgb(161, 161, 170);
+      border: 1px solid #A1A1AA;
       text-align: center;
       padding: 4px 2px;
       font-size: 14px;
-      color: #e0e0e0;
+      color: var(--text-primary);
       height: 26px;
     }
-    .ann-empty              { background: rgb(41, 37, 36); }
-    .ann-nodata             { background: transparent; }
-    .ann-nodata.ann-weekend { background: rgb(41, 37, 36); }
+    .ann-empty              { background: #0f0f0f; }
+    .ann-empty.ann-weekend  { background: #292524; }
+    .ann-nodata             { background: #111111; }
+    .ann-nodata.ann-weekend { background: #292524; }
     .ann-win  { background: rgb(2, 53, 37);  color: #fafaf9; }
     .ann-loss { background: rgb(77, 13, 13); color: #fafaf9; }
 
     /* ── Stats bar ───────────────────────────────────── */
     .stats-bar {
-      background: #141414;
-      border: 1px solid #222;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       padding: 16px 20px;
       margin-top: 16px;
@@ -418,17 +485,17 @@
       flex-wrap: wrap;
       gap: 0;
       padding: 12px 0;
-      border-bottom: 1px solid #1e1e1e;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
     }
     .stat-row:last-child { border-bottom: none; padding-bottom: 0; }
     .stat-row:first-child { padding-top: 0; }
     .stat-item { flex: 1 1 120px; min-width: 100px; padding: 4px 12px 4px 0; }
     .stat-value { font-size: 18px; font-weight: 500; color: #ffffff; line-height: 1.2; }
-    .stat-label { font-size: 14px; color: #9ca3af; margin-top: 2px; display: flex; align-items: center; gap: 4px; }
+    .stat-label { font-size: 14px; color: var(--text-secondary); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
     .stats-tab-bar { display: flex; gap: 4px; margin-bottom: 14px; }
-    .stats-tab { padding: 5px 14px; font-size: 12px; font-weight: 600; color: #6b7280; cursor: pointer; border: 1px solid #2a2a2a; border-radius: 6px; background: transparent; letter-spacing: 0.04em; text-transform: uppercase; transition: all 0.15s; }
-    .stats-tab:hover { color: #e0e0e0; border-color: #444; }
-    .stats-tab.active { color: #ffffff; background: #1e1e2e; border-color: #6366f1; }
+    .stats-tab { padding: 5px 14px; font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border: 1px solid #2a2a2a; border-radius: 6px; background: transparent; letter-spacing: 0.04em; text-transform: uppercase; transition: all 0.15s; }
+    .stats-tab:hover { color: var(--text-primary); border-color: #3a3a3a; }
+    .stats-tab.active { color: #ffffff; background: #1a1a1a; border-color: #6366f1; }
 
     /* ── Auth overlay ───────────────────────────────── */
     .auth-overlay {
@@ -436,11 +503,13 @@
       display: flex; align-items: center; justify-content: center; z-index: 9999;
     }
     .auth-card {
-      background: #1a1a1a; border: 1px solid #333; border-radius: 10px;
+      background: var(--bg-card); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border); border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
       padding: 40px; text-align: center; width: 300px;
     }
     .auth-title { font-size: 18px; color: #fff; margin-bottom: 6px; }
-    .auth-sub   { color: #9ca3af; font-size: 13px; margin-bottom: 24px; }
+    .auth-sub   { color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
     #authError  { color: #f87171; font-size: 12px; margin-top: 12px; min-height: 16px; }
   </style>
   <script src="auth.js"></script>
@@ -472,6 +541,7 @@
   <h1 id="pageTitle">Month</h1>
   <div class="badge-group">
     <span class="month-badge" id="pageBadge"></span>
+    <span class="month-badge" id="simBadge" style="display:none"></span>
   </div>
   <div class="nav-controls">
     <button class="nav-btn" id="prevBtn" title="Previous month">&#8592;</button>
@@ -492,8 +562,10 @@
     'July','August','September','October','November','December'
   ];
 
-  let allData = {};
+  let allData    = {};
+  const simCache = {};
   let curYear, curMonth;
+
   function fmtHold(totalSecs) {
     const mins = Math.floor(totalSecs / 60);
     const secs = totalSecs % 60;
@@ -679,7 +751,34 @@
     render();
   }
 
-  function render() {
+  async function ensureSimYear(year) {
+    if (simCache[year]) return;
+    try {
+      const resp = await fetch(`backtest/backtest_trades_${year}.json`);
+      if (!resp.ok) throw new Error(resp.status);
+      simCache[year] = await resp.json();
+    } catch (e) { simCache[year] = { trades: [] }; }
+  }
+  function simTrades(year) { return simCache[year]?.trades || []; }
+
+  function simDayData(dateStr) {
+    const _trades = simTrades(curYear);
+    if (!_trades.length) return null;
+    let total = 0, count = 0;
+    for (const t of _trades) {
+      if (t.date === dateStr) { total += t.pnl; count++; }
+    }
+    return count > 0 ? { pnl: Math.round(total * 100) / 100, count } : null;
+  }
+
+  function fmtSimPnl(val) {
+    if (val === null || val === undefined) return '—';
+    const s = val >= 0 ? '+$' : '-$';
+    return s + Math.abs(val).toFixed(2);
+  }
+
+  async function render() {
+    await ensureSimYear(curYear);
     const yearStr  = String(curYear);
     const monthStr = String(curMonth);
     const yearData  = allData[yearStr] || {};
@@ -695,7 +794,23 @@
 
     const badge = document.getElementById('pageBadge');
     badge.className = 'month-badge ' + colorClass;
-    badge.innerHTML = fmtBadge(total);
+    badge.innerHTML = `<span class="badge-label">REAL</span> ${fmtBadge(total)}`;
+
+    const simBadge = document.getElementById('simBadge');
+    const monthPrefix = `${curYear}-${String(curMonth).padStart(2,'0')}-`;
+    let simMonthTotal = 0, simMonthCount = 0;
+    for (const t of simTrades(curYear)) {
+      if (t.date.startsWith(monthPrefix)) { simMonthTotal += t.pnl; simMonthCount++; }
+    }
+    if (simMonthCount > 0) {
+      simMonthTotal = Math.round(simMonthTotal * 100) / 100;
+      const simCls = simMonthTotal >= 0 ? 'badge-sim-pos' : 'badge-sim-neg';
+      simBadge.className = 'month-badge ' + simCls;
+      simBadge.innerHTML = `<span class="badge-label">SIM</span> ${fmtBadge(simMonthTotal)}`;
+      simBadge.style.display = '';
+    } else {
+      simBadge.style.display = 'none';
+    }
 
     const monthStats = computeMonthStats(monthData.days);
 
@@ -742,6 +857,10 @@
       let weekPnl        = 0;
       let weekTrades     = 0;
       let weekRoundtrips = [];
+      let weekSimTotal   = 0;
+      let weekSimTrades  = 0;
+      let weekSimHasData = false;
+
 
       for (let col = 0; col < 7; col++) {
         const cellIndex = row * 7 + col;
@@ -770,6 +889,8 @@
             weekPnl    += dayData.pnl;
             weekTrades += dayData.trades;
             weekRoundtrips.push(...(dayData.roundtrips || []));
+            const _ds = simDayData(`${curYear}-${String(curMonth).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`);
+            if (_ds !== null) { weekSimTotal += _ds.pnl; weekSimTotal = Math.round(weekSimTotal * 100) / 100; weekSimTrades = (weekSimTrades || 0) + _ds.count; weekSimHasData = true; }
 
             const inner = document.createElement('div');
             inner.className = 'cell-inner';
@@ -823,6 +944,24 @@
             bodyEl.className = 'cell-body';
             bodyEl.appendChild(realEl);
 
+            const daySim = simDayData(`${curYear}-${String(curMonth).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`);
+            if (daySim !== null) {
+              const simZoneEl = document.createElement('div');
+              simZoneEl.className = 'cell-sim-zone';
+              const simPillEl = document.createElement('div');
+              simPillEl.className = 'cell-sim-pill' + (daySim.pnl > 0 ? ' sim-pos' : daySim.pnl < 0 ? ' sim-neg' : ' sim-zero');
+              const simPnlEl = document.createElement('div');
+              simPnlEl.className = 'cell-sim-pnl';
+              simPnlEl.textContent = fmtSimPnl(daySim.pnl);
+              const simTrdEl = document.createElement('div');
+              simTrdEl.className = 'cell-sim-trades';
+              simTrdEl.textContent = `Sim ${daySim.count}`;
+              simPillEl.appendChild(simPnlEl);
+              simPillEl.appendChild(simTrdEl);
+              simZoneEl.appendChild(simPillEl);
+              bodyEl.appendChild(simZoneEl);
+            }
+
             inner.appendChild(topRow);
             inner.appendChild(bodyEl);
 
@@ -862,6 +1001,23 @@
         inner.appendChild(pnlEl);
         inner.appendChild(trdEl);
         inner.appendChild(weekWLRatioEl);
+
+        if (weekSimHasData) {
+          const wSimZoneEl = document.createElement('div');
+          wSimZoneEl.className = 'cell-sim-zone';
+          const wSimPillEl = document.createElement('div');
+          wSimPillEl.className = 'cell-sim-pill' + (weekSimTotal > 0 ? ' sim-pos' : weekSimTotal < 0 ? ' sim-neg' : ' sim-zero');
+          const wSimPnlEl = document.createElement('div');
+          wSimPnlEl.className = 'cell-sim-pnl';
+          wSimPnlEl.textContent = fmtSimPnl(weekSimTotal);
+          const wSimTrdEl = document.createElement('div');
+          wSimTrdEl.className = 'cell-sim-trades';
+          wSimTrdEl.textContent = `Sim ${weekSimTrades}`;
+          wSimPillEl.appendChild(wSimPnlEl);
+          wSimPillEl.appendChild(wSimTrdEl);
+          wSimZoneEl.appendChild(wSimPillEl);
+          inner.appendChild(wSimZoneEl);
+        }
 
         totalTd.appendChild(inner);
       }
@@ -944,7 +1100,7 @@
         const td = document.createElement('td');
         const isWeekend = col === 0 || col === 6;
         if (cellIndex < firstDow || dayNum > daysInMonth) {
-          td.className = 'ann-empty';
+          td.className = 'ann-empty' + (isWeekend ? ' ann-weekend' : '');
         } else {
           const dayData = monthData.days[String(dayNum)];
           if (!dayData) {

@@ -482,6 +482,18 @@ if __name__ == "__main__":
         config.SCHWAB_API_KEY,
         config.SCHWAB_CLIENT_ID
     )
+
+    # Write current account balance for monte_carlo.html
+    try:
+        _acct = client.account_details(config.account_hash).json()
+        _bal  = _acct['securitiesAccount']['currentBalances']['liquidationValue']
+        import pathlib as _pathlib
+        _bal_path = _pathlib.Path('dashboard/account_balance.json')
+        _bal_path.write_text(json.dumps({'balance': _bal}))
+        print(f"Account balance: ${_bal:,.2f}")
+    except Exception as _e:
+        print(f"Warning: could not fetch account balance: {_e}")
+
     if args.tradervue:
         export_to_tradervue(client, config.account_hash, start_date_utc, end_date_utc)
     if args.mrprofit:
@@ -490,6 +502,7 @@ if __name__ == "__main__":
     import subprocess, sys
     subprocess.run([sys.executable, "calendar_data.py"], check=True)
     subprocess.run([sys.executable, "fetch_ohlcv.py"], check=True)
+    subprocess.run([sys.executable, "compute_mfe_mae.py"], check=True)
 
     import ftplib, pathlib
     from datetime import date as _date
@@ -543,11 +556,18 @@ if __name__ == "__main__":
             print(f"  Uploaded: ohlcv/{f.name}")
             newly_uploaded.append(f.name)
 
-        # Upload backtest trades JSON + candlestick HTML
+        # Upload dashboard HTML + JSON files
         for local, remote_name in [
+            ("dashboard/account_balance.json", "account_balance.json"),
             ("dashboard/backtest_trades.json", "backtest_trades.json"),
             ("dashboard/candlestick.html",     "candlestick.html"),
             ("dashboard/monte_carlo.html",     "monte_carlo.html"),
+            ("dashboard/reports.html",         "reports.html"),
+            ("dashboard/day.html",             "day.html"),
+            ("dashboard/trades.html",          "trades.html"),
+            ("dashboard/index.html",           "index.html"),
+            ("dashboard/nav.js",               "nav.js"),
+            ("dashboard/auth.js",              "auth.js"),
         ]:
             _lp = pathlib.Path(local)
             if _lp.exists():
