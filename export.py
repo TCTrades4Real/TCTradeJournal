@@ -503,6 +503,7 @@ if __name__ == "__main__":
     subprocess.run([sys.executable, "calendar_data.py"], check=True)
     subprocess.run([sys.executable, "fetch_ohlcv.py"], check=True)
     subprocess.run([sys.executable, "compute_mfe_mae.py"], check=True)
+    subprocess.run([sys.executable, "backtesting.py", "--export"], check=True)
 
     import ftplib, pathlib
     from datetime import date as _date
@@ -556,10 +557,19 @@ if __name__ == "__main__":
             print(f"  Uploaded: ohlcv/{f.name}")
             newly_uploaded.append(f.name)
 
+        # Upload backtest files
+        try:
+            ftp.mkd(f"{_remote}/backtest")
+        except ftplib.error_perm:
+            pass
+        for f in sorted(pathlib.Path("dashboard/backtest").glob("*.json")):
+            with open(f, "rb") as fh:
+                ftp.storbinary(f"STOR {_remote}/backtest/{f.name}", fh)
+            print(f"  Uploaded: backtest/{f.name}")
+
         # Upload dashboard HTML + JSON files
         for local, remote_name in [
             ("dashboard/account_balance.json", "account_balance.json"),
-            ("dashboard/backtest_trades.json", "backtest_trades.json"),
             ("dashboard/candlestick.html",     "candlestick.html"),
             ("dashboard/monte_carlo.html",     "monte_carlo.html"),
             ("dashboard/reports.html",         "reports.html"),

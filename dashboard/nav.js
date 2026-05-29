@@ -37,8 +37,8 @@
     { href: 'month.html',       label: 'Month',        icon: I.month  },
     { href: 'day.html',         label: 'Day',           icon: I.day    },
     { href: 'reports.html',     label: 'Reports',       icon: I.report },
-    { href: 'trades.html',      label: 'Trades',        icon: I.trades },
     { href: 'monte_carlo.html', label: 'Simulator',     icon: I.sim    },
+    { href: 'trades.html',      label: 'Trades',        icon: I.trades },
   ];
 
   /* ── Styles ─────────────────────────────────────────── */

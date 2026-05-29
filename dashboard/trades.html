@@ -79,6 +79,10 @@
 
     /* ── Loading / spinner ── */
     #statusMsg { color: var(--text-secondary); font-size: 14px; }
+    #streakBanner { display:none; align-items:center; gap:12px; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; padding:10px 16px; margin-bottom:16px; font-size:13px; color:#e0e0e0; }
+    #streakBanner span { flex:1; }
+    #streakBannerClear { background:none; border:1px solid #3a3a3a; border-radius:6px; color:#9ca3af; font-size:12px; padding:4px 10px; cursor:pointer; white-space:nowrap; }
+    #streakBannerClear:hover { background:#2a2a2a; color:#e0e0e0; }
 
     /* ── Date Picker ── */
     .picker-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -383,6 +387,7 @@
 </div>
 
 <div id="statusMsg"></div>
+<div id="streakBanner"><span id="streakBannerMsg"></span><button id="streakBannerClear">✕ Clear streak filter</button></div>
 
 <!-- ══ Date Picker ══ -->
 <div class="picker-controls">
@@ -529,6 +534,7 @@ let rawDayStats   = [];
 let filteredTrades = [];
 let sortCol = 'date';
 let sortDir = 'desc';
+let _streakFilter = null; // Set of trade keys when navigated from streak stat
 let currentPage = 1;
 let pageSize = 10;
 
@@ -566,6 +572,27 @@ async function loadAllData() {
   setStatus('');
   initSymbolFilter();
   _updateTriggerLabel();
+
+  // Check for streak filter passed from reports.html
+  const _streakRaw = sessionStorage.getItem('streakTrades');
+  if (_streakRaw) {
+    sessionStorage.removeItem('streakTrades');
+    try {
+      const { type, trades } = JSON.parse(_streakRaw);
+      _streakFilter = new Set(trades.map(t => `${t.date}|${t.entry_time}|${t.symbol}|${t.pnl}`));
+      const label = type === 'win' ? 'winning' : 'losing';
+      document.getElementById('streakBannerMsg').textContent =
+        `Showing ${trades.length}-trade max ${label} streak`;
+      const banner = document.getElementById('streakBanner');
+      banner.style.display = 'flex';
+      document.getElementById('streakBannerClear').addEventListener('click', () => {
+        _streakFilter = null;
+        banner.style.display = 'none';
+        applyFilters();
+      });
+    } catch {}
+  }
+
   applyFilters();
 }
 
@@ -708,6 +735,9 @@ document.querySelectorAll('.vol-preset').forEach(btn => {
 /* ─── Apply all filters ─── */
 function applyFilters() {
   let rts = rawRoundtrips;
+
+  // Streak filter (from reports.html consecutive wins/losses click)
+  if (_streakFilter) rts = rts.filter(r => _streakFilter.has(`${r.date}|${r.entry_time}|${r.symbol}|${r.pnl}`));
 
   // Date range
   if (_appliedFrom) rts = rts.filter(r => r.date >= _appliedFrom);

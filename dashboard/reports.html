@@ -324,6 +324,7 @@
       transition: background 0.15s;
     }
     .stat-cell:hover { background: var(--glass-bg); }
+    .stat-cell[style*="cursor: pointer"]:hover .stat-cell-val { text-decoration: underline; }
     .stat-cell:nth-child(3n) { border-right: none; }
     .stat-cell:nth-last-child(-n+3) { border-bottom: none; }
     .stat-cell-name {
@@ -866,6 +867,12 @@
 
 <!-- ══ TAB: Charts ══ -->
 <div id="tab-charts" style="display:none">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+    <label for="ddLossCap" style="font-size:13px;color:#9ca3af">Cap losses at ($)</label>
+    <input type="number" id="ddLossCap" min="0" step="1" placeholder="No cap"
+      style="width:100px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#e5e7eb;padding:4px 8px;font-size:13px">
+    <span id="ddLossCapStatus" style="font-size:12px;color:#6b7280"></span>
+  </div>
   <div class="equity-row" id="equityRow">
     <div class="equity-card">
       <div class="equity-title">Cumulative Drawdown <span class="info-icon" title="Largest peak-to-trough decline in running P&L over the selected period">i</span></div>
@@ -985,11 +992,11 @@
     <div class="score-legend-grid">
       <div class="score-legend-item">
         <div class="score-legend-name">Profit Factor <span class="score-legend-weight">25%</span></div>
-        <div class="score-legend-desc">Gross winning P&amp;L divided by gross losing P&amp;L. Above 1.0 means profitable overall; higher values indicate stronger edge. Score of 100 requires ≥ 2.6.</div>
+        <div class="score-legend-desc">Gross winning P&amp;L divided by gross losing P&amp;L. Scores 0 below 1.0 (losing money); scales linearly from 0 at 1.0 → 20 at 1.2 → 40 at 1.4 → 60 at 1.6 → 80 at 1.8 → 100 at ≥ 2.0.</div>
       </div>
       <div class="score-legend-item">
         <div class="score-legend-name">Avg Win / Loss <span class="score-legend-weight">20%</span></div>
-        <div class="score-legend-desc">Average winning trade divided by average losing trade. Measures how much you make on winners relative to what you lose on losers. Score of 100 requires ratio ≥ 2.6.</div>
+        <div class="score-legend-desc">Average winning trade divided by average losing trade. Scores 0 below 1.0 (losing more than winning); scales linearly from 0 at 1.0 → 20 at 1.2 → 40 at 1.4 → 60 at 1.6 → 80 at 1.8 → 100 at ≥ 2.0.</div>
       </div>
       <div class="score-legend-item">
         <div class="score-legend-name">Max Drawdown <span class="score-legend-weight">20%</span></div>
@@ -1151,11 +1158,19 @@ function computeStats(rts, days) {
     const dk = a.date.localeCompare(b.date);
     return dk !== 0 ? dk : a.entry_time.localeCompare(b.entry_time);
   });
-  let maxW = 0, maxL = 0, curW = 0, curL = 0;
-  for (const r of sorted) {
-    if (r.pnl > SCRATCH_THRESH)  { curW++; curL = 0; maxW = Math.max(maxW, curW); }
-    else if (r.pnl < -SCRATCH_THRESH) { curL++; curW = 0; maxL = Math.max(maxL, curL); }
-    else { curW = 0; curL = 0; }
+  let maxW = 0, maxL = 0, curW = 0, curL = 0, curWStart = 0, curLStart = 0;
+  let maxWTrades = [], maxLTrades = [];
+  for (let _i = 0; _i < sorted.length; _i++) {
+    const r = sorted[_i];
+    if (r.pnl > SCRATCH_THRESH) {
+      if (curW === 0) curWStart = _i;
+      curW++; curL = 0;
+      if (curW > maxW) { maxW = curW; maxWTrades = sorted.slice(curWStart, _i + 1); }
+    } else if (r.pnl < -SCRATCH_THRESH) {
+      if (curL === 0) curLStart = _i;
+      curL++; curW = 0;
+      if (curL > maxL) { maxL = curL; maxLTrades = sorted.slice(curLStart, _i + 1); }
+    } else { curW = 0; curL = 0; }
   }
 
   // K-Ratio: linear regression on equity curve
@@ -1201,7 +1216,7 @@ function computeStats(rts, days) {
     holdScrat: SCRT.length ? mean(SCRT.map(r => r.hold_secs ?? 0)) : null,
     holdWin:   WINS.length ? mean(WINS.map(r => r.hold_secs ?? 0)) : null,
     holdLoss:  LOSS.length ? mean(LOSS.map(r => r.hold_secs ?? 0)) : null,
-    maxW, maxL,
+    maxW, maxL, maxWTrades, maxLTrades,
     pnlStd, sqn, pValue, tStat, kelly, kRatio, profitFactor,
     hasMfe, avgMFE, avgMAE, entryEff, tradeEff,
   };
@@ -1260,8 +1275,26 @@ function renderStatsTable(s) {
 
   // Row 6
   grid.appendChild(cell('Number of Scratch Trades', `${s.nScrat} (${s.scratchPct.toFixed(1)}%)`));
-  grid.appendChild(cell('Max Consecutive Wins',   String(s.maxW), 'pos'));
-  grid.appendChild(cell('Max Consecutive Losses', String(s.maxL), 'neg'));
+  const cellMaxW = cell('Max Consecutive Wins',   String(s.maxW), 'pos');
+  const cellMaxL = cell('Max Consecutive Losses', String(s.maxL), 'neg');
+  if (s.maxWTrades?.length) {
+    cellMaxW.style.cursor = 'pointer';
+    cellMaxW.title = 'View this winning streak in Trades';
+    cellMaxW.addEventListener('click', () => {
+      sessionStorage.setItem('streakTrades', JSON.stringify({ type: 'win', trades: s.maxWTrades }));
+      window.location.href = 'trades.html';
+    });
+  }
+  if (s.maxLTrades?.length) {
+    cellMaxL.style.cursor = 'pointer';
+    cellMaxL.title = 'View this losing streak in Trades';
+    cellMaxL.addEventListener('click', () => {
+      sessionStorage.setItem('streakTrades', JSON.stringify({ type: 'loss', trades: s.maxLTrades }));
+      window.location.href = 'trades.html';
+    });
+  }
+  grid.appendChild(cellMaxW);
+  grid.appendChild(cellMaxL);
 
   // Row 7
   grid.appendChild(cell('Trade P&amp;L Std Deviation', dollar(s.pnlStd, false)));
@@ -1300,11 +1333,27 @@ function renderStatsTable(s) {
 }
 
 let _ddChart = null, _cumChart = null, _mfeChart = null, _maeChart = null;
+let _lastChartsRts = [];
 
 function renderEquityCharts(rts) {
+  _lastChartsRts = rts;
+
+  // Apply loss cap
+  const lossCap = parseFloat(document.getElementById('ddLossCap').value);
+  let cappedRts = rts;
+  let capped = 0;
+  if (!isNaN(lossCap) && lossCap > 0) {
+    cappedRts = rts.map(r => {
+      if (r.pnl < -lossCap) { capped++; return Object.assign({}, r, { pnl: -lossCap }); }
+      return r;
+    });
+  }
+  document.getElementById('ddLossCapStatus').textContent =
+    capped > 0 ? `${capped} loss${capped !== 1 ? 'es' : ''} capped at $${lossCap.toFixed(2)}` : '';
+
   // Aggregate to end-of-day PnL
   const byDate = {};
-  for (const r of rts) byDate[r.date] = (byDate[r.date] ?? 0) + r.pnl;
+  for (const r of cappedRts) byDate[r.date] = (byDate[r.date] ?? 0) + r.pnl;
   const dates = Object.keys(byDate).sort();
 
   let cum = 0, peak = 0;
@@ -2087,6 +2136,8 @@ function applyStatsDateFilter() {
   if (_activeTab === 'winloss')     renderWinLossDays(rts, days);
 }
 
+document.getElementById('ddLossCap').addEventListener('input', () => { if (_lastChartsRts.length) renderEquityCharts(_lastChartsRts); });
+
 document.getElementById('pickerTrigger').addEventListener('click', e => { e.stopPropagation(); _pOpen ? _closePicker() : _openPicker(); });
 document.getElementById('pickerDropdown').addEventListener('click', e => e.stopPropagation());
 document.getElementById('pickerCancel').addEventListener('click', () => _closePicker());
@@ -2226,13 +2277,13 @@ let _scoreRadar = null;
 
 function _scoreProfitFactor(pf) {
   if (pf == null || pf < 0) return 0;
-  if (pf >= 2.6) return 100;
-  if (pf >= 2.4) return 90 + (pf - 2.4) / 0.2 * 10;
-  if (pf >= 2.2) return 80 + (pf - 2.2) / 0.2 * 10;
-  if (pf >= 2.0) return 70 + (pf - 2.0) / 0.2 * 10;
-  if (pf >= 1.9) return 60 + (pf - 1.9) / 0.1 * 10;
-  if (pf >= 1.8) return 50 + (pf - 1.8) / 0.1 * 10;
-  return 20;
+  if (pf >= 2.0) return 100;
+  if (pf >= 1.8) return 80 + (pf - 1.8) / 0.2 * 20;
+  if (pf >= 1.6) return 60 + (pf - 1.6) / 0.2 * 20;
+  if (pf >= 1.4) return 40 + (pf - 1.4) / 0.2 * 20;
+  if (pf >= 1.2) return 20 + (pf - 1.2) / 0.2 * 20;
+  if (pf >= 1.0) return       (pf - 1.0) / 0.2 * 20;
+  return 0;
 }
 
 function _scoreWinPct(pct) {

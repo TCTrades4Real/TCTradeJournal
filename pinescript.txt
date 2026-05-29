@@ -1,0 +1,112 @@
+// TC Breakout Strategy — Pine Script v5
+// Mirrors backtesting.py: 2-min bars, long only, session open → 16:00 ET
+//
+// NOTE: PineScript processes orders at the start of the NEXT bar after conditions
+// are evaluated. Entry conditions are checked on bar N's close; the stop order at
+// trigger price fires on bar N+1 when price crosses the trigger. This is a 1-bar
+// lag vs. the Python backtest which fills intrabar.
+//
+// Usage: Apply to a 2-minute chart. Set timezone to America/New_York.
+
+//@version=5
+strategy("TC Breakout (2-min)", overlay=true,
+         default_qty_type=strategy.fixed, default_qty_value=1,
+         calc_on_every_tick=false, process_orders_on_close=false,
+         commission_type=strategy.commission.cash_per_order, commission_value=0)
+
+// ── Parameters ────────────────────────────────────────────────────────────────
+entry_mult       = input.float(1.0075, "Breakout Multiplier",      step=0.0001, group="Entry")
+min_vol          = input.int(25000,    "Min Bar Volume",                         group="Entry")
+ema_prox_high_p  = input.float(0.075,  "EMA Prox A  |prev_high – EMA9| / max",  step=0.001, group="Entry")
+ema_prox_cross_p = input.float(0.025,  "EMA Prox B  |EMA9 – EMA20| / max",      step=0.001, group="Entry")
+
+stop_mult        = input.float(0.99,   "Stop Multiplier (prev low × this)",     step=0.001, group="Exit")
+trail_activate   = input.float(0.15,   "Trail Activate ($ above entry)",        step=0.01,  group="Exit")
+
+risk_per_trade   = input.float(25.0,   "Risk Per Trade ($)",                    step=1.0,   group="Sizing")
+
+// ── Indicators ────────────────────────────────────────────────────────────────
+ema9  = ta.ema(close, 9)
+ema20 = ta.ema(close, 20)
+[macd_line, signal_line, _] = ta.macd(close, 12, 26, 9)
+vwap_val = ta.vwap(hlc3)
+
+// ── Session ───────────────────────────────────────────────────────────────────
+// 09:30–16:00 ET, Mon–Fri. Chart must use America/New_York timezone.
+in_session = not na(time("2", "0930-1600", "America/New_York"))
+eod_close  = not na(time("2", "1558-1600", "America/New_York"))
+
+// ── Entry setup (evaluated on current bar close, fires next bar) ──────────────
+trigger      = high[1] * entry_mult   // breakout level based on PREVIOUS bar
+stop_px      = low[1]  * stop_mult    // hard stop based on PREVIOUS bar low
+risk_ps      = trigger - stop_px
+shares_qty   = risk_ps > 0 ? math.floor(risk_per_trade / risk_ps) : 0
+
+// EMA proximity (conditions on the bar BEFORE the trigger bar, i.e. [1] offsets)
+prox_a = math.abs(high[1] - ema9[1])  / math.max(high[1], ema9[1])
+prox_b = math.abs(ema9[1] - ema20[1]) / math.max(ema9[1], ema20[1])
+
+// All setup conditions checked on current bar close
+// (corresponds to Python's "prev" bar checks)
+setup_ok = in_session
+         and macd_line > signal_line          // cond 3: MACD > signal
+         and (prox_a <= ema_prox_high_p
+              or prox_b <= ema_prox_cross_p)  // cond 4: EMA proximity (either)
+         and high[1] > ema9[1]               // cond 5: prev high > EMA9
+         and ema9[1] > vwap_val[1]           // cond 6: EMA9 > VWAP
+         and volume >= min_vol               // cond 2: bar volume (current bar)
+         and risk_ps > 0
+         and shares_qty >= 1
+         and strategy.position_size == 0
+
+// ── Entry: stop order at trigger fires when next bar crosses trigger ───────────
+if setup_ok
+    strategy.entry("Long", strategy.long, qty=shares_qty, stop=trigger,
+                   comment="BRK")
+
+// ── State: track entry price and best 2-min low since entry ──────────────────
+var float ep         = na   // entry price
+var float hard_stop  = na   // fixed stop set at entry
+var float best_low   = na   // highest 2-min bar low since entry
+
+// Capture entry once filled
+if strategy.position_size > 0 and strategy.position_size[1] == 0
+    ep        := strategy.opentrades.entry_price(0)
+    hard_stop := low[1] * stop_mult   // recalculate on fill bar
+    best_low  := low
+
+// Update best_low each bar while in position
+if strategy.position_size > 0
+    best_low := math.max(nz(best_low, low), low[1])
+
+// ── Effective stop (hard or trail) ───────────────────────────────────────────
+trail_stop    = best_low * stop_mult
+trail_active  = open >= ep + trail_activate
+eff_stop      = trail_active and trail_stop > hard_stop ? trail_stop : hard_stop
+
+// ── Exit: stop/trail (updated every bar) ─────────────────────────────────────
+if strategy.position_size > 0
+    strategy.exit("Stop/Trail", from_entry="Long", stop=eff_stop,
+                  comment=trail_active ? "TRAIL" : "STOP")
+
+// ── EOD exit ─────────────────────────────────────────────────────────────────
+if eod_close and strategy.position_size > 0
+    strategy.close("Long", comment="EOD")
+
+// Reset state after flat
+if strategy.position_size == 0
+    ep        := na
+    hard_stop := na
+    best_low  := na
+
+// ── Plots ─────────────────────────────────────────────────────────────────────
+plot(ema9,     "EMA 9",  color=color.new(color.blue,   0), linewidth=1)
+plot(ema20,    "EMA 20", color=color.new(color.orange, 0), linewidth=1)
+plot(vwap_val, "VWAP",   color=color.new(color.purple, 0), linewidth=1)
+
+// Highlight entry bars
+bgcolor(setup_ok ? color.new(color.green, 90) : na, title="Setup Bar")
+
+// Show hard stop line while in trade
+plot(strategy.position_size > 0 ? eff_stop : na, "Eff. Stop",
+     color=color.new(color.red, 0), style=plot.style_linebr, linewidth=1)

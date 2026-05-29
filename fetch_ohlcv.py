@@ -208,6 +208,8 @@ def main():
                         help='Re-fetch all dates, overwriting any cached data')
     parser.add_argument('--date',   help='Re-fetch only this date (YYYY-MM-DD)')
     parser.add_argument('--symbol', help='Re-fetch only this symbol')
+    parser.add_argument('--all', action='store_true',
+                        help='Process all years (default is current year only)')
     args = parser.parse_args()
 
     try:
@@ -240,10 +242,18 @@ def main():
     for date_str, sym in pairs:
         by_date[date_str].append(sym)
 
+    cur_year = str(datetime.now().year)
+
     for date_str in sorted(by_date):
         if args.date and date_str != args.date:
             skipped += len(by_date[date_str])
             continue
+
+        # Skip prior years unless --all or --date/--refresh explicitly requested
+        if not args.all and not args.date and not args.refresh:
+            if not date_str.startswith(cur_year):
+                skipped += len(by_date[date_str])
+                continue
 
         # Skip dates before the most recent cached date
         if since and date_str < since:

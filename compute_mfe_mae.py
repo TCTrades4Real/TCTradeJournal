@@ -7,9 +7,11 @@ MFE (Maximum Favorable Excursion) = max interim profit during the trade (positio
 MAE (Maximum Adverse Excursion)   = max interim loss during the trade (position $)
 
 Usage:
-    python compute_mfe_mae.py           # update all roundtrips missing mfe/mae
-    python compute_mfe_mae.py --refresh # recompute all (overwrite existing)
-    python compute_mfe_mae.py --year 2026
+    python compute_mfe_mae.py           # update current year only (default)
+    python compute_mfe_mae.py --all     # update all years
+    python compute_mfe_mae.py --refresh # recompute all (overwrite existing), current year
+    python compute_mfe_mae.py --year 2025
+    python compute_mfe_mae.py --all --refresh
 """
 
 import json
@@ -138,6 +140,8 @@ def main():
                         help='Recompute all existing mfe/mae fields')
     parser.add_argument('--year', type=int,
                         help='Process only this year')
+    parser.add_argument('--all', action='store_true',
+                        help='Process all years (default is current year only)')
     args = parser.parse_args()
 
     if not os.path.exists(INDEX_PATH):
@@ -155,6 +159,9 @@ def main():
         if not years:
             print(f'Year {args.year} not found in index.')
             sys.exit(1)
+    elif not args.all:
+        cur = str(datetime.now().year)
+        years = [cur] if cur in years else years[-1:]
 
     total_updated = total_skipped = total_missing = 0
 

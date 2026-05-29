@@ -24,11 +24,7 @@ FILES = [
     "dashboard/trades.html",
     "dashboard/nav.js",
     "dashboard/auth.js",
-    "dashboard/backtest/backtest_index.json",
-    "dashboard/backtest/backtest_trades.json",
-    "dashboard/backtest/backtest_trades_2025.json",
-    "dashboard/backtest/backtest_trades_2026.json",
-]
+] + [str(p) for p in sorted(pathlib.Path("dashboard/backtest").glob("*.json"))]
 
 specific = sys.argv[1:]  # optional: pass specific file paths to upload only those
 targets  = specific if specific else FILES

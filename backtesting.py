@@ -51,13 +51,12 @@ OHLCV_DIR = os.path.join(_HERE, 'dashboard', 'ohlcv')
 DEFAULT_FROM_DATE  = '2025-09-01'   # YYYY-MM-DD; override with --from-date
 
 # ── Sizing ────────────────────────────────────────────────────
-RISK_PER_TRADE     = 25.0           # dollars risked per trade
+RISK_PER_TRADE     = 2.25           # dollars risked per trade
 
 # ── Entry ─────────────────────────────────────────────────────
 ENTRY_MULT         = 1.0075         # breakout trigger: bar high > prev high * this
 FILL_SLIP          = 0.00           # slippage added to fill price
 MIN_VOLUME         = 25_000         # bar volume must be >= this
-ABOVE_30MIN_LOW    = 1.05           # breakout level must be > prev 30-min low * this
 EMA_FAST           = 9              # fast EMA period (2-min bars)
 EMA_SLOW           = 20             # slow EMA period (2-min bars)
 MACD_FAST          = 12             # MACD fast EMA

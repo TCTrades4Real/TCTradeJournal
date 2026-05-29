@@ -1029,7 +1029,7 @@
           </div>
           <div id="timeframeStatus"></div>
         </div>
-        <div class="main-grid" style="grid-template-columns: 1fr 2fr;">
+        <div class="main-grid" style="grid-template-columns: minmax(280px, 1fr) 2fr;">
             <div class="card">
                 <h2 class="card-title">Parameters <span class="info-icon" title="Simulation inputs: account size, win rate, risk/reward ratio, breakeven rate, trades per month, and simulation count. Adjust these to model different trading scenarios.">i</span></h2>
                 
@@ -1385,6 +1385,26 @@
             }).format(value);
         }
 
+        function formatCurrencyCompact(value) {
+            const abs = Math.abs(value);
+            const sign = value < 0 ? '-' : '';
+            if (abs >= 1e12) return sign + '$' + (abs / 1e12).toFixed(1) + 'T';
+            if (abs >= 1e9)  return sign + '$' + (abs / 1e9).toFixed(1)  + 'B';
+            if (abs >= 1e6)  return sign + '$' + (abs / 1e6).toFixed(1)  + 'M';
+            if (abs >= 1e3)  return sign + '$' + (abs / 1e3).toFixed(1)  + 'K';
+            return sign + '$' + Math.round(abs).toLocaleString('en-US');
+        }
+
+        function formatCurrencyCompactCents(value) {
+            const abs = Math.abs(value);
+            const sign = value < 0 ? '-' : '';
+            if (abs >= 1e12) return sign + '$' + (abs / 1e12).toFixed(2) + 'T';
+            if (abs >= 1e9)  return sign + '$' + (abs / 1e9).toFixed(2)  + 'B';
+            if (abs >= 1e6)  return sign + '$' + (abs / 1e6).toFixed(2)  + 'M';
+            if (abs >= 1e3)  return sign + '$' + (abs / 1e3).toFixed(2)  + 'K';
+            return sign + '$' + abs.toFixed(2);
+        }
+
         function formatPercent(value) {
             return value.toFixed(2) + '%';
         }
@@ -1421,11 +1441,11 @@
 
             // Update stats cards
             const riskPerTrade = params.initialBalance * (params.riskPercent / 100);
-            document.getElementById('riskPerTrade').textContent = formatCurrencyWithCents(riskPerTrade);
+            document.getElementById('riskPerTrade').textContent = formatCurrencyCompactCents(riskPerTrade);
 
             function setBalEl(id, val) {
                 const el = document.getElementById(id);
-                el.textContent = formatCurrency(val);
+                el.textContent = formatCurrencyCompact(val);
                 el.className = 'sim-stat-value ' + (val >= params.initialBalance ? 'val-pos' : 'val-neg');
             }
             setBalEl('likelyBalance', stats.mostLikely.finalBalance);
@@ -1754,7 +1774,7 @@
                                     weight: '400'
                                 },
                                 callback: function(value) {
-                                    return '$' + value.toLocaleString('en-US', {maximumFractionDigits: 0});
+                                    return formatCurrencyCompact(value);
                                 }
                             },
                             grid: {
@@ -2026,8 +2046,6 @@
             const avgWin  = winners.length ? winners.reduce((sum, r) => sum + r.pnl, 0) / winners.length : 0;
             const avgLoss = losers.length  ? losers.reduce((sum, r)  => sum + Math.abs(r.pnl), 0) / losers.length : 0;
             const rr      = avgLoss > 0 ? (avgWin / avgLoss).toFixed(2) : '1.00';
-
-            const riskPct = losers.length ? (avgLoss / balance * 100).toFixed(2) : '0.50';
 
             const firstDate = new Date(rts[0].date);
             const lastDate  = new Date(rts[rts.length - 1].date);
