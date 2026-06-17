@@ -39,9 +39,14 @@ def parse_csvs(folder):
     # Pass 1: collect per-file rows and count occurrences of each key
     files_data = []   # list of (Counter, list-of-execution-dicts)
 
+    import re as _re
+    _acct_pat = _re.compile(r'\d{4}-\d{2}-\d{2}-([A-Za-z]+)-AccountStatement', _re.IGNORECASE)
+
     for fname in sorted(os.listdir(folder)):
         if not fname.lower().endswith('.csv'):
             continue
+        m = _acct_pat.search(fname)
+        account_label = m.group(1) if m else ""
         fpath = os.path.join(folder, fname)
         with open(fpath, newline='', encoding='utf-8') as f:
             reader = csv.reader(f)
@@ -89,26 +94,35 @@ def parse_csvs(folder):
                 'qty':        qty,
                 'price':      price,
                 'pos_effect': pos_effect,
+                'account':    account_label,
             })
 
         files_data.append((file_counter, file_execs))
 
-    # Pass 2: determine max occurrences of each key across all files
-    global_max = Counter()
-    for fc, _ in files_data:
-        for key, count in fc.items():
-            global_max[key] = max(global_max[key], count)
+    # Group files by account label — deduplication is per-account only.
+    # Two accounts legitimately trade the same fill at the same time/price.
+    from collections import defaultdict as _dd
+    by_account = _dd(list)  # account_label -> list of (Counter, file_execs)
+    for fc, fe in files_data:
+        acct = fe[0]['account'] if fe else ""
+        by_account[acct].append((fc, fe))
 
-    # Pass 3: emit up to global_max[key] executions per key
-    global_seen = Counter()
-    executions  = []
-    for _, file_execs in files_data:
-        for ex in file_execs:
-            key = ex['key']
-            if global_seen[key] < global_max[key]:
-                global_seen[key] += 1
-                ex_out = {k: v for k, v in ex.items() if k != 'key'}
-                executions.append(ex_out)
+    executions = []
+    for acct_files in by_account.values():
+        # Pass 2: max occurrences of each key within this account's files
+        acct_max = Counter()
+        for fc, _ in acct_files:
+            for key, count in fc.items():
+                acct_max[key] = max(acct_max[key], count)
+
+        # Pass 3: emit up to acct_max[key] executions per key
+        acct_seen = Counter()
+        for _, file_execs in acct_files:
+            for ex in file_execs:
+                key = ex['key']
+                if acct_seen[key] < acct_max[key]:
+                    acct_seen[key] += 1
+                    executions.append({k: v for k, v in ex.items() if k != 'key'})
 
     executions.sort(key=lambda x: x['dt'])
     return executions
@@ -128,7 +142,7 @@ def compute_daily_details(executions):
     """
     by_symbol = defaultdict(list)
     for ex in executions:
-        by_symbol[ex['symbol']].append(ex)
+        by_symbol[(ex['symbol'], ex.get('account', ''))].append(ex)
 
     daily_roundtrips = defaultdict(list)
     daily_volume     = defaultdict(float)
@@ -136,17 +150,18 @@ def compute_daily_details(executions):
 
     for ex in executions:
         daily_executions[ex['date']].append({
-            'symbol': ex['symbol'],
-            'time':   ex['dt'].strftime('%H:%M:%S'),
-            'price':  round(ex['price'], 4),
-            'qty':    abs(int(ex['qty'])),
-            'side':   'buy' if ex['qty'] > 0 else 'sell',
+            'symbol':  ex['symbol'],
+            'account': ex.get('account', ''),
+            'time':    ex['dt'].strftime('%H:%M:%S'),
+            'price':   round(ex['price'], 4),
+            'qty':     abs(int(ex['qty'])),
+            'side':    'buy' if ex['qty'] > 0 else 'sell',
         })
 
     for ex in executions:
         daily_volume[ex['date']] += abs(ex['qty'])
 
-    for symbol, trades in by_symbol.items():
+    for (symbol, account), trades in by_symbol.items():
         position     = 0.0
         running_cost = 0.0
         entry_dt     = None
@@ -186,6 +201,7 @@ def compute_daily_details(executions):
                 avg_exit    = round(exit_value  / exit_qty_s,  4) if exit_qty_s  > 0 else 0
                 daily_roundtrips[t['date']].append({
                     'symbol':      symbol,
+                    'account':     account,
                     'pnl':         round(running_cost, 2),
                     'qty':         rt_open_qty,
                     'entry_time':  entry_dt.strftime('%H:%M'),
@@ -219,7 +235,9 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
         if mo not in result[yr]:
             result[yr][mo] = {'total': 0.0, 'trades': 0, 'days': {}}
 
-        total_pnl    = round(sum(rt['pnl'] for rt in roundtrips), 2)
+        total_pnl      = round(sum(rt['pnl'] for rt in roundtrips), 2)
+        total_pnl_cash = round(sum(rt['pnl'] for rt in roundtrips if 'cash' in rt.get('account', '').lower()), 2)
+        total_pnl_roth = round(sum(rt['pnl'] for rt in roundtrips if 'roth' in rt.get('account', '').lower()), 2)
         total_trades = len(roundtrips)
         winning = [rt for rt in roundtrips if rt['pnl'] > 0]
         losing  = [rt for rt in roundtrips if rt['pnl'] < 0]
@@ -229,10 +247,15 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
         for rt in roundtrips:
             s = rt['symbol']
             if s not in sym_map:
-                sym_map[s] = {'trades': 0, 'shares': 0, 'pnl': 0.0}
+                sym_map[s] = {'trades': 0, 'shares': 0, 'pnl': 0.0, 'pnl_cash': 0.0, 'pnl_roth': 0.0}
             sym_map[s]['trades'] += 1
             sym_map[s]['shares'] += int(rt['qty'])
             sym_map[s]['pnl']     = round(sym_map[s]['pnl'] + rt['pnl'], 2)
+            acct = rt.get('account', '').lower()
+            if 'cash' in acct:
+                sym_map[s]['pnl_cash'] = round(sym_map[s]['pnl_cash'] + rt['pnl'], 2)
+            elif 'roth' in acct:
+                sym_map[s]['pnl_roth'] = round(sym_map[s]['pnl_roth'] + rt['pnl'], 2)
 
         # ── Stats ─────────────────────────────────────────
         accuracy       = round(len(winning) / total_trades * 100, 2) if total_trades else 0
@@ -267,12 +290,15 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
             chart.append({'t': rt['exit_time'], 'pnl': round(cum, 2)})
 
         result[yr][mo]['days'][dy] = {
-            'pnl':     total_pnl,
-            'trades':  total_trades,
-            'symbols': sym_map,
+            'pnl':      total_pnl,
+            'pnl_cash': total_pnl_cash,
+            'pnl_roth': total_pnl_roth,
+            'trades':   total_trades,
+            'symbols':  sym_map,
             'roundtrips': [
                 {
                     'symbol':      rt['symbol'],
+                    'account':     rt.get('account', ''),
                     'pnl':         rt['pnl'],
                     'qty':         rt['qty'],
                     'entry_time':  rt['entry_time'],

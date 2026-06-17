@@ -108,7 +108,7 @@ def get_unique_filename(base_path, base_name, extension=".csv"):
         counter += 1
     return full_path
 
-def get_trade_export(client, account_hash, start_date_utc=None, end_date_utc=None):
+def get_trade_export(client, account_hash, start_date_utc=None, end_date_utc=None, account_label=""):
     """
     Fetch trades and write CSV with exact layout - no pandas
     - A1: "Account Trade History"
@@ -116,7 +116,7 @@ def get_trade_export(client, account_hash, start_date_utc=None, end_date_utc=Non
     - B2: headers (Exec Time, Spread, etc.)
     - B3+: trade data
     Exec Time format: MM/DD/YYYY HH:MM:SS (Eastern Time)
-    Filename: YYYY-MM-DD-AccountStatement.csv (using first trade date)
+    Filename: YYYY-MM-DD-{account_label}-AccountStatement.csv (using first trade date)
              If exists → appends -1, -2, etc.
     """
     if start_date_utc is None:
@@ -188,7 +188,8 @@ def get_trade_export(client, account_hash, start_date_utc=None, end_date_utc=Non
         date_str = datetime.now().strftime("%Y-%m-%d")
 
     base_folder = os.environ.get('TRADE_DATA_DIR', config.MR_PROFIT_BASE_FOLDER)
-    base_name = f"{date_str}-AccountStatement"
+    prefix = f"{date_str}-{account_label}-" if account_label else f"{date_str}-"
+    base_name = f"{prefix}AccountStatement"
     full_path = get_unique_filename(base_folder, base_name)
 
     print(f"Saving to: {full_path}")
@@ -451,6 +452,7 @@ if __name__ == "__main__":
     parser.add_argument("--mrprofit", action="store_true", help="Export to MrProfit CSV")
     parser.add_argument("--start", metavar="YYYY-MM-DD", help="Start date (Eastern). Defaults to 4 days ago.")
     parser.add_argument("--end", metavar="YYYY-MM-DD", help="End date (Eastern). Defaults to today.")
+    parser.add_argument("--reauth", action="store_true", help="Force re-authorization by deleting cached token file.")
     args = parser.parse_args()
 
     if not args.tradervue and not args.mrprofit:
@@ -468,8 +470,9 @@ if __name__ == "__main__":
             start_date_utc = last_trade + timedelta(seconds=1)
             print(f"Last recorded trade: {last_trade.astimezone(_ET).strftime('%m/%d/%Y %H:%M:%S')} ET — fetching from there.")
         else:
-            start_date_utc = datetime.now(timezone.utc) - timedelta(days=4)
-            print("No existing trade files found — fetching last 4 days.")
+            now_et = datetime.now(_ET)
+            start_date_utc = datetime(now_et.year, now_et.month, 1, tzinfo=_ET).astimezone(timezone.utc)
+            print("No existing trade files found — fetching from start of current month.")
 
     if args.end:
         end_date_utc = datetime.strptime(args.end, "%Y-%m-%d").replace(
@@ -478,32 +481,74 @@ if __name__ == "__main__":
     else:
         end_date_utc = datetime.now(timezone.utc)
 
+    _tokens_db = os.path.expanduser("~/.schwabdev/tokens.db")
+    if args.reauth and os.path.exists(_tokens_db):
+        os.remove(_tokens_db)
+        print(f"Deleted token file: {_tokens_db}")
+
     client = schwabdev.Client(
         config.SCHWAB_API_KEY,
         config.SCHWAB_CLIENT_ID
     )
 
-    # Write current account balance for monte_carlo.html
+    # Write account balances and today's PnL for dashboard
     try:
-        _acct = client.account_details(config.account_hash).json()
-        _bal  = _acct['securitiesAccount']['currentBalances']['liquidationValue']
         import pathlib as _pathlib
+        from datetime import timezone as _tz
+
+        _today_s = datetime.now(_tz.utc).replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%dT%H:%M:%S.000Z')
+        _today_e = datetime.now(_tz.utc).strftime('%Y-%m-%dT%H:%M:%S.000Z')
+
+        def _acct_pnl(h):
+            acct = client.account_details(h).json()
+            bal  = acct['securitiesAccount']['currentBalances']['liquidationValue']
+            txns = client.transactions(h, _today_s, _today_e, types='TRADE').json()
+            pnl  = sum(t.get('netAmount', 0) for t in txns) if txns else 0.0
+            return bal, pnl
+
+        _cash_bal,   _cash_pnl   = _acct_pnl(config.cash_account_hash)
+        _roth_bal,   _roth_pnl   = _acct_pnl(config.roth_account_hash)
+
         _bal_path = _pathlib.Path('dashboard/account_balance.json')
-        _bal_path.write_text(json.dumps({'balance': _bal}))
-        print(f"Account balance: ${_bal:,.2f}")
+        _bal_path.write_text(json.dumps({
+            'balance':        _cash_bal,
+            'cash_balance':   _cash_bal,
+            'cash_pnl_today': _cash_pnl,
+            'roth_balance':   _roth_bal,
+            'roth_pnl_today': _roth_pnl,
+        }))
+        print(f"Cash: ${_cash_bal:,.2f}  (today PnL: ${_cash_pnl:+,.2f})")
+        print(f"Roth: ${_roth_bal:,.2f}  (today PnL: ${_roth_pnl:+,.2f})")
     except Exception as _e:
         print(f"Warning: could not fetch account balance: {_e}")
 
+    active_accounts = [
+        ("Cash",   config.cash_account_hash),
+        ("Roth",   config.roth_account_hash),
+    ]
+    if config.margin_account_hash:
+        active_accounts.append(("Margin", config.margin_account_hash))
+
     if args.tradervue:
-        export_to_tradervue(client, config.account_hash, start_date_utc, end_date_utc)
+        for label, h in active_accounts:
+            print(f"\n--- Tradervue export: {label} account ---")
+            export_to_tradervue(client, h, start_date_utc, end_date_utc)
     if args.mrprofit:
-        get_trade_export(client, config.account_hash, start_date_utc, end_date_utc)
+        for label, h in active_accounts:
+            print(f"\n--- MrProfit export: {label} account ---")
+            get_trade_export(client, h, start_date_utc, end_date_utc, account_label=label)
 
     import subprocess, sys
     subprocess.run([sys.executable, "calendar_data.py"], check=True)
     subprocess.run([sys.executable, "fetch_ohlcv.py"], check=True)
-    subprocess.run([sys.executable, "compute_mfe_mae.py"], check=True)
-    subprocess.run([sys.executable, "backtesting.py", "--export"], check=True)
+    if os.path.exists("compute_mfe_mae.py"):
+        subprocess.run([sys.executable, "compute_mfe_mae.py"], check=True)
+    else:
+        print("compute_mfe_mae.py not found — skipping MFE/MAE step")
+    if os.path.exists("backtesting.py"):
+        subprocess.run([sys.executable, "backtesting.py", "--export"], check=True)
+    else:
+        print("backtesting.py not found — skipping backtest step")
 
     import ftplib, pathlib
     from datetime import date as _date

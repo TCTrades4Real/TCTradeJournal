@@ -37,8 +37,8 @@
     { href: 'month.html',       label: 'Month',        icon: I.month  },
     { href: 'day.html',         label: 'Day',           icon: I.day    },
     { href: 'reports.html',     label: 'Reports',       icon: I.report },
-    { href: 'monte_carlo.html', label: 'Simulator',     icon: I.sim    },
     { href: 'trades.html',      label: 'Trades',        icon: I.trades },
+    { href: 'monte_carlo.html', label: 'Simulator',     icon: I.sim    },
   ];
 
   /* ── Styles ─────────────────────────────────────────── */
@@ -98,6 +98,28 @@
       overflow: hidden;
     }
 
+    #_nav-pnl {
+      padding: 10px 12px 14px;
+      border-top: 1px solid #1c1c1c;
+      flex-shrink: 0;
+      overflow: hidden;
+      transition: opacity 0.15s;
+    }
+    #_nav._c #_nav-pnl { opacity: 0; pointer-events: none; }
+    ._pnl-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11.5px;
+      line-height: 1.8;
+      white-space: nowrap;
+    }
+    ._pnl-label { color: #6b7280; }
+    ._pnl-val   { font-variant-numeric: tabular-nums; font-weight: 500; }
+    ._pnl-pos   { color: rgb(11,98,71); }
+    ._pnl-neg   { color: rgb(140,31,31); }
+    ._pnl-zero  { color: #6b7280; }
+
     ._nl {
       display: flex;
       align-items: center;
@@ -142,6 +164,10 @@
       <button id="_nav-btn" title="Toggle navigation">${open ? I.left : I.right}</button>
     </div>
     <div id="_nav-list">${items}</div>
+    <div id="_nav-pnl">
+      <div class="_pnl-row"><span class="_pnl-label">Cash</span><span class="_pnl-val _pnl-zero" id="_pnl-cash">—</span></div>
+      <div class="_pnl-row"><span class="_pnl-label">Roth</span><span class="_pnl-val _pnl-zero" id="_pnl-roth">—</span></div>
+    </div>
   `;
 
   document.body.insertBefore(nav, document.body.firstChild);
@@ -156,4 +182,20 @@
     document.body.style.marginRight = m.right;
     document.getElementById('_nav-btn').innerHTML = open ? I.left : I.right;
   });
+
+  /* ── Today PnL ──────────────────────────────────────── */
+  function _fmtPnl(el, val) {
+    if (val === null || val === undefined) return;
+    const s = (val >= 0 ? '+' : '') + '$' + Math.abs(val).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    el.textContent = (val >= 0 ? '+$' : '-$') + Math.abs(val).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    el.className = '_pnl-val ' + (val > 0 ? '_pnl-pos' : val < 0 ? '_pnl-neg' : '_pnl-zero');
+  }
+  fetch('account_balance.json')
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (!d) return;
+      _fmtPnl(document.getElementById('_pnl-cash'), d.cash_pnl_today);
+      _fmtPnl(document.getElementById('_pnl-roth'), d.roth_pnl_today);
+    })
+    .catch(() => {});
 })();

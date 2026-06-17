@@ -110,6 +110,9 @@
     .nav-day-btn:hover { background: #1e1e1e; }
     .nav-day-btn:disabled { opacity: 0.3; cursor: default; }
 
+    /* ── Page content wrapper ───────────────────────── */
+    .page-content { width: 100%; }
+
     /* ── Main 2-column grid ──────────────────────────── */
     .main-grid {
       display: grid;
@@ -118,7 +121,7 @@
       margin-bottom: 16px;
     }
     @media (min-width: 700px) {
-      .main-grid { grid-template-columns: 40% 60%; }
+      .main-grid { grid-template-columns: 48fr 52fr; }
     }
 
     /* ── Left panel ──────────────────────────────────── */
@@ -179,7 +182,7 @@
       border-collapse: collapse;
       table-layout: fixed;
     }
-    .sym-table th, .sym-table td { width: 20%; }
+    .sym-table th, .sym-table td { width: auto; overflow: hidden; white-space: nowrap; }
     .sym-table th {
       color: var(--text-secondary);
       font-size: 15px;
@@ -189,14 +192,17 @@
       border-bottom: 1px solid var(--glass-border);
     }
     .sym-table th:not(:first-child) { text-align: right; }
+    .sym-table th:last-child { border-left: 1px solid rgba(255,255,255,0.12); padding-left: 10px; }
     .sym-table td {
       padding: 8px 8px 8px 0;
       font-size: 15px;
       border-bottom: 1px solid rgba(255,255,255,0.05);
     }
     .sym-table td:not(:first-child) { text-align: right; }
+    .sym-table td:last-child { border-left: 1px solid rgba(255,255,255,0.12); padding-left: 10px; }
     .sym-table tr:last-child td { border-bottom: none; }
-    .sym-name { color: #ffffff; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+    .sym-table tr:nth-last-child(2) td { padding-bottom: 14px; }
+    .sym-name { color: #ffffff; font-weight: 500; display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
     .sym-pos   { color: #22c55e; }
     .sym-neg   { color: rgb(220, 38, 38); }
 
@@ -355,7 +361,7 @@
       gap: 4px;
     }
     .stats-tab-bar { display: flex; gap: 4px; margin-bottom: 14px; }
-    .stats-tab { padding: 5px 14px; font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border: 1px solid #2a2a2a; border-radius: 6px; background: transparent; letter-spacing: 0.04em; text-transform: uppercase; transition: all 0.15s; }
+    .stats-tab { padding: 8px 20px; font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer; border: 1px solid #2a2a2a; border-radius: 6px; background: transparent; letter-spacing: 0.04em; text-transform: uppercase; transition: all 0.15s; }
     .stats-tab:hover { color: var(--text-primary); border-color: #3a3a3a; }
     .stats-tab.active { color: #ffffff; background: #1a1a1a; border-color: #6366f1; }
 
@@ -420,15 +426,16 @@
   </div>
 </div>
 
-<div class="main-grid">
-  <div class="left-panel" id="leftPanel"></div>
-  <div class="chart-panel" id="chartPanel">
-    <div class="chart-title">Intraday PnL</div>
-    <div class="chart-wrap"><canvas id="pnlChart"></canvas></div>
+<div class="page-content">
+  <div class="main-grid">
+    <div class="left-panel" id="leftPanel"></div>
+    <div class="chart-panel" id="chartPanel">
+      <div class="chart-title">Intraday PnL</div>
+      <div class="chart-wrap"><canvas id="pnlChart"></canvas></div>
+    </div>
   </div>
+  <div class="stats-bar" id="statsBar"></div>
 </div>
-
-<div class="stats-bar" id="statsBar"></div>
 
 <script>
   const MONTHS = [
@@ -442,12 +449,21 @@
   const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
   let allData    = {};
-  const simCache = {};
-  let simData       = {};
-  let btChartPoints = [];
+  let allYears   = [];
   let curYear, curMonth, curDay;
   let chartInstance  = null;
   let checkedSymbols = null;
+  let activeAccount  = 'all'; // 'all' | 'cash' | 'roth'
+  let sortCol = null, sortDir = 1;
+
+  async function ensureYear(yr) {
+    if (allData[yr]) return;
+    const data = await fetch(`calendar/calendar_data_${yr}.json`).then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    });
+    Object.assign(allData, data);
+  }
 
   /* ── Formatters ─────────────────────────────────── */
   function fmtDollars(abs) {
@@ -488,7 +504,10 @@
     return days;
   }
 
-  function navigate(year, month, day) {
+  async function navigate(year, month, day) {
+    await ensureYear(year);
+    // prefetch adjacent years in background
+    [year - 1, year + 1].filter(y => allYears.includes(y)).forEach(y => ensureYear(y));
     const url = new URL(window.location.href);
     url.searchParams.set('year', year);
     url.searchParams.set('month', month);
@@ -530,15 +549,14 @@
     if (!dayData) {
       document.getElementById('leftPanel').innerHTML = '<p class="no-data">No trade data for this day.</p>';
       renderStats({ trades: 0, pnl: 0, stats: {} });
-      renderChart(null, null);
+      renderChart(null);
       return;
     }
 
     checkedSymbols = null; // reset on each new day
-    await ensureSimYear(curYear);
-    const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
-    simData       = buildSimFromBacktest(simCache[curYear], dateStr);
-    btChartPoints = buildBtChartPoints(dateStr);
+    activeAccount  = 'all';
+    sortCol = null; sortDir = 1;
+    _dayData       = null;
     renderLeft(dayData);
     updateFiltered(dayData);
   }
@@ -599,14 +617,25 @@
     };
   }
 
+  function filterRts(dayData) {
+    if (!dayData.roundtrips) return [];
+    return dayData.roundtrips.filter(rt => {
+      if (checkedSymbols && !checkedSymbols.has(rt.symbol)) return false;
+      if (activeAccount === 'cash') return rt.account && rt.account.toLowerCase().includes('cash');
+      if (activeAccount === 'roth') return rt.account && rt.account.toLowerCase().includes('roth');
+      return true;
+    });
+  }
+
   function updateFiltered(dayData) {
+    _dayData = dayData;
     // Fall back to pre-computed data if roundtrips not in JSON yet
     if (!dayData.roundtrips || dayData.roundtrips.length === 0) {
       renderStats(dayData);
-      renderChart(dayData.chart || [], btChartPoints);
+      renderChart(dayData.chart || []);
       return;
     }
-    const rts = dayData.roundtrips.filter(rt => checkedSymbols ? checkedSymbols.has(rt.symbol) : true);
+    const rts      = filterRts(dayData);
     const computed = computeFromRoundtrips(rts);
     const pnlEl = document.querySelector('.day-pnl');
     if (pnlEl) {
@@ -614,43 +643,7 @@
       pnlEl.textContent = fmtPnl(computed.pnl);
     }
     renderStats(computed);
-    renderChart(computed.chart, btChartPoints);
-  }
-
-  function buildBtChartPoints(dateStr) {
-    const _trades = simTrades(curYear);
-    if (!_trades.length) return [];
-    const trades = _trades
-      .filter(t => t.date === dateStr)
-      .sort((a, b) => a.exit_time.localeCompare(b.exit_time));
-    let cum = 0;
-    return trades.map(t => { cum += t.pnl; return { t: t.exit_time, pnl: Math.round(cum * 100) / 100 }; });
-  }
-
-  function buildSimFromBacktest(backtest, dateStr) {
-    const result = {};
-    if (!backtest?.trades) return result;
-    for (const t of backtest.trades) {
-      if (t.date !== dateStr) continue;
-      result[t.symbol] = (result[t.symbol] || 0) + t.pnl;
-    }
-    return result;
-  }
-
-  async function ensureSimYear(year) {
-    if (simCache[year]) return;
-    try {
-      const resp = await fetch(`backtest/backtest_trades_${year}.json`);
-      if (!resp.ok) throw new Error(resp.status);
-      simCache[year] = await resp.json();
-    } catch (e) { simCache[year] = { trades: [] }; }
-  }
-  function simTrades(year) { return simCache[year]?.trades || []; }
-
-  function fmtSimPnl(val) {
-    if (val === undefined || val === null) return '—';
-    const s = val >= 0 ? '+$' : '-$';
-    return s + Math.abs(val).toFixed(2);
+    renderChart(computed.chart);
   }
 
   function renderLeft(dayData) {
@@ -666,35 +659,68 @@
     const worstSymPnl = Math.min(...Object.values(symbols).map(sd => sd.pnl));
     const worstSymbol = worstSymPnl < 0 ? Object.entries(symbols).find(([,sd]) => sd.pnl === worstSymPnl)?.[0] : null;
 
+    function fmtAcctPnl(val) {
+      if (val === undefined || val === null || val === 0) return '<span style="color:#3a3a3a">—</span>';
+      const cls = val > 0 ? 'sym-pos' : 'sym-neg';
+      return `<span class="${cls}">${fmtPnl(val)}</span>`;
+    }
+
+    const sortKeys = {
+      symbol:  ([s])    => s,
+      trades:  ([,sd])  => sd.trades,
+      shares:  ([,sd])  => sd.shares,
+      cash:    ([,sd])  => sd.pnl_cash  || 0,
+      roth:    ([,sd])  => sd.pnl_roth  || 0,
+      total:   ([,sd])  => (sd.pnl_cash || 0) + (sd.pnl_roth || 0),
+    };
+    let entries = Object.entries(symbols);
+    if (sortCol && sortKeys[sortCol]) {
+      const key = sortKeys[sortCol];
+      entries = [...entries].sort((a, b) => {
+        const av = key(a), bv = key(b);
+        return (typeof av === 'string' ? av.localeCompare(bv) : av - bv) * sortDir;
+      });
+    }
+    function sortInd(col) {
+      if (sortCol !== col) return '<span style="opacity:0.25;font-size:11px"> ⇅</span>';
+      return sortDir === 1 ? '<span style="font-size:11px"> ▲</span>' : '<span style="font-size:11px"> ▼</span>';
+    }
+
+    let totTrades = 0, totShares = 0, totCash = 0, totRoth = 0;
     let rows = '';
-    for (const [sym, sd] of Object.entries(symbols)) {
-      const pClass  = sd.pnl >= 0 ? 'sym-pos' : 'sym-neg';
-      const cbClass = sd.pnl >= 0 ? 'cb-pos' : 'cb-neg';
-      const checked = checkedSymbols.has(sym) ? 'checked' : '';
+    for (const [sym, sd] of entries) {
+      const cbClass   = sd.pnl >= 0 ? 'cb-pos' : 'cb-neg';
+      const checked   = checkedSymbols.has(sym) ? 'checked' : '';
       const warnBadge = sym === worstSymbol ? `<span class="sym-worst-badge" title="Worst symbol today: ${fmtPnl(sd.pnl)}">⚠</span>` : '';
-      const simVal = simData[sym];
-      const simCls = simVal === undefined ? '' : simVal > 0 ? 'sym-pos' : simVal < 0 ? 'sym-neg' : '';
+      const noAcctSplit = !sd.pnl_cash && !sd.pnl_roth;
+      const displayCash = noAcctSplit ? (sd.pnl || 0) : (sd.pnl_cash || 0);
+      const symTotal    = noAcctSplit ? (sd.pnl || 0) : (sd.pnl_cash || 0) + (sd.pnl_roth || 0);
+      totTrades += sd.trades;
+      totShares += sd.shares;
+      totCash   = Math.round((totCash + displayCash) * 100) / 100;
+      totRoth   = Math.round((totRoth + (sd.pnl_roth || 0)) * 100) / 100;
       rows += `<tr>
         <td><span class="sym-name"><input type="checkbox" class="sym-cb ${cbClass}" data-sym="${sym}" ${checked} />${sym}${warnBadge}</span></td>
         <td>${sd.trades}</td>
         <td>${sd.shares.toLocaleString('en-US')}</td>
-        <td class="${pClass}">${fmtPnl(sd.pnl)}</td>
-        <td><span class="sim-display ${simCls}">${fmtSimPnl(simVal)}</span></td>
+        <td>${fmtAcctPnl(displayCash)}</td>
+        <td>${fmtAcctPnl(sd.pnl_roth)}</td>
+        <td>${fmtAcctPnl(symTotal)}</td>
       </tr>`;
     }
-
-    const simDayTotal = Object.values(simData).reduce((s, v) => s + v, 0);
-    const simDayCls   = simDayTotal > 0 ? 'sym-pos' : simDayTotal < 0 ? 'sym-neg' : '';
-    const simDayHtml  = Object.keys(simData).length
-      ? `<span class="sim-display ${simDayCls}" style="font-size:20px;opacity:0.6">${fmtSimPnl(simDayTotal)}</span>`
-      : '';
+    const totTotal = Math.round((totCash + totRoth) * 100) / 100;
+    const summaryRow = `<tr style="font-weight:500">
+      <td style="color:#9ca3af;font-size:13px;padding-top:16px;border-top:2px solid rgba(255,255,255,0.2)">Total</td>
+      <td style="padding-top:16px;border-top:2px solid rgba(255,255,255,0.2)">${totTrades}</td>
+      <td style="padding-top:16px;border-top:2px solid rgba(255,255,255,0.2)">${totShares.toLocaleString('en-US')}</td>
+      <td style="padding-top:16px;border-top:2px solid rgba(255,255,255,0.2)">${fmtAcctPnl(totCash)}</td>
+      <td style="padding-top:16px;border-top:2px solid rgba(255,255,255,0.2)">${fmtAcctPnl(totRoth)}</td>
+      <td style="padding-top:16px;border-top:2px solid rgba(255,255,255,0.2)">${fmtAcctPnl(totTotal)}</td>
+    </tr>`;
 
     document.getElementById('leftPanel').innerHTML = `
       <div class="pnl-row">
-        <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
-          <div class="day-pnl ${pnlClass}">${fmtPnl(pnl)}</div>
-          ${simDayHtml}
-        </div>
+        <div class="day-pnl ${pnlClass}">${fmtPnl(pnl)}</div>
         <button class="icon-btn" title="Candlestick view" onclick="window.location.href='candlestick.html?year=${curYear}&month=${curMonth}&day=${curDay}'">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v4"/><rect width="4" height="6" x="7" y="9" rx="1"/><path d="M9 15v2"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v3"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/></svg>
         </button>
@@ -702,22 +728,24 @@
       <div class="sym-table-wrap">
         <table class="sym-table" style="table-layout:fixed">
           <colgroup>
-            <col style="width:22%">
-            <col style="width:14%">
-            <col style="width:18%">
-            <col style="width:22%">
-            <col style="width:24%">
+            <col style="width:26%">
+            <col style="width:11%">
+            <col style="width:15%">
+            <col style="width:16%">
+            <col style="width:16%">
+            <col style="width:16%">
           </colgroup>
           <thead>
             <tr>
-              <th><span class="sym-name"><input type="checkbox" class="sym-cb" id="cbSelectAll" checked />Symbol</span></th>
-              <th style="text-align:right">Trades</th>
-              <th style="text-align:right">Shares</th>
-              <th style="text-align:right">Realized</th>
-              <th class="sim-col-header" style="text-align:right">Simulation</th>
+              <th data-sort="symbol" style="cursor:pointer"><span class="sym-name"><input type="checkbox" class="sym-cb" id="cbSelectAll" checked />Symbol${sortInd('symbol')}</span></th>
+              <th data-sort="trades" style="text-align:right;cursor:pointer">Trades${sortInd('trades')}</th>
+              <th data-sort="shares" style="text-align:right;cursor:pointer">Shares${sortInd('shares')}</th>
+              <th data-sort="cash"   style="text-align:right;cursor:pointer">Cash${sortInd('cash')}</th>
+              <th data-sort="roth"   style="text-align:right;cursor:pointer">Roth${sortInd('roth')}</th>
+              <th data-sort="total"  style="text-align:right;cursor:pointer">Total${sortInd('total')}</th>
             </tr>
           </thead>
-          <tbody>${rows}</tbody>
+          <tbody>${rows}${summaryRow}</tbody>
         </table>
       </div>
       `;
@@ -756,6 +784,17 @@
 
     syncSelectAll();
 
+    // Sort header listeners
+    document.querySelectorAll('.sym-table th[data-sort]').forEach(th => {
+      th.addEventListener('click', (e) => {
+        if (e.target.closest('.sym-cb')) return; // don't sort on checkbox click
+        const col = th.dataset.sort;
+        if (sortCol === col) sortDir = -sortDir;
+        else { sortCol = col; sortDir = 1; }
+        renderLeft(dayData);
+      });
+    });
+
   }
 
   const STAT_ICONS = {
@@ -783,25 +822,43 @@
     'Top 10% Contribution':  `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/></svg>`,
   };
 
+  let _dayData = null;
+  function setAccount(acct) {
+    activeAccount = acct;
+    if (_dayData) updateFiltered(_dayData);
+  }
+
   function renderStats(dayData) {
     const el = document.getElementById('statsBar');
     if (!el) return;
-    const hasData = !!(dayData && (dayData.trades > 0 || (dayData.stats && dayData.pnl)));
-    if (!hasData) { el.innerHTML = ''; return; }
+    // Only skip entirely if the day itself has no data at all (no trades loaded)
+    if (!dayData) { el.innerHTML = ''; return; }
 
+    const noTrades = !(dayData.trades > 0 || (dayData.stats && dayData.pnl));
     const s   = dayData?.stats || {};
     const pnl = dayData?.pnl || 0;
+    const NA  = '<span style="color:#3a3a3a">—</span>';
 
     function stat(value, label) {
       let cls = '';
-      if (label === 'Biggest Winner' || label === 'Avg Winning Trade') cls = 'pos';
-      if (label === 'Biggest Loser'  || label === 'Avg Losing Trade')  cls = 'neg';
-      if (label === 'PnL') cls = pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : '';
+      if (!noTrades) {
+        if (label === 'Biggest Winner' || label === 'Avg Winning Trade') cls = 'pos';
+        if (label === 'Biggest Loser'  || label === 'Avg Losing Trade')  cls = 'neg';
+        if (label === 'PnL') cls = pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : '';
+      }
       const icon = STAT_ICONS[label] || '';
-      return `<div class="stat-item"><div class="stat-value ${cls}">${value}</div><div class="stat-label">${icon}${label}</div></div>`;
+      const display = noTrades ? NA : value;
+      return `<div class="stat-item"><div class="stat-value ${cls}">${display}</div><div class="stat-label">${icon}${label}</div></div>`;
     }
 
+    const tabs = ['all', 'cash', 'roth'];
+    const tabLabels = { all: 'All', cash: 'Cash', roth: 'Roth' };
+    const tabHtml = tabs.map(t =>
+      `<button class="stats-tab${activeAccount === t ? ' active' : ''}" onclick="setAccount('${t}')">${tabLabels[t]}</button>`
+    ).join('');
+
     el.innerHTML = `
+      <div class="stats-tab-bar">${tabHtml}</div>
       <div class="stat-row">
         ${stat(fmtPnl(pnl), 'PnL')}
         ${stat('$0.00', 'Fees &amp; Com')}
@@ -829,7 +886,7 @@
       `;
   }
 
-  function renderChart(chartPoints, btPoints) {
+  function renderChart(chartPoints) {
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 
     if (!chartPoints || chartPoints.length === 0) return;
@@ -855,10 +912,8 @@
     }
 
     function toMins(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
-    const processed  = insertZeroCrossings(chartPoints);
-    const realTimes  = new Set(processed.map(p => p.t));
-    const btTimes    = new Set((btPoints || []).map(p => p.t));
-    const allLabels  = [...new Set([...realTimes, ...btTimes])].sort((a, b) => toMins(a) - toMins(b));
+    const processed = insertZeroCrossings(chartPoints);
+    const allLabels = processed.map(p => p.t).sort((a, b) => toMins(a) - toMins(b));
 
     const realByTime = {};
     for (const p of processed) realByTime[p.t] = p.pnl;
@@ -867,17 +922,6 @@
       if (realByTime[l] !== undefined) lastReal = realByTime[l];
       return lastReal;
     });
-
-    let btValues = null;
-    if (btPoints?.length) {
-      const btByTime = {};
-      for (const p of btPoints) btByTime[p.t] = p.pnl;
-      let lastBt = null;
-      btValues = allLabels.map(l => {
-        if (btByTime[l] !== undefined) lastBt = btByTime[l];
-        return lastBt;
-      });
-    }
 
     const canvas = document.getElementById('pnlChart');
     const ctx    = canvas.getContext('2d');
@@ -903,7 +947,7 @@
     };
 
     const datasets = [{
-      label: 'Realized',
+      label: 'PnL',
       data: values,
       fill: 'origin',
       backgroundColor: 'rgba(34,197,94,0.15)',
@@ -918,19 +962,6 @@
         }
       }
     }];
-
-    if (btValues) {
-      datasets.push({
-        label: 'Backtest',
-        data: btValues,
-        fill: false,
-        borderColor: 'rgba(168,85,247,0.75)',
-        borderWidth: 1.5,
-        borderDash: [5, 3],
-        pointRadius: 0,
-        tension: 0,
-      });
-    }
 
     chartInstance = new Chart(ctx, {
       type: 'line',
@@ -953,11 +984,9 @@
                 const v = ctx.parsed.y;
                 if (v === null) return null;
                 const sign = v < 0 ? '-' : '';
-                const label = ctx.dataset.label === 'Backtest' ? 'BT' : 'Real';
-                return ` ${label}: ${sign}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                return ` PnL: ${sign}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
               },
               labelColor: ctx => {
-                if (ctx.dataset.label === 'Backtest') return { borderColor: 'rgba(168,85,247,0.75)', backgroundColor: 'rgba(168,85,247,0.75)' };
                 const color = ctx.parsed.y >= 0 ? '#22c55e' : 'rgb(220, 38, 38)';
                 return { borderColor: color, backgroundColor: color };
               }
@@ -994,22 +1023,32 @@
 
   async function init() {
     try {
-      const idx   = await fetch('calendar/calendar_index.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
-      const files = await Promise.all(idx.years.map(yr =>
-        fetch(`calendar/calendar_data_${yr}.json`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      ));
-      allData = Object.assign({}, ...files);
+      const idx = await fetch('calendar/calendar_index.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+      allYears = idx.years;
 
-      // No date in URL → navigate to the most recent trading day
+      // No date in URL → jump to the most recent trading day (load last year only)
       if (!hasDateParams) {
+        const lastYr = allYears[allYears.length - 1];
+        await ensureYear(lastYr);
+        // prefetch second-to-last year in background
+        if (allYears.length > 1) ensureYear(allYears[allYears.length - 2]);
         const allDays = getAllTradingDays();
         if (allDays.length > 0) {
           const last = allDays[allDays.length - 1];
-          navigate(last.year, last.month, last.day);
-          return;
+          const url = new URL(window.location.href);
+          url.searchParams.set('year', last.year);
+          url.searchParams.set('month', last.month);
+          url.searchParams.set('day', last.day);
+          window.history.replaceState({}, '', url);
+          curYear = last.year; curMonth = last.month; curDay = last.day;
         }
+        render();
+        return;
       }
 
+      // Load the requested year, prefetch adjacent years in background
+      await ensureYear(curYear);
+      [curYear - 1, curYear + 1].filter(y => allYears.includes(y)).forEach(y => ensureYear(y));
       render();
     } catch (err) {
       document.getElementById('leftPanel').innerHTML =

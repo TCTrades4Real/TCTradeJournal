@@ -109,7 +109,7 @@
     .sym-pills {
       display: flex;
       flex-wrap: nowrap;
-      align-items: center;
+      align-items: flex-start;
       gap: 12px;
       margin-bottom: 16px;
       min-height: 36px;
@@ -119,7 +119,7 @@
       flex: 1;
       min-width: 0;
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
       gap: 8px;
     }
 
@@ -253,6 +253,12 @@
     }
     .legend-arrow-up   { color: #089981; font-size: 13px; }
     .legend-arrow-down { color: #f23645; font-size: 13px; }
+    .exit-tag {
+      font-size: 10px; font-weight: 600; font-family: monospace;
+      background: rgba(196,181,253,0.12); color: #c4b5fd;
+      border: 1px solid rgba(196,181,253,0.25); border-radius: 3px;
+      padding: 1px 4px; white-space: nowrap;
+    }
 
     /* ── Chart container ──────────────────────────────── */
     .chart-outer {
@@ -263,12 +269,37 @@
       position: relative;
     }
 
+    .chart-outer:-webkit-full-screen { border-radius: 0; }
+    .chart-outer:-webkit-full-screen #chartMain { height: 100vh; }
+    .chart-outer:fullscreen { border-radius: 0; }
+    .chart-outer:fullscreen #chartMain { height: 100vh; }
+
     #chartInner {
       width: 100%;
     }
     #chartMain {
       height: 660px;
     }
+
+    #btnFullscreen {
+      position: absolute;
+      top: 8px;
+      right: 72px;
+      z-index: 10;
+      background: rgba(20,20,20,0.75);
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      color: #6b7280;
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      transition: color 0.15s, background 0.15s;
+    }
+    #btnFullscreen:hover { color: #e0e0e0; background: rgba(40,40,40,0.95); }
 
     /* ── Hover tooltip ───────────────────────────────── */
     #hoverTooltip {
@@ -438,22 +469,29 @@
 
 <div class="page-header">
   <div class="page-title" id="pageTitle">Candlestick Chart</div>
-  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-    <button class="nav-btn disabled" id="btnPrev" title="Previous trading day">&#8592;</button>
-    <button class="nav-btn disabled" id="btnNext" title="Next trading day">&#8594;</button>
+  <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
+    <label class="toggle-wrap" onclick="toggleRothPills()" style="cursor:pointer;user-select:none;">
+      <div class="toggle-track on" id="rothTrack"><div class="toggle-thumb"></div></div>
+      Roth
+    </label>
+    <div style="display:flex;gap:6px;">
+      <button class="nav-btn disabled" id="btnPrev" title="Previous trading day">&#8592;</button>
+      <button class="nav-btn disabled" id="btnNext" title="Next trading day">&#8594;</button>
+    </div>
   </div>
 </div>
 
 <div class="sym-pills" id="symPills"></div>
 <div style="height:16px;"></div>
 
-<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
   <div class="tf-selector" id="tfSelector" style="margin-bottom:0">
     <button class="tf-btn" data-tf="1">1m</button>
     <button class="tf-btn active" data-tf="2">2m</button>
     <button class="tf-btn" data-tf="5">5m</button>
     <button class="tf-btn" data-tf="15">15m</button>
     <button class="tf-btn" data-tf="30">30m</button>
+    <button class="tf-btn" data-tf="60">60m</button>
   </div>
   <div style="width:1px;height:22px;background:var(--glass-border);flex-shrink:0;"></div>
   <button class="tool-btn" id="btnLongPos" onclick="toggleLongPosTool()" title="Long Position (Esc to cancel)">
@@ -476,21 +514,8 @@
     Ruler
   </button>
   <div style="width:1px;height:22px;background:var(--glass-border);flex-shrink:0;"></div>
-  <button class="tool-btn" id="btnExecMarkers" onclick="toggleExecMarkers()" title="Toggle actual trade markers">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
-      <circle cx="4" cy="7" r="2.5" fill="currentColor"/>
-      <circle cx="10" cy="7" r="2.5" fill="currentColor"/>
-      <line x1="6.5" y1="7" x2="7.5" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-    </svg>
-    Trades
-  </button>
-  <button class="tool-btn active" id="btnBacktest" onclick="toggleBacktest()" title="Toggle backtest trade markers">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
-      <polygon points="7,2 12,10 2,10" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
-      <line x1="7" y1="10" x2="7" y2="14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.5"/>
-    </svg>
-    Backtest
-  </button>
+  <button class="tool-btn active" id="btnCashAcct" onclick="toggleAccount('cash')">Cash</button>
+  <button class="tool-btn active" id="btnRothAcct" onclick="toggleAccount('roth')">Roth</button>
 </div>
 <div id="longPosPanel">
   <span style="color:#6b7280">Qty</span>
@@ -503,17 +528,19 @@
   <span class="legend-item"><span class="legend-dot" style="background:rgb(34,197,94)"></span> Buy</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(239,68,68)"></span> Sell (win)</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(249,115,22)"></span> Sell (loss)</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(76,29,149)"></span> Roth entry</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(196,181,253)"></span> Roth exit</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(22,26,52);border:1px solid #2e3248"></span> Pre-market</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(22,26,52);border:1px solid #2e3248"></span> After-hours</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(128,255,255)"></span> 9 EMA</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(0,128,255)"></span> 20 EMA</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(220,50,50)"></span> 200 EMA</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(246,197,72)"></span> VWAP</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(33,150,243)"></span> MACD</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(255,152,0)"></span> Signal</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(33,150,243)"></span> MACD (9,12,9)</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(255,152,0)"></span> Signal (9)</span>
 </div>
 
-<div class="chart-outer">
+<div class="chart-outer" id="chartOuter">
   <div id="chartStatus" class="visible">
     <div class="status-spinner"></div>
     <div class="status-msg">Loading…</div>
@@ -522,6 +549,10 @@
     <div id="chartMain"></div>
   </div>
   <div id="hoverTooltip"></div>
+  <button id="btnFullscreen" title="Toggle fullscreen (F)">
+    <svg id="fsIconExpand" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg>
+    <svg id="fsIconCollapse" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="display:none"><path d="M5 1v4H1M9 5V1h4M9 13v-4h4M1 9h4v4"/></svg>
+  </button>
 </div>
 <div id="dotTooltip"></div>
 
@@ -533,11 +564,12 @@
   ];
   const DAYS_OF_WEEK = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
+
   let curYear, curMonth, curDay;
   let chartInstance   = null;
   let candleSeriesRef = null;
   let markerCleanup   = null;
-  let execMarkersOn   = false;
+  let execMarkersOn   = true;
   let activeSymbol    = null;
   let activeInterval  = 2;      // current timeframe in minutes
   let rawCandles      = null;   // 1m candles for active symbol
@@ -559,9 +591,11 @@
   let rulerLiveY   = 0;
   let activeBars   = null;        // aggregated bars at current timeframe (for snap)
 
+  let activeAccounts  = new Set(['cash', 'roth']);
+  let allSymbolExecs  = [];       // all execs for current symbol (unfiltered by account)
+  let rothPillsVisible = true;
 
-  let btSvgCleanup = null;        // backtest trade markers
-  let btActive     = true;
+
 
   /* ── Formatters ──────────────────────────────────── */
   function ordinal(n) {
@@ -650,6 +684,19 @@
       if (kMins <= execMins && kMins > bestMins) { bestMins = kMins; best = timeMap[key]; }
     }
     return best;
+  }
+
+  // Snap a raw Unix timestamp to the nearest bar at or before it in the sorted bars array.
+  // More reliable than string-based floor search when the backtest TF differs from the view TF.
+  function snapTsToBar(ts, bars) {
+    if (!bars?.length || !ts) return null;
+    let lo = 0, hi = bars.length - 1, result = null;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (bars[mid].time <= ts) { result = bars[mid].time; lo = mid + 1; }
+      else hi = mid - 1;
+    }
+    return result;
   }
 
   // Aggregate 1-minute candles into N-minute bars
@@ -1050,6 +1097,38 @@
     }
   }
 
+  function toggleRothPills() {
+    rothPillsVisible = !rothPillsVisible;
+    document.getElementById('rothTrack').classList.toggle('on', rothPillsVisible);
+    document.querySelectorAll('.roth-pill-sub').forEach(el => {
+      el.style.display = rothPillsVisible ? '' : 'none';
+    });
+  }
+
+  function toggleAccount(acct) {
+    if (activeAccounts.has(acct)) activeAccounts.delete(acct);
+    else activeAccounts.add(acct);
+    document.getElementById(acct === 'cash' ? 'btnCashAcct' : 'btnRothAcct')
+      .classList.toggle('active', activeAccounts.has(acct));
+    if (!rawCandles || !allSymbolExecs.length) return;
+    activeExecs = filterExecsByAccount(allSymbolExecs);
+    activeTrades = groupExecutionsIntoTrades(activeExecs);
+    if (markerCleanup) { markerCleanup(); markerCleanup = null; }
+    const timeMap    = buildTimeMap(rawCandles);
+    const barsTimeMap = buildTimeMap(activeBars);
+    if (execMarkersOn) renderExecMarkers(activeExecs, timeMap, barsTimeMap);
+  }
+
+  function filterExecsByAccount(execs) {
+    if (activeAccounts.size === 2) return execs; // both on → show all
+    return execs.filter(e => {
+      const a = (e.account || '').toLowerCase();
+      if (!a || a.includes('cash')) return activeAccounts.has('cash');
+      if (a.includes('roth'))       return activeAccounts.has('roth');
+      return activeAccounts.has('cash'); // fallback: treat unknown as cash
+    });
+  }
+
   function renderRulerOverlay() {
     if (!rulers.length && !activeRuler || !chartInstance || !candleSeriesRef) return;
 
@@ -1262,7 +1341,7 @@
       const ts    = execToTimestamp(ex.time, timeMap);
       const tsBar = execToTimestamp(ex.time, posMap);
       if (ts == null || tsBar == null) continue;
-      resolved.push({ ts, tsBar, price: ex.price, side: ex.side });
+      resolved.push({ ts, tsBar, price: ex.price, side: ex.side, account: ex.account || '' });
     }
     if (!resolved.length) return;
 
@@ -1310,8 +1389,11 @@
         const y = candleSeriesRef.priceToCoordinate(m.price);
         if (x == null || y == null) continue;
 
+        const isRoth = m.account.toLowerCase().includes('roth');
         let color;
-        if (m.side === 'buy') {
+        if (isRoth) {
+          color = m.side === 'buy' ? 'rgb(76,29,149)' : 'rgb(196,181,253)';
+        } else if (m.side === 'buy') {
           color = 'rgb(34,197,94)';
         } else {
           const tradePnl = execTradePnl.get(`${m.ts}_${m.side}_${m.price}`) ?? 0;
@@ -1358,168 +1440,6 @@
     };
   }
 
-  /* ── Backtest trade markers ─────────────────────── */
-  const _btCache = {};
-  async function loadBacktestTrades(year) {
-    const key = year ?? '__all__';
-    if (_btCache[key]) return _btCache[key];
-    const urls = year
-      ? [`backtest/backtest_trades_${year}.json`, 'backtest/backtest_trades.json']
-      : ['backtest/backtest_trades.json'];
-    for (const url of urls) {
-      try {
-        const resp = await fetch(url);
-        if (!resp.ok) continue;
-        _btCache[key] = await resp.json();
-        return _btCache[key];
-      } catch (e) { /* try next */ }
-    }
-    console.warn('No backtest trades file found for year:', year);
-    _btCache[key] = { trades: [] };
-    return _btCache[key];
-  }
-
-  function _btData() { return _btCache[curYear] || _btCache['__all__'] || { trades: [] }; }
-
-  function btPnlMap(dateStr) {
-    const map = {};
-    for (const t of _btData().trades) {
-      if (t.date !== dateStr) continue;
-      map[t.symbol] = (map[t.symbol] || 0) + t.pnl;
-    }
-    return map;
-  }
-
-  function renderBacktestMarkers(symbol, dateStr, barsTimeMap) {
-    if (btSvgCleanup) { btSvgCleanup(); btSvgCleanup = null; }
-    if (!_btCache[curYear] && !_btCache['__all__']) return;
-    if (!chartInstance || !candleSeriesRef) return;
-
-    const trades = _btData().trades.filter(t => t.symbol === symbol && t.date === dateStr);
-    if (!trades.length) return;
-
-    const container = document.getElementById('chartMain');
-    container.style.position = 'relative';
-
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.id = 'btMarkerOverlay';
-    svg.setAttribute('style',
-      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:6;');
-    container.appendChild(svg);
-
-    const dotTooltip = document.getElementById('dotTooltip');
-
-    const resolved = [];
-    for (const t of trades) {
-      // Use exact bar timestamps from backtest (2-min bars); fall back to floor-search
-      const eTs = t.entry_ts ?? execToTimestamp(t.entry_time, barsTimeMap);
-      const xTs = t.exit_ts  ?? execToTimestamp(t.exit_time,  barsTimeMap);
-      if (eTs != null) resolved.push({ type: 'entry', ts: eTs, price: t.entry, trade: t });
-      if (xTs != null) resolved.push({ type: 'exit',  ts: xTs, price: t.exit,  trade: t });
-    }
-
-    function redraw() {
-      while (svg.firstChild) svg.removeChild(svg.firstChild);
-      if (!chartInstance || !candleSeriesRef) return;
-      const timeScale = chartInstance.timeScale();
-
-      let r;
-      try {
-        const spacing = chartInstance.timeScale().options().barSpacing;
-        r = Math.min(Math.max(spacing * 0.26, 10), 20);
-      } catch (_) { r = 6; }
-
-      for (const m of resolved) {
-        const x = timeScale.timeToCoordinate(m.ts);
-        const y = candleSeriesRef.priceToCoordinate(m.price);
-        if (x == null || y == null) continue;
-
-        const t = m.trade;
-        const pnlStr   = (t.pnl >= 0 ? '+' : '') + '$' + t.pnl.toFixed(2);
-        const pnlColor = t.pnl >= 0 ? 'rgb(34,197,94)' : 'rgb(239,68,68)';
-        const isEntry  = m.type === 'entry';
-        const label    = isEntry ? 'ENTRY' : 'EXIT';
-        const reason   = !isEntry && t.exit_reason ? ` (${t.exit_reason.toUpperCase()})` : '';
-
-        const color = isEntry ? 'rgb(168,85,247)' : 'rgb(216,180,254)';
-        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        dot.setAttribute('cx', x);
-        dot.setAttribute('cy', y);
-        dot.setAttribute('r', r);
-        dot.setAttribute('fill', color);
-        dot.style.pointerEvents = 'all';
-        dot.style.cursor = 'crosshair';
-
-        dot.addEventListener('mouseenter', e => {
-          dotTooltip.innerHTML =
-            `<span style="color:${color};font-weight:600">${label}${reason}</span>&nbsp;&nbsp;$${m.price.toFixed(2)}<br>` +
-            `<span style="color:#9ca3af;font-size:11px">${isEntry ? t.entry_time : t.exit_time}</span>` +
-            `&nbsp;&nbsp;<span style="color:${pnlColor};font-weight:600">${pnlStr}</span><br>` +
-            `<span style="color:#6b7280;font-size:11px">stop $${t.stop.toFixed(2)}&nbsp;&nbsp;tp $${t.tp.toFixed(2)}&nbsp;&nbsp;${t.shares}sh</span>`;
-          dotTooltip.style.display = 'block';
-          dotTooltip.style.left = (e.clientX + 14) + 'px';
-          dotTooltip.style.top  = (e.clientY - 48) + 'px';
-        });
-        dot.addEventListener('mousemove', e => {
-          dotTooltip.style.left = (e.clientX + 14) + 'px';
-          dotTooltip.style.top  = (e.clientY - 48) + 'px';
-        });
-        dot.addEventListener('mouseleave', () => {
-          dotTooltip.style.display = 'none';
-        });
-
-        svg.appendChild(dot);
-      }
-    }
-
-    redraw();
-    requestAnimationFrame(redraw);
-    chartInstance.timeScale().subscribeVisibleLogicalRangeChange(redraw);
-    try { chartInstance.priceScale('right').subscribeVisiblePriceRangeChange(redraw); } catch (_) {}
-
-    btSvgCleanup = () => {
-      try { chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(redraw); } catch (_) {}
-      try { chartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(redraw); } catch (_) {}
-      svg.remove();
-    };
-  }
-
-  function toggleExecMarkers() {
-    execMarkersOn = !execMarkersOn;
-    const btn = document.getElementById('btnExecMarkers');
-    if (btn) btn.classList.toggle('active', execMarkersOn);
-    if (execMarkersOn) {
-      if (activeExecs && activeExecs.length > 0 && chartInstance) {
-        const bars = rawCandles ? (activeInterval === 1 ? rawCandles : aggregateCandles(rawCandles, activeInterval)) : null;
-        if (bars) {
-          const timeMap     = buildTimeMap(rawCandles || bars);
-          const barsTimeMap = rawCandles ? buildTimeMap(bars) : timeMap;
-          renderExecMarkers(activeExecs, timeMap, barsTimeMap);
-        }
-      }
-    } else {
-      if (markerCleanup) { markerCleanup(); markerCleanup = null; }
-    }
-  }
-
-  async function toggleBacktest() {
-    btActive = !btActive;
-    const btn = document.getElementById('btnBacktest');
-    if (btn) btn.classList.toggle('active', btActive);
-
-    if (btActive) {
-      await loadBacktestTrades(curYear);
-      // Trigger re-render via the current chart state
-      if (activeSymbol && chartInstance) {
-        const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
-        const bars = rawCandles ? (activeInterval === 1 ? rawCandles : aggregateCandles(rawCandles, activeInterval)) : null;
-        const barsTimeMap = bars ? buildTimeMap(bars) : null;
-        renderBacktestMarkers(activeSymbol, dateStr, barsTimeMap);
-      }
-    } else {
-      if (btSvgCleanup) { btSvgCleanup(); btSvgCleanup = null; }
-    }
-  }
 
   /* ── Background zone primitive ──────────────────── */
   // Attaches to a series and draws colored rectangles behind candles
@@ -1591,7 +1511,7 @@
   }
 
   function calcMACD(candles) {
-    const k12 = 2 / 13, k26 = 2 / 27, k9 = 2 / 10;
+    const k12 = 2 / 10, k26 = 2 / 13, k9 = 2 / 10;  // 9/12/9
     let ema12 = null, ema26 = null, emaSignal = null;
     const macdLine = [], signalLine = [], histogram = [];
     for (const c of candles) {
@@ -1877,10 +1797,6 @@
     if (execMarkersOn && executions && executions.length > 0) {
       renderExecMarkers(executions, timeMap, barsTimeMap);
     }
-    if (btActive) {
-      const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
-      renderBacktestMarkers(activeSymbol, dateStr, barsTimeMap);
-    }
 
     hideStatus();
     document.getElementById('chartLegend').style.display = 'flex';
@@ -1912,10 +1828,10 @@
     showLoading(`Loading 1-min data for ${symbol}…`);
     document.getElementById('chartLegend').style.display = 'none';
 
-    activeExecs  = (dayData.executions || []).filter(e => e.symbol === symbol);
-    activeTrades = groupExecutionsIntoTrades(activeExecs);
+    allSymbolExecs = (dayData.executions || []).filter(e => e.symbol === symbol);
+    activeExecs    = filterExecsByAccount(allSymbolExecs);
+    activeTrades   = groupExecutionsIntoTrades(activeExecs);
 
-    if (btActive) await loadBacktestTrades(curYear);
 
     // ── 1. Try local ohlcv_YYYY-MM-DD.json cache ─────
     const dateStr    = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
@@ -1943,24 +1859,25 @@
     container.innerHTML = '';
 
     const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
-    const btMap   = btPnlMap(dateStr);
 
     // Day pill
-    const dayRealPnl = Object.values(symbols).reduce((s, sd) => s + (sd.pnl || 0), 0);
-    const dayRealCls = dayRealPnl > 0 ? 'pos' : dayRealPnl < 0 ? 'neg' : 'zero';
-    const dayBtPnl   = Object.values(btMap).reduce((s, v) => s + v, 0);
-    const dayBtCls   = dayBtPnl > 0 ? 'pos' : dayBtPnl < 0 ? 'neg' : 'zero';
-    const dayBtHtml  = Object.keys(btMap).length
-      ? `<span class="pill-sub ${dayBtCls}"><span class="pill-sub-label">BT</span>${fmtPnl(dayBtPnl)}</span>`
-      : '';
+    const hasAcctSplit = Object.values(symbols).some(sd => sd.pnl_cash || sd.pnl_roth);
+    const dayCashPnl = hasAcctSplit
+      ? Object.values(symbols).reduce((s, sd) => s + (sd.pnl_cash || 0), 0)
+      : Object.values(symbols).reduce((s, sd) => s + (sd.pnl || 0), 0);
+    const dayRothPnl = hasAcctSplit
+      ? Object.values(symbols).reduce((s, sd) => s + (sd.pnl_roth || 0), 0)
+      : 0;
+    const dayCashCls = dayCashPnl > 0 ? 'pos' : dayCashPnl < 0 ? 'neg' : 'zero';
+    const dayRothCls = dayRothPnl > 0 ? 'pos' : dayRothPnl < 0 ? 'neg' : 'zero';
     const dayPill = document.createElement('div');
     dayPill.className = 'sym-pill';
     dayPill.style.cssText = 'cursor:default;border-color:transparent;background:transparent;color:#ffffff;width:fit-content;flex-shrink:0;';
     dayPill.innerHTML = `
       <span class="sym-pill-name">Day</span>
       <span class="sym-pill-stack">
-        <span class="pill-sub ${dayRealCls}"><span class="pill-sub-label">REAL</span>${fmtPnl(dayRealPnl)}</span>
-        ${dayBtHtml}
+        <span class="pill-sub ${dayCashCls}"><span class="pill-sub-label">CASH</span>${fmtPnl(dayCashPnl)}</span>
+        <span class="pill-sub roth-pill-sub ${dayRothCls}"><span class="pill-sub-label">ROTH</span>${fmtPnl(dayRothPnl)}</span>
       </span>`;
     container.appendChild(dayPill);
 
@@ -1976,17 +1893,16 @@
       pill.className = 'sym-pill';
       pill.dataset.sym = sym;
       pill.dataset.pnl = sd.pnl;
-      const realCls = sd.pnl > 0 ? 'pos' : sd.pnl < 0 ? 'neg' : 'zero';
-      const btPnl   = btMap[sym];
-      const btCls   = btPnl !== undefined ? (btPnl > 0 ? 'pos' : btPnl < 0 ? 'neg' : 'zero') : '';
-      const btHtml  = btPnl !== undefined
-        ? `<span class="pill-sub ${btCls}"><span class="pill-sub-label">BT</span>${fmtPnl(btPnl)}</span>`
-        : '';
+      const noSplit = !sd.pnl_cash && !sd.pnl_roth;
+      const cashPnl = noSplit ? (sd.pnl || 0) : (sd.pnl_cash || 0);
+      const rothPnl = noSplit ? 0 : (sd.pnl_roth || 0);
+      const cashCls = cashPnl > 0 ? 'pos' : cashPnl < 0 ? 'neg' : 'zero';
+      const rothCls = rothPnl > 0 ? 'pos' : rothPnl < 0 ? 'neg' : 'zero';
       pill.innerHTML = `
         <span class="sym-pill-name">${sym}</span>
         <span class="sym-pill-stack">
-          <span class="pill-sub ${realCls}"><span class="pill-sub-label">REAL</span>${fmtPnl(sd.pnl)}</span>
-          ${btHtml}
+          <span class="pill-sub ${cashCls}"><span class="pill-sub-label">CASH</span>${fmtPnl(cashPnl)}</span>
+          <span class="pill-sub roth-pill-sub ${rothCls}"><span class="pill-sub-label">ROTH</span>${fmtPnl(rothPnl)}</span>
         </span>`;
 
       pill.onclick = () => loadSymbol(sym, dayData);
@@ -2119,6 +2035,29 @@
     }
   });
 
+  // Fullscreen
+  (function() {
+    const outer = document.getElementById('chartOuter');
+    const expand = document.getElementById('fsIconExpand');
+    const collapse = document.getElementById('fsIconCollapse');
+    function updateIcons() {
+      const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      expand.style.display = isFs ? 'none' : '';
+      collapse.style.display = isFs ? '' : 'none';
+    }
+    document.addEventListener('fullscreenchange', updateIcons);
+    document.addEventListener('webkitfullscreenchange', updateIcons);
+    function toggleFs() {
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      } else {
+        (outer.requestFullscreen || outer.webkitRequestFullscreen).call(outer);
+      }
+    }
+    document.getElementById('btnFullscreen').addEventListener('click', toggleFs);
+    document.addEventListener('keydown', ev => { if (ev.key === 'f' || ev.key === 'F') { if (!ev.ctrlKey && !ev.metaKey && !ev.altKey && document.activeElement?.tagName !== 'INPUT') toggleFs(); } });
+  })();
+
   // Breadcrumb
   document.getElementById('breadcrumbMonth').href        = `month.html?year=${curYear}&month=${curMonth}`;
   document.getElementById('breadcrumbMonth').textContent = `${MONTHS[curMonth - 1]} ${curYear}`;
@@ -2173,7 +2112,6 @@
 
       const symbols  = dayData.symbols;
       const firstSym = (paramSym && symbols[paramSym]) ? paramSym : Object.keys(symbols)[0];
-      await loadBacktestTrades(curYear);
       renderPills(symbols, firstSym, dayData);
     } catch (err) {
       showError(

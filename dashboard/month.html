@@ -270,34 +270,6 @@
       padding-bottom: 3px;
     }
 
-    /* Simulation zone */
-    .cell-sim-zone {
-      border-top: 1px solid rgba(255,255,255,0.12);
-      padding-top: 6px;
-      margin-top: 6px;
-    }
-    .cell-sim-pill {
-      display: block;
-      padding: 4px 8px 5px;
-      border-radius: 6px;
-    }
-    .cell-sim-pill.sim-pos  { background: #011E15; }
-    .cell-sim-pill.sim-neg  { background: #2C0808; }
-    .cell-sim-pill.sim-zero { background: #1a1a1a; }
-    .cell-sim-pnl {
-      font-size: 18px;
-      font-weight: 400;
-      color: #fff;
-    }
-    .cell-sim-trades {
-      font-size: 12px;
-      font-weight: 400;
-      color: rgba(255,255,255,0.5);
-      margin-top: 2px;
-    }
-    .badge-sim-pos { background: rgba(2,53,37,0.5);  border: 1px dashed rgb(3,98,68);   color: #ffffff; }
-    .badge-sim-neg { background: rgba(77,13,13,0.5); border: 1px dashed rgb(143,25,25); color: #ffffff; }
-    .badge-sim-zero { background: rgba(30,30,30,0.5); border: 1px dashed #555; color: #ffffff; }
 
     /* Week total column */
     .cell-total {
@@ -497,54 +469,6 @@
     .stats-tab:hover { color: var(--text-primary); border-color: #3a3a3a; }
     .stats-tab.active { color: #ffffff; background: #1a1a1a; border-color: #6366f1; }
 
-    /* ── Sim toggle switch ──────────────────────────── */
-    .sim-toggle-wrap {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-    .sim-toggle-wrap label {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--text-secondary);
-      cursor: pointer;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-    .sim-toggle-wrap input[type="checkbox"] { display: none; }
-    .sim-switch {
-      position: relative;
-      width: 40px;
-      height: 22px;
-      background: rgba(100,100,120,0.25);
-      border-radius: 22px;
-      cursor: pointer;
-      transition: background 0.25s;
-      border: 1px solid rgba(255,255,255,0.08);
-      flex-shrink: 0;
-    }
-    .sim-switch::before {
-      content: '';
-      position: absolute;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      top: 2px;
-      left: 2px;
-      background: rgba(200,200,220,0.8);
-      transition: left 0.25s;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    #simToggle:checked + .sim-switch {
-      background: var(--primary);
-      border-color: transparent;
-    }
-    #simToggle:checked + .sim-switch::before {
-      left: 20px;
-      background: #ffffff;
-    }
 
     /* ── Auth overlay ───────────────────────────────── */
     .auth-overlay {
@@ -590,14 +514,8 @@
   <h1 id="pageTitle">Month</h1>
   <div class="badge-group">
     <span class="month-badge" id="pageBadge"></span>
-    <span class="month-badge" id="simBadge" style="display:none"></span>
   </div>
   <div class="nav-controls">
-    <div class="sim-toggle-wrap">
-      <label for="simToggle">Sim</label>
-      <input type="checkbox" id="simToggle">
-      <label for="simToggle" class="sim-switch"></label>
-    </div>
     <button class="nav-btn" id="prevBtn" title="Previous month">&#8592;</button>
     <button class="nav-btn" id="nextBtn" title="Next month">&#8594;</button>
   </div>
@@ -616,8 +534,7 @@
     'July','August','September','October','November','December'
   ];
 
-  let allData    = {};
-  const simCache = {};
+  let allData = {};
   let curYear, curMonth;
 
   function fmtHold(totalSecs) {
@@ -795,44 +712,18 @@
     };
   }
 
-  function navigate(year, month) {
+  async function navigate(year, month) {
     const url = new URL(window.location.href);
     url.searchParams.set('year', year);
     url.searchParams.set('month', month);
     window.history.pushState({}, '', url);
     curYear  = year;
     curMonth = month;
+    await ensureYearLoaded(year);
     render();
   }
 
-  async function ensureSimYear(year) {
-    if (simCache[year]) return;
-    try {
-      const resp = await fetch(`backtest/backtest_trades_${year}.json`);
-      if (!resp.ok) throw new Error(resp.status);
-      simCache[year] = await resp.json();
-    } catch (e) { simCache[year] = { trades: [] }; }
-  }
-  function simTrades(year) { return simCache[year]?.trades || []; }
-
-  function simDayData(dateStr) {
-    const _trades = simTrades(curYear);
-    if (!_trades.length) return null;
-    let total = 0, count = 0;
-    for (const t of _trades) {
-      if (t.date === dateStr) { total += t.pnl; count++; }
-    }
-    return count > 0 ? { pnl: Math.round(total * 100) / 100, count } : null;
-  }
-
-  function fmtSimPnl(val) {
-    if (val === null || val === undefined) return '—';
-    const s = val >= 0 ? '+$' : '-$';
-    return s + Math.abs(val).toFixed(2);
-  }
-
   async function render() {
-    await ensureSimYear(curYear);
     const yearStr  = String(curYear);
     const monthStr = String(curMonth);
     const yearData  = allData[yearStr] || {};
@@ -849,24 +740,6 @@
     const badge = document.getElementById('pageBadge');
     badge.className = 'month-badge ' + colorClass;
     badge.innerHTML = `<span class="badge-label">REAL</span> ${fmtBadge(total)}`;
-
-    const simBadge = document.getElementById('simBadge');
-    const monthPrefix = `${curYear}-${String(curMonth).padStart(2,'0')}-`;
-    let simMonthTotal = 0, simMonthCount = 0;
-    for (const t of simTrades(curYear)) {
-      if (t.date.startsWith(monthPrefix)) { simMonthTotal += t.pnl; simMonthCount++; }
-    }
-    if (simMonthCount > 0) {
-      simMonthTotal = Math.round(simMonthTotal * 100) / 100;
-      const simCls = simMonthTotal >= 0 ? 'badge-sim-pos' : 'badge-sim-neg';
-      simBadge.className = 'month-badge ' + simCls;
-      simBadge.innerHTML = `<span class="badge-label">SIM</span> ${fmtBadge(simMonthTotal)}`;
-      simBadge.dataset.hasData = '1';
-      simBadge.style.display = document.getElementById('simToggle').checked ? '' : 'none';
-    } else {
-      simBadge.dataset.hasData = '0';
-      simBadge.style.display = 'none';
-    }
 
     const monthStats = computeMonthStats(monthData.days);
 
@@ -913,11 +786,6 @@
       let weekPnl        = 0;
       let weekTrades     = 0;
       let weekRoundtrips = [];
-      let weekSimTotal   = 0;
-      let weekSimTrades  = 0;
-      let weekSimHasData = false;
-
-
       for (let col = 0; col < 7; col++) {
         const cellIndex = row * 7 + col;
         const td = document.createElement('td');
@@ -945,8 +813,6 @@
             weekPnl    += dayData.pnl;
             weekTrades += dayData.trades;
             weekRoundtrips.push(...(dayData.roundtrips || []));
-            const _ds = simDayData(`${curYear}-${String(curMonth).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`);
-            if (_ds !== null) { weekSimTotal += _ds.pnl; weekSimTotal = Math.round(weekSimTotal * 100) / 100; weekSimTrades = (weekSimTrades || 0) + _ds.count; weekSimHasData = true; }
 
             const inner = document.createElement('div');
             inner.className = 'cell-inner';
@@ -1000,25 +866,6 @@
             bodyEl.className = 'cell-body';
             bodyEl.appendChild(realEl);
 
-            const daySim = simDayData(`${curYear}-${String(curMonth).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`);
-            if (daySim !== null) {
-              const simZoneEl = document.createElement('div');
-              simZoneEl.className = 'cell-sim-zone sim-zone-el';
-              if (!document.getElementById('simToggle').checked) simZoneEl.style.display = 'none';
-              const simPillEl = document.createElement('div');
-              simPillEl.className = 'cell-sim-pill' + (daySim.pnl > 0 ? ' sim-pos' : daySim.pnl < 0 ? ' sim-neg' : ' sim-zero');
-              const simPnlEl = document.createElement('div');
-              simPnlEl.className = 'cell-sim-pnl';
-              simPnlEl.textContent = fmtSimPnl(daySim.pnl);
-              const simTrdEl = document.createElement('div');
-              simTrdEl.className = 'cell-sim-trades';
-              simTrdEl.textContent = `Sim ${daySim.count}`;
-              simPillEl.appendChild(simPnlEl);
-              simPillEl.appendChild(simTrdEl);
-              simZoneEl.appendChild(simPillEl);
-              bodyEl.appendChild(simZoneEl);
-            }
-
             inner.appendChild(topRow);
             inner.appendChild(bodyEl);
 
@@ -1058,24 +905,6 @@
         inner.appendChild(pnlEl);
         inner.appendChild(trdEl);
         inner.appendChild(weekWLRatioEl);
-
-        if (weekSimHasData) {
-          const wSimZoneEl = document.createElement('div');
-          wSimZoneEl.className = 'cell-sim-zone sim-zone-el';
-          if (!document.getElementById('simToggle').checked) wSimZoneEl.style.display = 'none';
-          const wSimPillEl = document.createElement('div');
-          wSimPillEl.className = 'cell-sim-pill' + (weekSimTotal > 0 ? ' sim-pos' : weekSimTotal < 0 ? ' sim-neg' : ' sim-zero');
-          const wSimPnlEl = document.createElement('div');
-          wSimPnlEl.className = 'cell-sim-pnl';
-          wSimPnlEl.textContent = fmtSimPnl(weekSimTotal);
-          const wSimTrdEl = document.createElement('div');
-          wSimTrdEl.className = 'cell-sim-trades';
-          wSimTrdEl.textContent = `Sim ${weekSimTrades}`;
-          wSimPillEl.appendChild(wSimPnlEl);
-          wSimPillEl.appendChild(wSimTrdEl);
-          wSimZoneEl.appendChild(wSimPillEl);
-          inner.appendChild(wSimZoneEl);
-        }
 
         totalTd.appendChild(inner);
       }
@@ -1199,13 +1028,19 @@
   curYear  = parseInt(params.get('year')  || new Date().getFullYear());
   curMonth = parseInt(params.get('month') || new Date().getMonth() + 1);
 
+  async function fetchYear(yr) {
+    const data = await fetch(`calendar/calendar_data_${yr}.json`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+    Object.assign(allData, data);
+  }
+
+  async function ensureYearLoaded(yr) {
+    if (allData[String(yr)]) return;
+    await fetchYear(yr);
+  }
+
   async function init() {
     try {
-      const idx = await fetch('calendar/calendar_index.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
-      const files = await Promise.all(idx.years.map(yr =>
-        fetch(`calendar/calendar_data_${yr}.json`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      ));
-      allData = Object.assign({}, ...files);
+      await fetchYear(curYear);
       render();
     } catch (err) {
       document.getElementById('monthCal').innerHTML =
@@ -1213,13 +1048,6 @@
         Run: <code>python calendar_data.py</code></td></tr>`;
     }
   }
-
-  document.getElementById('simToggle').addEventListener('change', function() {
-    const show = this.checked;
-    const simBadge = document.getElementById('simBadge');
-    if (simBadge) simBadge.style.display = (show && simBadge.dataset.hasData === '1') ? '' : 'none';
-    document.querySelectorAll('.sim-zone-el').forEach(el => { el.style.display = show ? '' : 'none'; });
-  });
 
   initAuth(() => init());
 </script>

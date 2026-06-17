@@ -827,6 +827,8 @@
     <button class="quick-btn" data-days="30">30 Days</button>
     <button class="quick-btn" data-days="60">60 Days</button>
     <button class="quick-btn" data-days="90">90 Days</button>
+    <button class="quick-btn" data-days="120">120 Days</button>
+    <button class="quick-btn" data-days="180">180 Days</button>
   </div>
 </div>
 
@@ -1050,6 +1052,28 @@
 ═══════════════════════════════════════════ */
 let rawRoundtrips = [];
 let rawDayStats   = [];
+let _acctFilter   = 'all';
+
+function acctRts() {
+  if (_acctFilter === 'all') return rawRoundtrips;
+  return rawRoundtrips.filter(r => r.account?.toLowerCase().includes(_acctFilter));
+}
+
+function acctDays(filteredRts) {
+  if (_acctFilter === 'all') {
+    const dates = new Set(filteredRts.map(r => r.date));
+    return rawDayStats.filter(d => dates.has(d.date));
+  }
+  const dayMap = {};
+  for (const r of filteredRts) {
+    if (!dayMap[r.date]) {
+      const raw = rawDayStats.find(d => d.date === r.date);
+      dayMap[r.date] = { date: r.date, pnl: 0, volume: raw?.volume ?? 0 };
+    }
+    dayMap[r.date].pnl = Math.round((dayMap[r.date].pnl + r.pnl) * 100) / 100;
+  }
+  return Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date));
+}
 
 function mean(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0; }
 function setStatus(msg) { const el = document.getElementById('statusMsg'); el.textContent = msg; el.style.marginBottom = msg ? '16px' : '0'; }
@@ -1514,7 +1538,7 @@ function renderWinLossDays(rts, days) {
 let _topSymChart = null, _botSymChart = null;
 
 function _renderInstruments() {
-  let rts = rawRoundtrips;
+  let rts = acctRts();
   if (_appliedFrom) rts = rts.filter(r => r.date >= _appliedFrom);
   if (_appliedTo)   rts = rts.filter(r => r.date <= _appliedTo);
 
@@ -1724,9 +1748,9 @@ function _annualBarOpts(labels, data, colors, yFmt, tooltipFmt) {
 }
 
 function _renderAnnualYearCharts(years) {
-  const tradeCounts = years.map(yr => rawRoundtrips.filter(r => r.date.startsWith(yr)).length);
+  const tradeCounts = years.map(yr => acctRts().filter(r => r.date.startsWith(yr)).length);
   const perfData    = years.map(yr => {
-    const rts = rawRoundtrips.filter(r => r.date.startsWith(yr));
+    const rts = acctRts().filter(r => r.date.startsWith(yr));
     return +rts.reduce((s, r) => s + r.pnl, 0).toFixed(2);
   });
 
@@ -1749,7 +1773,7 @@ function _renderAnnualYearCharts(years) {
 
 function _renderAnnualMonthCharts() {
   const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  let rts = rawRoundtrips.filter(r => r.date.startsWith(_selectedYear));
+  let rts = acctRts().filter(r => r.date.startsWith(_selectedYear));
 
   let labels, tradeCounts, perfData;
 
@@ -2110,11 +2134,11 @@ function _applyPicker() {
 
 
 function applyStatsDateFilter() {
-  let rts  = rawRoundtrips;
-  let days = rawDayStats;
+  let rts = acctRts();
   const from = _appliedFrom, to = _appliedTo;
-  if (from) { rts = rts.filter(r => r.date >= from); days = days.filter(d => d.date >= from); }
-  if (to)   { rts = rts.filter(r => r.date <= to);   days = days.filter(d => d.date <= to);   }
+  if (from) rts = rts.filter(r => r.date >= from);
+  if (to)   rts = rts.filter(r => r.date <= to);
+  let days = acctDays(rts);
 
   if (!rts.length) {
     document.getElementById('statsSection').style.display = 'none';
@@ -2183,10 +2207,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     if (_activeTab === 'score')       _renderTradingScore();
     if (_activeTab === 'charts') { if (_ddChart) _ddChart.resize(); if (_cumChart) _cumChart.resize(); if (_mfeChart) _mfeChart.resize(); if (_maeChart) _maeChart.resize(); }
     if (_activeTab === 'winloss') {
-      let rts = rawRoundtrips, days = rawDayStats;
-      if (_appliedFrom) { rts = rts.filter(r => r.date >= _appliedFrom); days = days.filter(d => d.date >= _appliedFrom); }
-      if (_appliedTo)   { rts = rts.filter(r => r.date <= _appliedTo);   days = days.filter(d => d.date <= _appliedTo);   }
-      renderWinLossDays(rts, days);
+      let rts = acctRts();
+      if (_appliedFrom) rts = rts.filter(r => r.date >= _appliedFrom);
+      if (_appliedTo)   rts = rts.filter(r => r.date <= _appliedTo);
+      renderWinLossDays(rts, acctDays(rts));
     }
   });
 });
@@ -2263,7 +2287,7 @@ function _renderTpPanel(key) {
 }
 
 function _renderTimeAnalysis() {
-  let rts = rawRoundtrips;
+  let rts = acctRts();
   if (_appliedFrom) rts = rts.filter(r => r.date >= _appliedFrom);
   if (_appliedTo)   rts = rts.filter(r => r.date <= _appliedTo);
   _tpData = _buildTimeBuckets(rts);
@@ -2329,10 +2353,10 @@ function _computeMaxDrawdownInfo(rts) {
 }
 
 function _renderTradingScore() {
-  let rts  = rawRoundtrips;
-  let days = rawDayStats;
-  if (_appliedFrom) { rts = rts.filter(r => r.date >= _appliedFrom); days = days.filter(d => d.date >= _appliedFrom); }
-  if (_appliedTo)   { rts = rts.filter(r => r.date <= _appliedTo);   days = days.filter(d => d.date <= _appliedTo);   }
+  let rts = acctRts();
+  if (_appliedFrom) rts = rts.filter(r => r.date >= _appliedFrom);
+  if (_appliedTo)   rts = rts.filter(r => r.date <= _appliedTo);
+  let days = acctDays(rts);
 
   const s = computeStats(rts, days);
   if (!s) return;
@@ -2423,6 +2447,7 @@ function _renderTradingScore() {
     bd.appendChild(row);
   }
 }
+
 
 /* ═══════════════════════════════════════════
    Init

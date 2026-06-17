@@ -357,6 +357,20 @@
 
     /* ── Empty state ── */
     .empty-state { padding: 60px 20px; text-align: center; color: var(--text-secondary); font-size: 14px; }
+
+    /* ── Account filter ── */
+    .acct-filter-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .acct-label { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+    .acct-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+    }
+    .acct-badge-cash { background: rgba(34,197,94,0.15); color: #22c55e; }
+    .acct-badge-roth { background: rgba(168,85,247,0.15); color: #a855f7; }
+    .acct-badge-other { background: rgba(255,255,255,0.06); color: #9ca3af; }
   </style>
 </head>
 <body>
@@ -447,6 +461,16 @@
     <button class="vol-clear" id="volClear">Clear</button>
   </div>
 
+  <!-- Account filter -->
+  <div class="acct-filter-row">
+    <span class="acct-label">Account:</span>
+    <div class="quick-bar">
+      <button class="quick-btn active" data-acct="all">All</button>
+      <button class="quick-btn" data-acct="cash">Cash</button>
+      <button class="quick-btn" data-acct="roth">Roth</button>
+    </div>
+  </div>
+
   <!-- Outlier / threshold filters -->
   <div class="outlier-row">
     <div class="outlier-group">
@@ -496,6 +520,7 @@
           <th data-col="date">Date <span class="sort-arrow">↕</span></th>
           <th data-col="entry_time">Open Time <span class="sort-arrow">↕</span></th>
           <th data-col="symbol">Symbol <span class="sort-arrow">↕</span></th>
+          <th data-col="account">Account <span class="sort-arrow">↕</span></th>
           <th data-col="qty">Volume <span class="sort-arrow">↕</span></th>
           <th data-col="entry_price">Entry Price <span class="sort-arrow">↕</span></th>
           <th data-col="exit_price">Exit Price <span class="sort-arrow">↕</span></th>
@@ -503,7 +528,7 @@
         </tr>
       </thead>
       <tbody id="tradesBody">
-        <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+        <tr><td colspan="8" class="empty-state">Loading...</td></tr>
       </tbody>
     </table>
   </div>
@@ -537,6 +562,7 @@ let sortDir = 'desc';
 let _streakFilter = null; // Set of trade keys when navigated from streak stat
 let currentPage = 1;
 let pageSize = 10;
+let acctFilter = 'all';
 
 function setStatus(msg) {
   const el = document.getElementById('statusMsg');
@@ -743,6 +769,9 @@ function applyFilters() {
   if (_appliedFrom) rts = rts.filter(r => r.date >= _appliedFrom);
   if (_appliedTo)   rts = rts.filter(r => r.date <= _appliedTo);
 
+  // Account
+  if (acctFilter !== 'all') rts = rts.filter(r => r.account?.toLowerCase().includes(acctFilter));
+
   // Symbol
   if (selectedSyms.size > 0) rts = rts.filter(r => selectedSyms.has(r.symbol));
 
@@ -832,7 +861,7 @@ function renderTable() {
   tbody.innerHTML = '';
 
   if (!page.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No trades match the current filters.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No trades match the current filters.</td></tr>';
     document.getElementById('tableMeta').textContent = '0 trades';
     document.getElementById('pageInfo').textContent = '';
     document.getElementById('pageNav').innerHTML = '';
@@ -842,10 +871,14 @@ function renderTable() {
   for (const t of page) {
     const tr = document.createElement('tr');
     const pnlCls = t.pnl > 0 ? 'pnl-pos' : t.pnl < 0 ? 'pnl-neg' : '';
+    const acct = (t.account || '').toLowerCase();
+    const acctCls = acct.includes('cash') ? 'acct-badge-cash' : acct.includes('roth') ? 'acct-badge-roth' : 'acct-badge-other';
+    const acctLabel = t.account || '—';
     tr.innerHTML = `
       <td>${fmtDate(t.date)}</td>
       <td>${t.entry_time ?? '—'}</td>
       <td class="sym-cell">${t.symbol ?? '—'}</td>
+      <td><span class="acct-badge ${acctCls}">${acctLabel}</span></td>
       <td>${t.qty != null ? t.qty.toLocaleString() : '—'}</td>
       <td>${fmtPriceVal(t.entry_price)}</td>
       <td>${fmtPriceVal(t.exit_price)}</td>
@@ -1171,6 +1204,15 @@ document.getElementById('quickBar').addEventListener('click', e => {
   _appliedFrom = from; _appliedTo = to; _pendFrom = from; _pendTo = to;
   _activePreset = 'custom'; _clearQuickBar(); btn.classList.add('active');
   _updateTriggerLabel(); applyFilters();
+});
+
+/* ─── Account filter ─── */
+document.querySelectorAll('.acct-filter-row .quick-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    acctFilter = btn.dataset.acct;
+    document.querySelectorAll('.acct-filter-row .quick-btn').forEach(b => b.classList.toggle('active', b === btn));
+    applyFilters();
+  });
 });
 
 /* ─── Boot ─── */
