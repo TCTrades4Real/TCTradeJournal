@@ -128,7 +128,12 @@ def get_trade_export(client, account_hash, start_date_utc=None, end_date_utc=Non
     end_date = end_date_utc.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
     print("Fetching transactions from Schwab...")
-    raw_data = client.transactions(account_hash, start_date, end_date, types="TRADE", symbol=None).json()
+    response = client.transactions(account_hash, start_date, end_date, types="TRADE", symbol=None)
+    raw_data = response.json()
+
+    if not isinstance(raw_data, list):
+        print(f"Error fetching transactions ({response.status_code}): {raw_data}")
+        return
 
     if not raw_data:
         print("No transactions found.")
@@ -256,7 +261,12 @@ def export_to_tradervue(client, account_hash, start_date_utc=None, end_date_utc=
     end_date = end_date_utc.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
     print("Fetching transactions from Schwab...")
-    raw_data = client.transactions(account_hash, start_date, end_date, types="TRADE", symbol=None).json()
+    response = client.transactions(account_hash, start_date, end_date, types="TRADE", symbol=None)
+    raw_data = response.json()
+
+    if not isinstance(raw_data, list):
+        print(f"Error fetching transactions ({response.status_code}): {raw_data}")
+        return
 
     trade_executions = []
 
