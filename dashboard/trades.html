@@ -901,7 +901,9 @@ function openCandlestick(t) {
   });
   const idx = filteredTrades.indexOf(t);
   sessionStorage.setItem('tcj_tradeNav', JSON.stringify(navList));
-  window.location.href = `candlestick.html?year=${y}&month=${m}&day=${d}&symbol=${encodeURIComponent(t.symbol)}&tradeNavIdx=${idx}`;
+  let url = `candlestick.html?year=${y}&month=${m}&day=${d}&symbol=${encodeURIComponent(t.symbol)}&tradeNavIdx=${idx}`;
+  if (t.entry_time && t.exit_time) url += `&entry=${encodeURIComponent(t.entry_time)}&exit=${encodeURIComponent(t.exit_time)}`;
+  window.location.href = url;
 }
 
 /* ─── Pagination ─── */

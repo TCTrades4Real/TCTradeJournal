@@ -126,7 +126,7 @@
       flex: 1;
       min-width: 0;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
       gap: 8px;
     }
 
@@ -174,7 +174,7 @@
     .pill-sub.pos  { background: rgb(11,98,71);   border-color: rgb(11,98,71);   color: #ffffff; opacity: 1; }
     .pill-sub.neg  { background: rgb(140,31,31);  border-color: rgb(140,31,31);  color: #ffffff; opacity: 1; }
     .pill-sub.zero { background: #333;            border-color: #555;            color: #9ca3af; opacity: 1; }
-    .pill-sub-label { font-size: 10px; font-weight: 600; opacity: 1; margin-right: 5px; letter-spacing: 0.04em; }
+    .pill-sub-label { font-size: 10px; font-weight: 600; opacity: 1; margin-right: 5px; letter-spacing: 0.04em; flex-shrink: 0; }
     .pill-sub.pos  .pill-sub-label { color: rgb(134,239,172); }
     .pill-sub.neg  .pill-sub-label { color: rgb(252,165,165); }
     .pill-sub.zero .pill-sub-label { color: #9ca3af; }
@@ -201,19 +201,6 @@
     }
     .tf-btn:hover { background: #242424; color: var(--text-primary); }
     .tf-btn.active { background: #2a2a2a; color: #ffffff; border-color: #3a3a3a; }
-    .tf-btn2 {
-      background: var(--bg-input);
-      border: 1px solid rgba(255,255,255,0.08);
-      color: var(--text-secondary);
-      border-radius: 6px;
-      padding: 7px 18px;
-      font-size: 14px;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
-    }
-    .tf-btn2:hover { background: #242424; color: var(--text-primary); }
-    .tf-btn2.active { background: #2a2a2a; color: #ffffff; border-color: #3a3a3a; }
 
 
     /* ── Toggle switch ───────────────────────────────── */
@@ -552,7 +539,6 @@
     .auth-sub   { color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
     #authError  { color: #f87171; font-size: 12px; margin-top: 12px; min-height: 16px; }
 
-    /* ── Dual chart layout ──────────────────────────── */
     .charts-row {
       display: flex;
       gap: 8px;
@@ -561,40 +547,6 @@
       flex: 1;
       min-width: 0;
     }
-    #chartMain2 {
-      height: 660px;
-    }
-    #hoverTooltip2 {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      z-index: 20;
-      background: rgba(8, 8, 26, 0.92);
-      border: 1px solid var(--glass-border);
-      border-radius: 6px;
-      padding: 8px 11px;
-      font-size: 12px;
-      color: var(--text-primary);
-      pointer-events: none;
-      display: none;
-      line-height: 1.75;
-      min-width: 130px;
-    }
-    #hoverTooltip2.visible { display: block; }
-    #chartStatus2 {
-      display: none;
-      position: absolute;
-      inset: 0;
-      z-index: 10;
-      background: #000000;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 12px;
-      padding: 40px;
-      text-align: center;
-    }
-    #chartStatus2.visible { display: flex; }
     .chart-tf-label {
       position: absolute;
       bottom: 28px;
@@ -667,18 +619,10 @@
 <div style="height:16px;"></div>
 
 <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-  <span style="font-size:12px;color:#6b7280;white-space:nowrap">Left</span>
   <div class="tf-selector" id="tfSelector" style="margin-bottom:0">
-    <button class="tf-btn" data-tf="1">1m</button>
+    <button class="tf-btn active" data-tf="1">1m</button>
     <button class="tf-btn" data-tf="2">2m</button>
-    <button class="tf-btn active" data-tf="5">5m</button>
-  </div>
-  <div style="width:1px;height:22px;background:var(--glass-border);flex-shrink:0;"></div>
-  <span style="font-size:12px;color:#6b7280;white-space:nowrap">Right</span>
-  <div class="tf-selector" id="tfSelector2" style="margin-bottom:0">
-    <button class="tf-btn2 active" data-tf="1">1m</button>
-    <button class="tf-btn2" data-tf="2">2m</button>
-    <button class="tf-btn2" data-tf="5">5m</button>
+    <button class="tf-btn" data-tf="5">5m</button>
   </div>
   <div style="width:1px;height:22px;background:var(--glass-border);flex-shrink:0;"></div>
   <button class="tool-btn" id="btnLongPos" onclick="toggleLongPosTool()" title="Long Position (Esc to cancel)">
@@ -741,18 +685,7 @@
       <svg id="fsIconExpand" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg>
       <svg id="fsIconCollapse" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="display:none"><path d="M5 1v4H1M9 5V1h4M9 13v-4h4M1 9h4v4"/></svg>
     </button>
-    <span class="chart-tf-label" id="leftTfLabel">5m</span>
-  </div>
-  <div class="chart-outer" id="chartOuter2">
-    <div id="chartStatus2" class="visible">
-      <div class="status-spinner"></div>
-      <div class="status-msg">Loading…</div>
-    </div>
-    <div id="chartInner2">
-      <div id="chartMain2"></div>
-    </div>
-    <div id="hoverTooltip2"></div>
-    <span class="chart-tf-label" id="rightTfLabel">1m</span>
+    <span class="chart-tf-label" id="leftTfLabel">1m</span>
   </div>
 </div>
 <div id="dotTooltip"></div>
@@ -785,26 +718,21 @@
   let markerCleanup   = null;
   let execMarkersOn   = true;
   let activeSymbol    = null;
-  let activeInterval  = 5;      // current timeframe in minutes
+  let activeInterval  = 1;      // current timeframe in minutes
   let rawCandles      = null;   // 1m candles for active symbol
   let activeExecs       = [];     // executions for active symbol
   let ohlcvCache        = {};     // loaded from ohlcv_YYYY-MM-DD.json
   let tradingDays       = [];     // sorted list of {year,month,day} objects with trade data
   let activeTrades      = [];     // activeExecs grouped by round-trip
+  let pendingTradeZoom  = null;   // { entryTime, exitTime } from a trades.html deep link — consumed on first render
   let longPosMode  = false;       // long position tool toggled on
   let longPositions = [];         // array of { entry, target, stop, t0, t1 }
   let lpSvg        = null;        // SVG overlay element
   let lpSubCleanup = null;        // fn to unsubscribe chart events
 
-  let rulerMode    = false;       // ruler tool active (shared by both charts)
-  // Per-chart ruler state: rulers = array of locked { t0, p0, t1, p1 }; activeRuler = in-progress ruler (t1/p1 null = preview phase)
-  const rulerState1 = { rulers: [], activeRuler: null, svg: null, subCleanup: null, liveX: 0, liveY: 0 };
-  const rulerState2 = { rulers: [], activeRuler: null, svg: null, subCleanup: null, liveX: 0, liveY: 0 };
-  function rulerCtx(which) {
-    return which === 2
-      ? { state: rulerState2, chartInst: chartInstance2, seriesRef: candleSeriesRef2, containerId: 'chartMain2', bars: activeBars2 }
-      : { state: rulerState1, chartInst: chartInstance,  seriesRef: candleSeriesRef,  containerId: 'chartMain',  bars: activeBars  };
-  }
+  let rulerMode    = false;       // ruler tool active
+  // rulers = array of locked { t0, p0, t1, p1 }; activeRuler = in-progress ruler (t1/p1 null = preview phase)
+  const rulerState = { rulers: [], activeRuler: null, svg: null, subCleanup: null, liveX: 0, liveY: 0 };
   let activeBars   = null;        // aggregated bars at current timeframe (for snap)
 
   let activeAccounts  = new Set(['cash']);
@@ -878,18 +806,6 @@
     return { ...def };
   }
   const paneState1 = loadPaneState('tc_pane1', { topFrac: 0.63, botFrac: 0.80 });
-  const paneState2 = loadPaneState('tc_pane2', { topFrac: 0.63, botFrac: 0.80 });
-
-  // Right chart
-  let chartInstance2   = null;
-  let candleSeriesRef2 = null;
-  let markerCleanup2   = null;
-  let activeInterval2       = 1;
-  let activeBars2           = null;
-  let crosshairSyncing      = false;
-  let crosshairSyncCleanup  = null;
-
-
 
   /* ── Formatters ──────────────────────────────────── */
   function ordinal(n) {
@@ -919,32 +835,6 @@
   }
   function hideStatus() {
     document.getElementById('chartStatus').className = '';
-  }
-
-  /* ── Fetch OHLCV from Massive ───────────────────── */
-  const MASSIVE_API_KEY = 'REDACTED_API_KEY';
-
-  async function fetchCandles(symbol, year, month, day) {
-    const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const url = `https://api.massive.com/v2/aggs/ticker/${encodeURIComponent(symbol)}/range/1/minute/${dateStr}/${dateStr}` +
-                `?adjusted=false&sort=asc&limit=50000&apiKey=${MASSIVE_API_KEY}`;
-
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`Massive API returned HTTP ${resp.status}`);
-
-    const data = await resp.json();
-    if (!data.results?.length) {
-      throw new Error(`No 1-minute data available for ${symbol} on ${dateStr}`);
-    }
-
-    return data.results.map(r => ({
-      time:   Math.floor(r.t / 1000),   // ms → seconds
-      open:   r.o,
-      high:   r.h,
-      low:    r.l,
-      close:  r.c,
-      volume: r.v || 0,
-    }));
   }
 
   /* ── Time helpers ────────────────────────────────── */
@@ -1349,18 +1239,17 @@
   /* ── Ruler snap helper ───────────────────────────── */
   // Returns { x, y, price, time } of nearest candle high/low within SNAP_PX,
   // or null if nothing is close enough.
-  function snapToCandle(px, py, which = 1) {
-    const ctx = rulerCtx(which);
-    if (!ctx.bars?.length || !ctx.chartInst || !ctx.seriesRef) return null;
+  function snapToCandle(px, py) {
+    if (!activeBars?.length || !chartInstance || !candleSeriesRef) return null;
     const SNAP_PX = 14;
-    const timeScale = ctx.chartInst.timeScale();
+    const timeScale = chartInstance.timeScale();
     let bestDist = SNAP_PX;
     let result = null;
-    for (const bar of ctx.bars) {
+    for (const bar of activeBars) {
       const bx = timeScale.timeToCoordinate(bar.time);
       if (bx == null || Math.abs(bx - px) > SNAP_PX * 2) continue;
       for (const [price] of [[bar.high], [bar.low]]) {
-        const by = ctx.seriesRef.priceToCoordinate(price);
+        const by = candleSeriesRef.priceToCoordinate(price);
         if (by == null) continue;
         const dist = Math.hypot(bx - px, by - py);
         if (dist < bestDist) {
@@ -1373,29 +1262,20 @@
   }
 
   /* ── Ruler Tool ─────────────────────────────────── */
-  function clearRulerToolOne(which) {
-    const st = rulerCtx(which).state;
-    st.rulers = []; st.activeRuler = null;
-    if (st.subCleanup) { st.subCleanup(); st.subCleanup = null; }
-    if (st.svg)        { st.svg.remove(); st.svg = null; }
-  }
-
   function clearRulerTool() {
-    clearRulerToolOne(1);
-    clearRulerToolOne(2);
+    rulerState.rulers = []; rulerState.activeRuler = null;
+    if (rulerState.subCleanup) { rulerState.subCleanup(); rulerState.subCleanup = null; }
+    if (rulerState.svg)        { rulerState.svg.remove(); rulerState.svg = null; }
   }
 
   function toggleRulerTool() {
     rulerMode = !rulerMode;
     document.getElementById('btnRuler').classList.toggle('active', rulerMode);
-    const chartMain  = document.getElementById('chartMain');
-    const chartMain2 = document.getElementById('chartMain2');
+    const chartMain = document.getElementById('chartMain');
     if (rulerMode) {
       chartMain.style.cursor = 'crosshair';
-      chartMain2.style.cursor = 'crosshair';
     } else {
       chartMain.style.cursor = '';
-      chartMain2.style.cursor = '';
       clearRulerTool();
     }
   }
@@ -1417,7 +1297,6 @@
     activeExecs = filterExecsByAccount(allSymbolExecs);
     activeTrades = groupExecutionsIntoTrades(activeExecs);
     if (markerCleanup)  { markerCleanup();  markerCleanup  = null; }
-    if (markerCleanup2) { markerCleanup2(); markerCleanup2 = null; }
     const timeMap     = buildTimeMap(rawCandles);
     const barsTimeMap = buildTimeMap(activeBars);
     const dotTipEl    = document.getElementById('dotTooltip');
@@ -1426,13 +1305,6 @@
         chartInst: chartInstance, seriesRef: candleSeriesRef,
         containerId: 'chartMain', dotTipEl,
       });
-      if (chartInstance2 && candleSeriesRef2) {
-        const barsTimeMap2 = activeBars2 ? buildTimeMap(activeBars2) : timeMap;
-        markerCleanup2 = renderExecMarkers(activeExecs, timeMap, barsTimeMap2, {
-          chartInst: chartInstance2, seriesRef: candleSeriesRef2,
-          containerId: 'chartMain2', dotTipEl,
-        });
-      }
     }
   }
 
@@ -1446,9 +1318,9 @@
     });
   }
 
-  function renderRulerOverlay(which = 1) {
-    const ctx = rulerCtx(which);
-    const st  = ctx.state;
+  function renderRulerOverlay() {
+    const ctx = { chartInst: chartInstance, seriesRef: candleSeriesRef, containerId: 'chartMain' };
+    const st  = rulerState;
     if ((!st.rulers.length && !st.activeRuler) || !ctx.chartInst || !ctx.seriesRef) return;
 
     const container = document.getElementById(ctx.containerId);
@@ -1457,7 +1329,7 @@
     if (!st.svg) {
       if (st.subCleanup) { st.subCleanup(); st.subCleanup = null; }
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.id = which === 2 ? 'rulerOverlay2' : 'rulerOverlay';
+      svg.id = 'rulerOverlay';
       svg.setAttribute('style',
         'position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:7;pointer-events:none;');
       container.appendChild(svg);
@@ -1550,7 +1422,7 @@
       svg.appendChild(labelEl);
 
       if (!locked) {
-        const snapHit = snapToCandle(st.liveX, st.liveY, which);
+        const snapHit = snapToCandle(st.liveX, st.liveY);
         if (snapHit) {
           const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
           ring.setAttribute('cx', x1); ring.setAttribute('cy', y1); ring.setAttribute('r', 8);
@@ -1579,7 +1451,7 @@
         ev.stopPropagation();
         const idx = st.rulers.indexOf(r);
         if (idx !== -1) st.rulers.splice(idx, 1);
-        if (!st.rulers.length && !st.activeRuler) { clearRulerToolOne(which); } else { draw(); }
+        if (!st.rulers.length && !st.activeRuler) { clearRulerTool(); } else { draw(); }
       });
       svg.appendChild(delG);
 
@@ -1598,7 +1470,7 @@
           function onMove(mv) {
             const bRect = container.getBoundingClientRect();
             const px = mv.clientX - bRect.left, py = mv.clientY - bRect.top;
-            const snap = snapToCandle(px, py, which);
+            const snap = snapToCandle(px, py);
             const t = snap ? snap.time : timeScale.coordinateToTime(px);
             const p = snap ? snap.price : ctx.seriesRef.coordinateToPrice(py);
             if (t == null || p == null) return;
@@ -1914,13 +1786,6 @@
     if (rawCandles) renderChart(rawCandles, activeExecs, mins);
   }
 
-  function setTimeframe2(mins) {
-    activeInterval2 = mins;
-    document.querySelectorAll('.tf-btn2').forEach(b =>
-      b.classList.toggle('active', +b.dataset.tf === mins));
-    if (rawCandles) renderChart2(rawCandles, activeExecs, mins);
-  }
-
   /* ── Chart render ────────────────────────────────── */
   function setupPaneHandles(chartInst, outerEl, state) {
     outerEl.querySelectorAll('.pane-handle').forEach(h => h.remove());
@@ -1931,7 +1796,7 @@
       chartInst.priceScale('macd').applyOptions({ scaleMargins: { top: +state.botFrac.toFixed(4), bottom: 0 } });
     }
 
-    const storeKey = outerEl.id === 'chartOuter' ? 'tc_pane1' : 'tc_pane2';
+    const storeKey = 'tc_pane1';
 
     function makeHandle(fracKey, getMin, getMax) {
       const h = document.createElement('div');
@@ -1983,9 +1848,8 @@
     // Teardown previous overlays + chart (order matters: unsubscribe before remove)
     if (lpSubCleanup)     { lpSubCleanup();     lpSubCleanup     = null; }
     if (lpSvg)            { lpSvg.remove();     lpSvg            = null; }
-    if (rulerState1.subCleanup) { rulerState1.subCleanup(); rulerState1.subCleanup = null; }
-    if (rulerState1.svg)        { rulerState1.svg.remove();  rulerState1.svg        = null; }
-    if (crosshairSyncCleanup) { crosshairSyncCleanup(); crosshairSyncCleanup = null; }
+    if (rulerState.subCleanup) { rulerState.subCleanup(); rulerState.subCleanup = null; }
+    if (rulerState.svg)        { rulerState.svg.remove();  rulerState.svg        = null; }
     if (markerCleanup)    { markerCleanup();    markerCleanup    = null; }
     if (chartInstance) { chartInstance.remove(); chartInstance = null; }
     candleSeriesRef = null;
@@ -2253,259 +2117,16 @@
     hideStatus();
     document.getElementById('chartLegend').style.display = 'flex';
 
-    // Update left chart TF label
+    // Update chart TF label
     const leftLbl = document.getElementById('leftTfLabel');
     if (leftLbl) leftLbl.textContent = intervalMins + 'm';
 
     // Restore overlays after chart re-render (e.g. timeframe switch)
     if (longPositions.length && longPosMode) setTimeout(() => renderLongPosOverlay(), 0);
-    if ((rulerState1.rulers.length || rulerState1.activeRuler) && rulerMode) setTimeout(() => renderRulerOverlay(1), 0);
+    if ((rulerState.rulers.length || rulerState.activeRuler) && rulerMode) setTimeout(() => renderRulerOverlay(), 0);
 
     // Pane resize handles
     setupPaneHandles(chartInstance, document.getElementById('chartOuter'), paneState1);
-
-    // Re-sync crosshair if right chart exists
-    if (chartInstance2 && candleSeriesRef2) setupCrosshairSync();
-  }
-
-  /* ── Crosshair sync ─────────────────────────────── */
-  function snapBarAtTime(bars, time) {
-    let result = null;
-    for (const b of bars) {
-      if (b.time <= time) result = b;
-      else break;
-    }
-    return result;
-  }
-
-  function setupCrosshairSync() {
-    if (crosshairSyncCleanup) { crosshairSyncCleanup(); crosshairSyncCleanup = null; }
-    if (!chartInstance || !chartInstance2 || !candleSeriesRef || !candleSeriesRef2) return;
-
-    function onLeft(param) {
-      if (crosshairSyncing) return;
-      crosshairSyncing = true;
-      try {
-        if (!param.time) {
-          chartInstance2.clearCrosshairPosition();
-        } else {
-          const bar = activeBars2 ? snapBarAtTime(activeBars2, param.time) : null;
-          if (bar) chartInstance2.setCrosshairPosition(bar.close, bar.time, candleSeriesRef2);
-        }
-      } catch (_) {}
-      crosshairSyncing = false;
-    }
-
-    function onRight(param) {
-      if (crosshairSyncing) return;
-      crosshairSyncing = true;
-      try {
-        if (!param.time) {
-          chartInstance.clearCrosshairPosition();
-        } else {
-          const bar = activeBars ? snapBarAtTime(activeBars, param.time) : null;
-          if (bar) chartInstance.setCrosshairPosition(bar.close, bar.time, candleSeriesRef);
-        }
-      } catch (_) {}
-      crosshairSyncing = false;
-    }
-
-    chartInstance.subscribeCrosshairMove(onLeft);
-    chartInstance2.subscribeCrosshairMove(onRight);
-
-    crosshairSyncCleanup = () => {
-      try { chartInstance.unsubscribeCrosshairMove(onLeft); } catch (_) {}
-      try { chartInstance2.unsubscribeCrosshairMove(onRight); } catch (_) {}
-    };
-  }
-
-  /* ── Right chart ────────────────────────────────── */
-  function renderChart2(candles, executions, intervalMins = 1) {
-    if (crosshairSyncCleanup) { crosshairSyncCleanup(); crosshairSyncCleanup = null; }
-    if (markerCleanup2) { markerCleanup2(); markerCleanup2 = null; }
-    if (rulerState2.subCleanup) { rulerState2.subCleanup(); rulerState2.subCleanup = null; }
-    if (rulerState2.svg)        { rulerState2.svg.remove();  rulerState2.svg        = null; }
-    if (chartInstance2) { chartInstance2.remove(); chartInstance2 = null; }
-    candleSeriesRef2 = null;
-
-    const bars = aggregateCandles(candles, intervalMins);
-    activeBars2 = bars;
-    const container = document.getElementById('chartMain2');
-    container.innerHTML = '';
-
-    const status2 = document.getElementById('chartStatus2');
-    if (status2) { status2.innerHTML = '<div class="status-spinner"></div><div class="status-msg">Loading…</div>'; status2.className = 'visible'; }
-
-    chartInstance2 = LightweightCharts.createChart(container, {
-      autoSize: true,
-      layout: {
-        background: { type: 'solid', color: '#000000' },
-        textColor: '#9ca3af',
-        fontFamily: "'Inter', -apple-system, sans-serif",
-        fontSize: 12,
-      },
-      grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-      rightPriceScale: { borderColor: '#2a2a2a', textColor: '#9ca3af' },
-      timeScale: {
-        borderColor: '#2a2a2a',
-        timeVisible: true,
-        secondsVisible: false,
-        fixLeftEdge: false,
-        fixRightEdge: false,
-        tickMarkFormatter: ts => new Date(ts * 1000).toLocaleTimeString('en-US', {
-          timeZone: 'America/New_York',
-          hour: '2-digit', minute: '2-digit', hour12: false,
-        }),
-      },
-      crosshair: {
-        mode: LightweightCharts.CrosshairMode.Normal,
-        vertLine: { color: '#555', width: 1, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#2a2a2a' },
-        horzLine: { color: '#555', width: 1, style: LightweightCharts.LineStyle.Dashed, labelBackgroundColor: '#2a2a2a' },
-      },
-      localization: {
-        timeFormatter: ts => new Date(ts * 1000).toLocaleTimeString('en-US', {
-          timeZone: 'America/New_York',
-          hour: '2-digit', minute: '2-digit', hour12: false,
-        }),
-      },
-    });
-
-    const candleSeries2 = chartInstance2.addCandlestickSeries({
-      upColor: 'rgb(8,153,129)', downColor: 'rgb(242,54,69)',
-      borderUpColor: 'rgb(8,153,129)', borderDownColor: 'rgb(242,54,69)',
-      wickUpColor: 'rgb(8,153,129)', wickDownColor: 'rgb(242,54,69)',
-    });
-    candleSeries2.setData(bars);
-    candleSeriesRef2 = candleSeries2;
-
-    // Pre/post market zones
-    const PRE_COLOR = 'rgb(22, 26, 52)', POST_COLOR = 'rgb(22, 26, 52)';
-    let preStart2 = null, preEnd2 = null, postStart2 = null, postEnd2 = null, seenOpen2 = false;
-    for (const c of bars) {
-      const et = tsToET(c.time);
-      const [h, m] = et.split(':').map(Number);
-      const mins = h * 60 + m;
-      if (mins >= 9 * 60 + 30 && mins < 16 * 60) {
-        if (!seenOpen2) { seenOpen2 = true; preEnd2 = c.time; }
-      } else if (mins < 9 * 60 + 30 && !seenOpen2) {
-        if (preStart2 === null) preStart2 = c.time;
-      } else if (mins >= 16 * 60 && seenOpen2) {
-        if (postStart2 === null) postStart2 = c.time;
-        postEnd2 = c.time;
-      }
-    }
-    const bgZones2 = [];
-    if (preStart2  !== null) bgZones2.push({ from: preStart2,  to: preEnd2,  color: PRE_COLOR });
-    if (postStart2 !== null) bgZones2.push({ from: postStart2, to: postEnd2, color: POST_COLOR });
-    if (bgZones2.length > 0) {
-      try { candleSeries2.attachPrimitive(createBgZonePrimitive(bgZones2)); } catch (_) {}
-    }
-
-    // Constrain main price scale to top band
-    chartInstance2.priceScale('right').applyOptions({ scaleMargins: { top: 0.02, bottom: +(1 - paneState2.topFrac).toFixed(4) } });
-
-    // Volume
-    const vol2 = chartInstance2.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'vol' });
-    chartInstance2.priceScale('vol').applyOptions({ scaleMargins: { top: +paneState2.topFrac.toFixed(4), bottom: +(1 - paneState2.botFrac).toFixed(4) } });
-    vol2.setData(bars.map(c => ({ time: c.time, value: c.volume, color: c.close >= c.open ? 'rgba(8,153,129,0.35)' : 'rgba(242,54,69,0.35)' })));
-
-    // EMAs
-    const ema9_2 = chartInstance2.addLineSeries({ color: 'rgb(128,255,255)', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-    ema9_2.setData(calcEMA(bars, 9));
-    const ema20_2 = chartInstance2.addLineSeries({ color: 'rgb(0,128,255)', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-    ema20_2.setData(calcEMA(bars, 20));
-    const ema200_2 = chartInstance2.addLineSeries({ color: 'rgb(220,50,50)', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-    ema200_2.setData(calcEMA(bars, 200));
-
-    // VWAP
-    const vwap2 = chartInstance2.addLineSeries({ color: 'rgb(246,197,72)', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-    vwap2.setData(calcVWAP(bars));
-
-    // MACD
-    const macdData2 = calcMACD(bars);
-    const macdHist2 = chartInstance2.addHistogramSeries({ priceFormat: { type: 'price', precision: 4, minMove: 0.0001 }, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false });
-    chartInstance2.priceScale('macd').applyOptions({ scaleMargins: { top: +paneState2.botFrac.toFixed(4), bottom: 0 } });
-    macdHist2.setData(macdData2.histogram);
-    const macdLine2 = chartInstance2.addLineSeries({ color: 'rgb(33,150,243)', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false });
-    macdLine2.setData(macdData2.macdLine);
-    const macdSig2 = chartInstance2.addLineSeries({ color: 'rgb(255,152,0)', lineWidth: 1, priceScaleId: 'macd', lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false });
-    macdSig2.setData(macdData2.signalLine);
-
-    // Hover tooltip for right chart
-    const ema9d2   = calcEMA(bars, 9);
-    const ema20d2  = calcEMA(bars, 20);
-    const ema200d2 = calcEMA(bars, 200);
-    const vwapd2   = calcVWAP(bars);
-    const barMap2     = Object.fromEntries(bars.map(b => [b.time, b]));
-    const ema9m2      = Object.fromEntries(ema9d2.map(p => [p.time, p.value]));
-    const ema20m2     = Object.fromEntries(ema20d2.map(p => [p.time, p.value]));
-    const ema200m2    = Object.fromEntries(ema200d2.map(p => [p.time, p.value]));
-    const vwapm2      = Object.fromEntries(vwapd2.map(p => [p.time, p.value]));
-    const macdLinM2   = Object.fromEntries(macdData2.macdLine.map(p => [p.time, p.value]));
-    const macdSigM2   = Object.fromEntries(macdData2.signalLine.map(p => [p.time, p.value]));
-    const macdHistM2  = Object.fromEntries(macdData2.histogram.map(p => [p.time, p.value]));
-    const tooltip2    = document.getElementById('hoverTooltip2');
-    const fmtP2 = v => v != null ? v.toFixed(4) : '—';
-    const fmtVol2 = v => v >= 1e6 ? (v/1e6).toFixed(2)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : String(v);
-
-    chartInstance2.subscribeCrosshairMove(param => {
-      if (!param.time || !param.point) { tooltip2.classList.remove('visible'); return; }
-      const bar = barMap2[param.time];
-      if (!bar) { tooltip2.classList.remove('visible'); return; }
-      const e9  = ema9m2[param.time], e20 = ema20m2[param.time], e200 = ema200m2[param.time];
-      const vw  = vwapm2[param.time], mc = macdLinM2[param.time], ms = macdSigM2[param.time], mh = macdHistM2[param.time];
-      const time = tsToET(bar.time);
-      const ocColor = bar.close >= bar.open ? 'rgb(8,153,129)' : 'rgb(242,54,69)';
-      tooltip2.innerHTML = `
-        <div class="tip-time">${time}</div>
-        <div class="tip-row"><span class="tip-label">O</span><span class="tip-val" style="color:${ocColor}">${fmtP2(bar.open)}</span></div>
-        <div class="tip-row"><span class="tip-label">H</span><span class="tip-val">${fmtP2(bar.high)}</span></div>
-        <div class="tip-row"><span class="tip-label">L</span><span class="tip-val">${fmtP2(bar.low)}</span></div>
-        <div class="tip-row"><span class="tip-label">C</span><span class="tip-val" style="color:${ocColor}">${fmtP2(bar.close)}</span></div>
-        <div class="tip-row"><span class="tip-label" style="color:#6b7280">Vol</span><span class="tip-val" style="color:#6b7280">${fmtVol2(bar.volume)}</span></div>
-        <div class="tip-divider"></div>
-        <div class="tip-row"><span class="tip-label" style="color:rgb(128,255,255)">EMA9</span><span class="tip-val">${fmtP2(e9)}</span></div>
-        <div class="tip-row"><span class="tip-label" style="color:rgb(0,128,255)">EMA20</span><span class="tip-val">${fmtP2(e20)}</span></div>
-        <div class="tip-row"><span class="tip-label" style="color:rgb(220,50,50)">EMA200</span><span class="tip-val">${fmtP2(e200)}</span></div>
-        <div class="tip-row"><span class="tip-label" style="color:rgb(246,197,72)">VWAP</span><span class="tip-val">${fmtP2(vw)}</span></div>
-        <div class="tip-divider"></div>
-        <div class="tip-row"><span class="tip-label" style="color:rgb(33,150,243)">MACD</span><span class="tip-val">${fmtP2(mc)}</span></div>
-        <div class="tip-row"><span class="tip-label" style="color:rgb(255,152,0)">Signal</span><span class="tip-val">${fmtP2(ms)}</span></div>
-        <div class="tip-row"><span class="tip-label" style="color:#9ca3af">Hist</span><span class="tip-val" style="color:${mh != null && mh >= 0 ? 'rgb(8,153,129)' : 'rgb(242,54,69)'}">${fmtP2(mh)}</span></div>`;
-      tooltip2.classList.add('visible');
-    });
-
-    // Execution markers
-    const timeMap2     = buildTimeMap(candles);
-    const barsTimeMap2 = buildTimeMap(bars);
-
-    // Zoom to span first entry → last exit
-    const execTimes2 = (executions || []).map(e => execToTimestamp(e.time, timeMap2)).filter(t => t != null);
-    if (execTimes2.length > 0) {
-      const pad = intervalMins * 60 * 5;
-      chartInstance2.timeScale().setVisibleRange({
-        from: Math.min(...execTimes2) - pad,
-        to:   Math.max(...execTimes2) + pad,
-      });
-    } else {
-      chartInstance2.timeScale().fitContent();
-    }
-    markerCleanup2 = renderExecMarkers(executions, timeMap2, barsTimeMap2, {
-      chartInst: chartInstance2, seriesRef: candleSeriesRef2,
-      containerId: 'chartMain2', dotTipEl: document.getElementById('dotTooltip'),
-    });
-
-    // Update right TF label
-    const rightLbl = document.getElementById('rightTfLabel');
-    if (rightLbl) rightLbl.textContent = intervalMins + 'm';
-
-    if (status2) status2.className = '';
-
-    // Restore ruler overlay after chart re-render (e.g. timeframe switch)
-    if ((rulerState2.rulers.length || rulerState2.activeRuler) && rulerMode) setTimeout(() => renderRulerOverlay(2), 0);
-
-    setupPaneHandles(chartInstance2, document.getElementById('chartOuter2'), paneState2);
-    setupCrosshairSync();
   }
 
   /* ── Load chart for symbol ───────────────────────── */
@@ -2534,6 +2155,17 @@
     activeExecs    = filterExecsByAccount(allSymbolExecs);
     activeTrades   = groupExecutionsIntoTrades(activeExecs);
 
+    // Deep-linked from trades.html for one specific roundtrip — lock the view to just it
+    if (pendingTradeZoom) {
+      const { entryTime, exitTime } = pendingTradeZoom;
+      pendingTradeZoom = null; // one-shot: consume regardless of match
+      const match = activeTrades.find(grp => {
+        const first = grp[0], last = grp[grp.length - 1];
+        return first && last && first.time.slice(0, 5) === entryTime && last.time.slice(0, 5) === exitTime;
+      });
+      if (match) { activeExecs = match; activeTrades = [match]; allSymbolExecs = match; }
+    }
+
 
     // ── 1. Try local ohlcv_YYYY-MM-DD.json cache ─────
     const dateStr    = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
@@ -2541,20 +2173,12 @@
     if (localData?.length) {
       rawCandles = localData;
       renderChart(rawCandles, activeExecs, activeInterval);
-      renderChart2(rawCandles, activeExecs, activeInterval2);
       return;
     }
 
-    // ── 2. Fetch live from Massive API ────────────────
-    showLoading(`Fetching data for ${symbol}…`);
-    try {
-      const candles = await fetchCandles(symbol, curYear, curMonth, curDay);
-      rawCandles = candles;
-      renderChart(rawCandles, activeExecs, activeInterval);
-      renderChart2(rawCandles, activeExecs, activeInterval2);
-    } catch (e) {
-      showError(`Could not load chart: ${e.message}`);
-    }
+    // ── 2. No cached data available ───────────────────
+    showError(`No 1-minute data available for ${symbol} on ${dateStr}`,
+      'Run fetch_ohlcv.py to pre-fetch this symbol/day (Schwab retains ~10 days of 1-min history).');
   }
 
   /* ── Render symbol pills ─────────────────────────── */
@@ -2655,13 +2279,13 @@
   curMonth = parseInt(params.get('month') || new Date().getMonth() + 1);
   curDay   = parseInt(params.get('day')   || new Date().getDate());
   const paramSym = params.get('symbol') || null;
+  const paramEntry = params.get('entry') || null;
+  const paramExit  = params.get('exit')  || null;
+  if (paramEntry && paramExit) pendingTradeZoom = { entryTime: paramEntry, exitTime: paramExit };
 
   // Timeframe buttons
   document.querySelectorAll('.tf-btn[data-tf]').forEach(btn => {
     btn.onclick = () => setTimeframe(+btn.dataset.tf);
-  });
-  document.querySelectorAll('.tf-btn2[data-tf]').forEach(btn => {
-    btn.onclick = () => setTimeframe2(+btn.dataset.tf);
   });
 
   // Long position tool — click chart to place entry
@@ -2672,16 +2296,16 @@
     if (rulerMode && candleSeriesRef) {
       const px   = e.clientX - rect.left;
       const py   = e.clientY - rect.top;
-      const snap = snapToCandle(px, py, 1);
+      const snap = snapToCandle(px, py);
       const t    = snap ? snap.time  : chartInstance.timeScale().coordinateToTime(px);
       const p    = snap ? snap.price : candleSeriesRef.coordinateToPrice(py);
       if (t == null || p == null) return;
-      const st = rulerState1;
+      const st = rulerState;
       if (!st.activeRuler) {
         st.activeRuler = { t0: t, p0: p, t1: null, p1: null };
         st.liveX = snap ? snap.x : px;
         st.liveY = snap ? snap.y : py;
-        renderRulerOverlay(1);
+        renderRulerOverlay();
       } else {
         st.activeRuler.t1 = t; st.activeRuler.p1 = p;
         st.rulers.push(st.activeRuler);
@@ -2709,50 +2333,14 @@
 
   // Ruler live preview — track mouse while waiting for second click
   document.getElementById('chartMain').addEventListener('mousemove', function(e) {
-    if (!rulerMode || !rulerState1.activeRuler) return;
+    if (!rulerMode || !rulerState.activeRuler) return;
     const rect = this.getBoundingClientRect();
     const px   = e.clientX - rect.left;
     const py   = e.clientY - rect.top;
-    const snap = snapToCandle(px, py, 1);
-    rulerState1.liveX = snap ? snap.x : px;
-    rulerState1.liveY = snap ? snap.y : py;
-    if (rulerState1.svg?._draw) rulerState1.svg._draw();
-  });
-
-  // Ruler tool on the right chart — click 1 = anchor, click 2 = lock
-  document.getElementById('chartMain2').addEventListener('click', function(e) {
-    if (!rulerMode || !candleSeriesRef2) return;
-    const rect = this.getBoundingClientRect();
-    const px   = e.clientX - rect.left;
-    const py   = e.clientY - rect.top;
-    const snap = snapToCandle(px, py, 2);
-    const t    = snap ? snap.time  : chartInstance2.timeScale().coordinateToTime(px);
-    const p    = snap ? snap.price : candleSeriesRef2.coordinateToPrice(py);
-    if (t == null || p == null) return;
-    const st = rulerState2;
-    if (!st.activeRuler) {
-      st.activeRuler = { t0: t, p0: p, t1: null, p1: null };
-      st.liveX = snap ? snap.x : px;
-      st.liveY = snap ? snap.y : py;
-      renderRulerOverlay(2);
-    } else {
-      st.activeRuler.t1 = t; st.activeRuler.p1 = p;
-      st.rulers.push(st.activeRuler);
-      st.activeRuler = null;
-      if (st.svg?._draw) st.svg._draw();
-    }
-  });
-
-  // Ruler live preview on the right chart
-  document.getElementById('chartMain2').addEventListener('mousemove', function(e) {
-    if (!rulerMode || !rulerState2.activeRuler) return;
-    const rect = this.getBoundingClientRect();
-    const px   = e.clientX - rect.left;
-    const py   = e.clientY - rect.top;
-    const snap = snapToCandle(px, py, 2);
-    rulerState2.liveX = snap ? snap.x : px;
-    rulerState2.liveY = snap ? snap.y : py;
-    if (rulerState2.svg?._draw) rulerState2.svg._draw();
+    const snap = snapToCandle(px, py);
+    rulerState.liveX = snap ? snap.x : px;
+    rulerState.liveY = snap ? snap.y : py;
+    if (rulerState.svg?._draw) rulerState.svg._draw();
   });
 
   // Update overlay when quantity changes
@@ -2775,18 +2363,17 @@
         rulerMode = false;
         document.getElementById('btnRuler').classList.remove('active');
         document.getElementById('chartMain').style.cursor = '';
-        document.getElementById('chartMain2').style.cursor = '';
       }
     }
   });
 
-  // Fullscreen
+  // Fullscreen toggle for the chart ('F' key or button)
   (function() {
     const outer = document.getElementById('chartOuter');
     const expand = document.getElementById('fsIconExpand');
     const collapse = document.getElementById('fsIconCollapse');
     function updateIcons() {
-      const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      const isFs = document.fullscreenElement === outer || document.webkitFullscreenElement === outer;
       expand.style.display = isFs ? 'none' : '';
       collapse.style.display = isFs ? '' : 'none';
     }
@@ -2800,7 +2387,12 @@
       }
     }
     document.getElementById('btnFullscreen').addEventListener('click', toggleFs);
-    document.addEventListener('keydown', ev => { if (ev.key === 'f' || ev.key === 'F') { if (!ev.ctrlKey && !ev.metaKey && !ev.altKey && document.activeElement?.tagName !== 'INPUT') toggleFs(); } });
+
+    document.addEventListener('keydown', ev => {
+      if ((ev.key === 'f' || ev.key === 'F') && !ev.ctrlKey && !ev.metaKey && !ev.altKey && document.activeElement?.tagName !== 'INPUT') {
+        toggleFs();
+      }
+    });
   })();
 
   // Breadcrumb

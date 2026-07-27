@@ -15,7 +15,7 @@ calendar_data.py     → parse trade_data/ CSVs
                        → write dashboard/calendar/calendar_data_YYYY.json (per-year)
                        → write dashboard/calendar/calendar_index.json
 
-fetch_ohlcv.py       → pre-fetch 1-min OHLCV from Schwab (primary) / Massive API (fallback)
+fetch_ohlcv.py       → pre-fetch 1-min OHLCV from Schwab (~10 days of history)
                        → write dashboard/ohlcv/ohlcv_YYYY-MM-DD.json (per-day)
 
 compute_mfe_mae.py   → reads per-year calendar JSONs + per-day OHLCV
@@ -48,7 +48,7 @@ Running `python export.py` executes the entire pipeline in order:
 
 1. **export.py** → Schwab API → `trade_data/YYYY-MM-DD-AccountStatement.csv`
 2. **calendar_data.py** → reads all CSVs → `dashboard/calendar/calendar_data_YYYY.json`
-3. **fetch_ohlcv.py** → Schwab/Massive API → `dashboard/ohlcv/ohlcv_YYYY-MM-DD.json`
+3. **fetch_ohlcv.py** → Schwab API → `dashboard/ohlcv/ohlcv_YYYY-MM-DD.json`
 4. **compute_mfe_mae.py** → reads calendar + OHLCV → writes `mfe`/`mae` into calendar JSONs
 5. **Dashboard HTML files** → fetch calendar JSONs via relative paths (works on file:// and tctrades.com)
 
@@ -136,8 +136,7 @@ python ftp_dashboard.py dashboard/candlestick.html dashboard/nav.js
 
 | Service | Purpose |
 |---------|---------|
-| Schwab API (`schwabdev`) | Live trade fetch, price history (primary OHLCV source, ~10 days) |
-| Massive API | OHLCV bar data 1-min, all dates (fallback) |
+| Schwab API (`schwabdev`) | Live trade fetch, price history (OHLCV source, ~10 days) |
 | Tradervue API | Optional trade journal import |
 | MrProfit | CSV export format |
 | HostGator FTP | Hosts tctrades.com dashboard |

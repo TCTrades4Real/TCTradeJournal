@@ -18,6 +18,8 @@ function _injectRememberMe(card) {
 }
 
 function initAuth(onAuthorized) {
+  const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol === 'file:';
+  if (isLocal) { onAuthorized(); return; }
   if (sessionStorage.getItem('auth_ok') === '1' || _isRemembered()) { onAuthorized(); return; }
   const overlay = document.getElementById('authOverlay');
   overlay.style.display = 'flex';
