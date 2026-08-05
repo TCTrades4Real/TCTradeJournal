@@ -3,6 +3,14 @@
 Paths are relative to the repo root. Files under dashboard/ preserve their
 subdirectory structure on the server (e.g. dashboard/backtest/foo.json
 uploads to {remotePath}/backtest/foo.json).
+
+NOTE: dashboard/watchlist_setups/data.json is intentionally NOT in the
+default FILES list. Once watchlists.html is live, callouts are added/edited
+straight on tctrades.com via dashboard/api/setups.php, which becomes the
+authoritative copy of that file server-side. A routine run of this script
+would otherwise overwrite live edits with a stale local copy. Push it
+explicitly and deliberately if you ever want to force-seed the server from
+your local copy: `python ftp_dashboard.py dashboard/watchlist_setups/data.json`.
 """
 import ftplib, json, pathlib, sys
 
@@ -22,6 +30,8 @@ FILES = [
     "dashboard/monte_carlo.html",
     "dashboard/reports.html",
     "dashboard/trades.html",
+    "dashboard/watchlists.html",
+    "dashboard/api/setups.php",
     "dashboard/nav.js",
     "dashboard/auth.js",
 ] + [str(p) for p in sorted(pathlib.Path("dashboard/backtest").glob("*.json"))]

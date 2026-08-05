@@ -21,6 +21,10 @@ fetch_ohlcv.py       → pre-fetch 1-min OHLCV from Schwab (~10 days of history)
 compute_mfe_mae.py   → reads per-year calendar JSONs + per-day OHLCV
                        → adds mfe/mae fields to each roundtrip in calendar JSONs
 
+fetch_ohlcv_daily.py → pre-fetch daily OHLCV for watchlist callout symbols (standalone,
+                       not part of the export.py pipeline — run manually after adding callouts)
+                       → write dashboard/ohlcv_daily/SYMBOL.json
+
 dashboard/
   index.html         → monthly calendar view
   month.html         → monthly PnL grid
@@ -28,6 +32,8 @@ dashboard/
   candlestick.html   → per-symbol candlestick chart + trade markers
   reports.html       → trading stats, equity curves, MFE/MAE analysis, Monte Carlo
   trades.html        → trade log
+  watchlists.html    → catalog of a trader's watchlist callouts + setup playbook stats
+  api/setups.php     → write endpoint for watchlists.html (cross-device sync)
 ```
 
 ---
@@ -63,6 +69,8 @@ Running `python export.py` executes the entire pipeline in order:
 | `dashboard/calendar/calendar_data_YYYY.json` | Per-year roundtrips with mfe/mae, daily PnL |
 | `dashboard/ohlcv/ohlcv_YYYY-MM-DD.json` | Per-day 1-min OHLCV cache `{SYMBOL: [bars...]}` |
 | `dashboard/ohlcv/.uploaded` | Manifest of OHLCV files already FTP'd (skips re-upload) |
+| `dashboard/ohlcv_daily/SYMBOL.json` | Per-symbol daily OHLCV cache for watchlist callout charts (array of bars, `time` as `YYYY-MM-DD`) |
+| `dashboard/watchlist_setups/data.json` | Watchlist callouts + setup-type taxonomy — synced live via `dashboard/api/setups.php`, not pushed by routine `ftp_dashboard.py` runs |
 
 ---
 
@@ -81,6 +89,25 @@ python compute_mfe_mae.py             # update roundtrips missing mfe/mae
 python compute_mfe_mae.py --refresh   # recompute all
 python compute_mfe_mae.py --year 2026 # one year only
 ```
+
+---
+
+## Watchlists (dashboard/watchlists.html)
+
+- Catalogs the setups a trader you follow calls out in his nightly watchlists: logged as
+  "callouts" (date, symbol(s), setup type, thesis, key levels, outcome), grouped into a
+  "Setup Playbook" of named setup types with computed stats (PnL, accuracy, profit factor,
+  avg winner/loser, cents/share, etc.) drawn from your own trades on the linked symbol/date.
+- **Trade linking**: a callout's date is the night the watchlist was posted — the actual
+  trade day is the *day after*. All trade-linking and chart-fetching windows use `date + 1`.
+- **Sync**: no local-edit-then-publish for this data — `dashboard/api/setups.php` lets the
+  page write directly to `dashboard/watchlist_setups/data.json` on the live server, gated by
+  a per-device write key bootstrapped through the existing Google sign-in (see `auth.js`).
+  This is why `ftp_dashboard.py` deliberately excludes that JSON from its default push.
+- **Charts**: clicking a symbol pill on a callout opens daily (~2 week trailing) and 1-minute
+  charts for the trade day, rendered from `dashboard/ohlcv_daily/SYMBOL.json` and the existing
+  `dashboard/ohlcv/ohlcv_YYYY-MM-DD.json`. Run `python fetch_ohlcv_daily.py` after adding new
+  callouts to populate the daily cache — it isn't part of the `export.py` pipeline.
 
 ---
 
@@ -108,6 +135,9 @@ python fetch_ohlcv.py
 
 # Compute MFE/MAE from cached OHLCV (run after fetch_ohlcv.py)
 python compute_mfe_mae.py
+
+# Pre-fetch daily OHLCV for watchlist callout symbols (run after adding new callouts)
+python fetch_ohlcv_daily.py
 ```
 
 ---
