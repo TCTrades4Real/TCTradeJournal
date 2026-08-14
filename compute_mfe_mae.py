@@ -115,6 +115,11 @@ def process_year(year_str, cal_path, refresh=False):
             if not roundtrips:
                 continue
 
+            if not refresh and all(rt.get('mfe') is not None and rt.get('mae') is not None
+                                    for rt in roundtrips):
+                skipped += len(roundtrips)
+                continue
+
             date_str = f"{year_str}-{int(month_str):02d}-{int(day_str):02d}"
             ohlcv = load_ohlcv(date_str)
 
@@ -136,9 +141,12 @@ def process_year(year_str, cal_path, refresh=False):
 
     print(f"  {year_str}: {updated} updated, {skipped} skipped")
 
-    # Write back
-    with open(cal_path, 'w') as f:
-        json.dump(data, f, indent=2)
+    # Only touch the file if something actually changed — past years are done
+    # once fully annotated and shouldn't get their mtime bumped (and re-uploaded)
+    # on every run for zero-change writes.
+    if updated:
+        with open(cal_path, 'w') as f:
+            json.dump(data, f, indent=2)
 
     return updated
 

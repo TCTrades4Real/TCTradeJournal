@@ -8,9 +8,13 @@ after the callout (he posts watchlists the night before). This fetches a trailin
 so watchlists.html can show what the daily chart looked like heading into the trade.
 
 Usage:
-    python fetch_ohlcv_daily.py                  # fetch missing symbol/window coverage
-    python fetch_ohlcv_daily.py --refresh         # re-fetch every symbol's full window
-    python fetch_ohlcv_daily.py --symbol ACXP     # re-fetch one symbol only
+    python fetch_ohlcv_daily.py                        # fetch missing symbol/window coverage
+    python fetch_ohlcv_daily.py --refresh               # re-fetch every symbol's full window
+    python fetch_ohlcv_daily.py --symbol ACXP           # re-fetch one symbol (callout or not);
+                                                         # with no callout, windows trailing ~2
+                                                         # weeks ending today
+    python fetch_ohlcv_daily.py --symbol ACXP --date 2026-03-05
+                                                         # ... ending the given date instead
 
 Source: Schwab API only (frequencyType=daily). Unlike 1-min bars, daily history is
 retained for years, so once a window is fetched it stays valid — no "only ~10 days"
@@ -37,6 +41,8 @@ _HERE          = os.path.dirname(__file__)
 DASHBOARD      = os.path.join(_HERE, 'dashboard')
 OHLCV_DAILY_DIR = os.path.join(DASHBOARD, 'ohlcv_daily')
 CALLOUTS_PATH  = os.path.join(DASHBOARD, 'watchlist_setups', 'data.json')
+CAL_DIR        = os.path.join(DASHBOARD, 'calendar')
+CAL_INDEX_PATH = os.path.join(CAL_DIR, 'calendar_index.json')
 
 # Real edits to watchlists.html land live on tctrades.com via api/setups.php, not in the
 # local repo copy of CALLOUTS_PATH (which stays whatever it was last seeded/pushed to).
@@ -125,6 +131,57 @@ def load_callout_needs():
     return {sym: tuple(span) for sym, span in needs.items()}
 
 
+def load_calendar_needs(current_year_only=True):
+    """Return dict: symbol -> (window_start_date, window_end_date) covering every symbol
+    actually traded (per calendar_data), so export.py's daily fetch isn't limited to
+    watchlist callouts. Bounded to the current year by default to keep routine runs fast —
+    `covers()` makes re-fetching cheap either way, so this is just about first-run scope."""
+    if not os.path.exists(CAL_INDEX_PATH):
+        return {}
+    with open(CAL_INDEX_PATH) as f:
+        idx = json.load(f)
+
+    cur_year = str(datetime.now().year)
+    needs = {}
+    for yr in idx.get('years', []):
+        if current_year_only and str(yr) != cur_year:
+            continue
+        yr_path = os.path.join(CAL_DIR, f'calendar_data_{yr}.json')
+        if not os.path.exists(yr_path):
+            continue
+        with open(yr_path) as f:
+            cal = json.load(f)
+        for year, year_data in cal.items():
+            for month, month_data in year_data.items():
+                for day, day_data in month_data.get('days', {}).items():
+                    try:
+                        trade_date = datetime.strptime(
+                            f'{year}-{month.zfill(2)}-{day.zfill(2)}', '%Y-%m-%d').date()
+                    except ValueError:
+                        continue
+                    window_start = trade_date - timedelta(days=WINDOW_DAYS)
+                    for sym in (day_data.get('symbols') or {}):
+                        sym = sym.upper()
+                        if sym not in needs:
+                            needs[sym] = [window_start, trade_date]
+                        else:
+                            needs[sym][0] = min(needs[sym][0], window_start)
+                            needs[sym][1] = max(needs[sym][1], trade_date)
+    return {sym: tuple(span) for sym, span in needs.items()}
+
+
+def merge_needs(a, b):
+    """Union two symbol->(start,end) need dicts, widening spans where both cover a symbol."""
+    merged = {sym: list(span) for sym, span in a.items()}
+    for sym, (start, end) in b.items():
+        if sym not in merged:
+            merged[sym] = [start, end]
+        else:
+            merged[sym][0] = min(merged[sym][0], start)
+            merged[sym][1] = max(merged[sym][1], end)
+    return {sym: tuple(span) for sym, span in merged.items()}
+
+
 def _fetch_schwab_daily(symbol, start_date, end_date):
     """Fetch daily bars from Schwab for [start_date, end_date] (inclusive). Returns
     a list of {time: 'YYYY-MM-DD', open, high, low, close, volume} or []."""
@@ -193,10 +250,12 @@ def covers(existing, start_date, end_date):
 def main():
     global _schwab_client
 
-    parser = argparse.ArgumentParser(description='Fetch daily OHLCV for watchlist callout symbols')
+    parser = argparse.ArgumentParser(description='Fetch daily OHLCV for watchlist callout symbols, or any symbol on demand')
     parser.add_argument('--refresh', action='store_true',
                         help='Re-fetch every symbol\'s full window, overwriting cached data')
-    parser.add_argument('--symbol', help='Only process this symbol')
+    parser.add_argument('--symbol', help='Fetch this symbol, even if it has no callout')
+    parser.add_argument('--date', help='Trade day (YYYY-MM-DD) to center --symbol\'s window on; '
+                        'defaults to today. Ignored without --symbol.')
     args = parser.parse_args()
 
     try:
@@ -210,8 +269,25 @@ def main():
 
     needs = load_callout_needs()
     if args.symbol:
-        needs = {k: v for k, v in needs.items() if k == args.symbol.upper()}
-    print(f'Found {len(needs)} symbol(s) with callouts\n')
+        symbol = args.symbol.upper()
+        if args.date:
+            try:
+                trade_date = datetime.strptime(args.date, '%Y-%m-%d').date()
+            except ValueError:
+                print(f'ERROR: --date must be YYYY-MM-DD, got {args.date!r}')
+                sys.exit(1)
+        else:
+            trade_date = datetime.now(_ET).date()
+        window_start = trade_date - timedelta(days=WINDOW_DAYS)
+        if symbol in needs:
+            window_start = min(window_start, needs[symbol][0])
+            trade_date   = max(trade_date, needs[symbol][1])
+        needs = {symbol: (window_start, trade_date)}
+        print(f'Fetching {symbol} on demand\n')
+    else:
+        callout_count = len(needs)
+        needs = merge_needs(needs, load_calendar_needs())
+        print(f'Found {callout_count} symbol(s) with callouts, {len(needs)} total with traded symbols included\n')
 
     fetched = skipped = failed = 0
 

@@ -161,6 +161,23 @@
     .icon-btn:hover { background: #1e1e1e; color: var(--text-primary); }
     .icon-btn svg { width: 16px; height: 16px; display: block; }
 
+    /* ── Candlestick modal ───────────────────────────── */
+    .cdl-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9600;
+      background: rgba(0,0,0,0.75); align-items: center; justify-content: center;
+    }
+    .cdl-overlay.open { display: flex; }
+    .cdl-box {
+      width: 96vw; max-width: 1600px; height: 94vh; max-height: 94vh;
+      background: #141414; border: 1px solid var(--glass-border); border-radius: 10px;
+      padding: 16px; display: flex; flex-direction: column;
+    }
+    .cdl-head { display: flex; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
+    .cdl-head span { flex: 1; font-size: 16px; color: #fff; font-weight: 500; }
+    .cdl-close { background: none; border: none; color: #6b7280; font-size: 16px; cursor: pointer; }
+    .cdl-close:hover { color: #e0e0e0; }
+    .cdl-box iframe { flex: 1; width: 100%; border: none; border-radius: 6px; background: #0f0f0f; }
+
     .day-pnl {
       font-size: 26px;
       font-weight: 400;
@@ -407,6 +424,16 @@
     <div class="g_id_signin" data-type="standard" data-theme="filled_black"
       data-size="large" data-shape="rectangular"></div>
     <div id="authError"></div>
+  </div>
+</div>
+
+<div class="cdl-overlay" id="candleModalOverlay">
+  <div class="cdl-box">
+    <div class="cdl-head">
+      <span id="candleModalTitle">Candlestick View</span>
+      <button class="cdl-close" id="candleModalCloseBtn">✕</button>
+    </div>
+    <iframe id="candleModalFrame" src="about:blank"></iframe>
   </div>
 </div>
 
@@ -721,7 +748,7 @@
     document.getElementById('leftPanel').innerHTML = `
       <div class="pnl-row">
         <div class="day-pnl ${pnlClass}">${fmtPnl(pnl)}</div>
-        <button class="icon-btn" title="Candlestick view" onclick="window.location.href='candlestick.html?year=${curYear}&month=${curMonth}&day=${curDay}'">
+        <button class="icon-btn" title="Candlestick view" onclick="openCandleModal(${curYear}, ${curMonth}, ${curDay})">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v4"/><rect width="4" height="6" x="7" y="9" rx="1"/><path d="M9 15v2"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v3"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/></svg>
         </button>
       </div>
@@ -1055,6 +1082,23 @@
         `<p class="error">Error loading data: ${err.message}</p>`;
     }
   }
+
+  function openCandleModal(year, month, day) {
+    document.getElementById('candleModalTitle').textContent = `Candlestick View — ${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    document.getElementById('candleModalFrame').src = `candlestick-chart.html?year=${year}&month=${month}&day=${day}`;
+    document.getElementById('candleModalOverlay').classList.add('open');
+  }
+  function closeCandleModal() {
+    document.getElementById('candleModalOverlay').classList.remove('open');
+    document.getElementById('candleModalFrame').src = 'about:blank';
+  }
+  document.getElementById('candleModalCloseBtn').addEventListener('click', closeCandleModal);
+  document.getElementById('candleModalOverlay').addEventListener('click', e => {
+    if (e.target.id === 'candleModalOverlay') closeCandleModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeCandleModal();
+  });
 
   initAuth(() => init());
 </script>

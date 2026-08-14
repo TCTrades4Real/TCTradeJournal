@@ -197,6 +197,9 @@
   .outcome-played_out { background: rgba(34,197,94,0.15);   color: var(--accent-green); }
   .outcome-failed     { background: rgba(244,63,94,0.15);   color: var(--accent-red); }
   .outcome-no_trade   { background: rgba(107,114,128,0.18); color: #9ca3af; }
+  .outcome-legend { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+  .outcome-legend div { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); }
+  .outcome-legend .outcome-badge { flex-shrink: 0; }
   .callout-thesis { font-size: 14px; font-weight: 400; color: var(--text-primary); margin-bottom: 10px; line-height: 1.6; white-space: pre-wrap; }
   .callout-meta { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.02em; margin-bottom: 10px; }
   .callout-meta a { color: var(--accent-blue); }
@@ -258,17 +261,6 @@
   .modal-close { background: none; border: none; color: #6b7280; font-size: 16px; cursor: pointer; }
   .modal-close:hover { color: #e0e0e0; }
   .modal-box-wide { width: min(920px, 92vw); max-height: 82vh; overflow-y: auto; }
-  .modal-box-charts { width: 96vw; max-width: 1600px; height: 94vh; max-height: 94vh; overflow-y: auto; }
-
-  /* ── Charts modal ─────────────────────────────────── */
-  .charts-row { display: flex; gap: 20px; align-items: flex-start; }
-  .chart-pane { flex: 1 1 0; min-width: 0; }
-  .chart-pane-title {
-    font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);
-    letter-spacing: 0.02em; margin-bottom: 8px;
-  }
-  .chart-container { height: calc(94vh - 160px); min-height: 320px; }
-  .chart-status { color: var(--text-secondary); font-size: 13px; padding: 40px 0; text-align: center; }
 
   /* ── Trades table (matching trades.html) ─────────────── */
   .trades-table { width: 100%; border-collapse: collapse; }
@@ -294,6 +286,23 @@
   .acct-badge-cash  { background: rgba(34,197,94,0.15);  color: #22c55e; }
   .acct-badge-roth  { background: rgba(168,85,247,0.15); color: #a855f7; }
   .acct-badge-other { background: rgba(255,255,255,0.06); color: #9ca3af; }
+
+  /* ── Candlestick modal ───────────────────────────── */
+  .cdl-overlay {
+    display: none; position: fixed; inset: 0; z-index: 9600;
+    background: rgba(0,0,0,0.75); align-items: center; justify-content: center;
+  }
+  .cdl-overlay.open { display: flex; }
+  .cdl-box {
+    width: 96vw; max-width: 1600px; height: 94vh; max-height: 94vh;
+    background: #141414; border: 1px solid var(--glass-border); border-radius: 10px;
+    padding: 16px; display: flex; flex-direction: column;
+  }
+  .cdl-head { display: flex; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
+  .cdl-head span { flex: 1; font-size: 16px; color: #fff; font-weight: 500; }
+  .cdl-close { background: none; border: none; color: #6b7280; font-size: 16px; cursor: pointer; }
+  .cdl-close:hover { color: #e0e0e0; }
+  .cdl-box iframe { flex: 1; width: 100%; border: none; border-radius: 6px; background: #0f0f0f; }
 </style>
 </head>
 <body>
@@ -310,6 +319,16 @@
     <div class="g_id_signin" data-type="standard" data-theme="filled_black"
       data-size="large" data-shape="rectangular"></div>
     <div id="authError"></div>
+  </div>
+</div>
+
+<div class="cdl-overlay" id="candleModalOverlay">
+  <div class="cdl-box">
+    <div class="cdl-head">
+      <span id="candleModalTitle">Candlestick View</span>
+      <button class="cdl-close" id="candleModalCloseBtn">✕</button>
+    </div>
+    <iframe id="candleModalFrame" src="about:blank"></iframe>
   </div>
 </div>
 
@@ -384,6 +403,12 @@
         <option value="failed">Failed</option>
         <option value="no_trade">No Trade</option>
       </select>
+      <div class="outcome-legend">
+        <div><span class="outcome-badge outcome-pending">Pending</span> Not yet resolved / not reviewed</div>
+        <div><span class="outcome-badge outcome-played_out">Played Out</span> Setup thesis worked as called</div>
+        <div><span class="outcome-badge outcome-failed">Failed</span> Setup thesis didn't play out</div>
+        <div><span class="outcome-badge outcome-no_trade">No Trade</span> Didn't trigger, or you skipped it</div>
+      </div>
     </div>
     <div class="form-actions">
       <button class="btn btn-primary" id="fSubmit">Add Callout</button>
@@ -506,28 +531,6 @@
   </div>
 </div>
 
-<!-- ══ Charts modal ══ -->
-<div class="modal-overlay" id="chartsModalOverlay">
-  <div class="modal-box modal-box-charts">
-    <div class="modal-head">
-      <span id="chartsModalTitle">Charts</span>
-      <button class="modal-close" id="chartsModalCloseBtn">✕</button>
-    </div>
-    <div class="charts-row">
-      <div class="chart-pane">
-        <div class="chart-pane-title">Daily</div>
-        <div class="chart-status" id="dailyChartStatus">Loading…</div>
-        <div class="chart-container" id="dailyChartContainer" style="display:none"></div>
-      </div>
-      <div class="chart-pane">
-        <div class="chart-pane-title">1-Minute</div>
-        <div class="chart-status" id="oneMinChartStatus">Loading…</div>
-        <div class="chart-container" id="oneMinChartContainer" style="display:none"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
 'use strict';
 
@@ -537,6 +540,7 @@ const LS_KEY = 'tc_watchlist_setups_v1';
 let store = { setupTypes: [], callouts: [] };
 let fileHandle = null;
 let tradeIndex = {};
+let execIndex = {};
 let editingCalloutId = null;
 let editingSetupTypeId = null;
 let fDatePicker, filterFromPicker, filterToPicker;
@@ -913,6 +917,11 @@ async function loadTradeIndex() {
             if (!tradeIndex[key]) tradeIndex[key] = [];
             tradeIndex[key].push({ date: dateStr, ...rt });
           }
+          for (const ex of (ddata.executions || [])) {
+            const key = `${dateStr}|${(ex.symbol || '').toUpperCase()}`;
+            if (!execIndex[key]) execIndex[key] = [];
+            execIndex[key].push(ex);
+          }
         }
       }
     }
@@ -920,6 +929,9 @@ async function loadTradeIndex() {
 }
 function getTradeInfo(date, symbol) {
   return tradeIndex[`${date}|${(symbol || '').toUpperCase()}`] || null;
+}
+function getExecutionsInfo(date, symbol) {
+  return execIndex[`${date}|${(symbol || '').toUpperCase()}`] || null;
 }
 function getRoundtripsForSetup(setupTypeId) {
   const trades = [];
@@ -1237,94 +1249,6 @@ function closeSetupTrades() {
   document.getElementById('tradesModalOverlay').classList.remove('open');
 }
 
-/* ─── Charts modal (daily + 1-minute, for the trade day after a callout) ─── */
-let dailyChartInstance = null;
-let oneMinChartInstance = null;
-let chartsState = { date: null, symbol: null };
-
-const CHART_OPTS = {
-  layout: {
-    background: { type: 'solid', color: '#000000' },
-    textColor: '#9ca3af',
-    fontFamily: "'Inter', -apple-system, sans-serif",
-    fontSize: 12,
-  },
-  grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-  rightPriceScale: { borderColor: '#2a2a2a', textColor: '#9ca3af' },
-  timeScale: { borderColor: '#2a2a2a' },
-};
-const CANDLE_OPTS = {
-  upColor: 'rgb(8,153,129)', downColor: 'rgb(242,54,69)',
-  borderUpColor: 'rgb(8,153,129)', borderDownColor: 'rgb(242,54,69)',
-  wickUpColor: 'rgb(8,153,129)', wickDownColor: 'rgb(242,54,69)',
-};
-
-function openChartsModal(calloutDate, symbol) {
-  const tradeDate = addDays(calloutDate, 1);
-  chartsState = { date: tradeDate, symbol };
-  document.getElementById('chartsModalTitle').textContent = `${symbol} — ${fmtTradeDate(tradeDate)}`;
-  document.getElementById('chartsModalOverlay').classList.add('open');
-  renderDailyChart();
-  renderOneMinChart();
-}
-function closeChartsModal() {
-  document.getElementById('chartsModalOverlay').classList.remove('open');
-  if (dailyChartInstance)  { dailyChartInstance.remove();  dailyChartInstance = null; }
-  if (oneMinChartInstance) { oneMinChartInstance.remove(); oneMinChartInstance = null; }
-}
-async function renderDailyChart() {
-  const status = document.getElementById('dailyChartStatus');
-  const container = document.getElementById('dailyChartContainer');
-  status.style.display = ''; container.style.display = 'none'; status.textContent = 'Loading…';
-  const { date, symbol } = chartsState;
-  let bars;
-  try {
-    const res = await fetch(`ohlcv_daily/${encodeURIComponent(symbol)}.json`);
-    bars = res.ok ? await res.json() : null;
-  } catch (e) { bars = null; }
-  if (!bars || !bars.length) {
-    status.textContent = `No daily chart cached for ${symbol} — run "python fetch_ohlcv_daily.py" locally to fetch it.`;
-    return;
-  }
-  const windowStart = addDays(date, -14);
-  const windowed = bars.filter(b => b.time >= windowStart && b.time <= date);
-  if (!windowed.length) {
-    status.textContent = `No daily bars cached for ${symbol} around ${fmtTradeDate(date)} — run "python fetch_ohlcv_daily.py" to refresh.`;
-    return;
-  }
-  status.style.display = 'none'; container.style.display = '';
-  if (dailyChartInstance) dailyChartInstance.remove();
-  dailyChartInstance = LightweightCharts.createChart(container, { ...CHART_OPTS, autoSize: true });
-  dailyChartInstance.addCandlestickSeries(CANDLE_OPTS).setData(windowed);
-  dailyChartInstance.timeScale().fitContent();
-}
-async function renderOneMinChart() {
-  const status = document.getElementById('oneMinChartStatus');
-  const container = document.getElementById('oneMinChartContainer');
-  status.style.display = ''; container.style.display = 'none'; status.textContent = 'Loading…';
-  const { date, symbol } = chartsState;
-  let dayData;
-  try {
-    const res = await fetch(`ohlcv/ohlcv_${date}.json`);
-    dayData = res.ok ? await res.json() : null;
-  } catch (e) { dayData = null; }
-  const bars = dayData ? dayData[symbol] : null;
-  if (!bars || !bars.length) {
-    status.textContent = `No 1-minute chart cached for ${symbol} on ${fmtTradeDate(date)} — Schwab only retains ~10 days live, so this only works if fetch_ohlcv.py ran while that day was recent.`;
-    return;
-  }
-  status.style.display = 'none'; container.style.display = '';
-  if (oneMinChartInstance) oneMinChartInstance.remove();
-  oneMinChartInstance = LightweightCharts.createChart(container, {
-    ...CHART_OPTS, autoSize: true,
-    timeScale: { ...CHART_OPTS.timeScale, timeVisible: true, secondsVisible: false,
-      tickMarkFormatter: ts => new Date(ts * 1000).toLocaleTimeString('en-US', {
-        timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false }) },
-  });
-  oneMinChartInstance.addCandlestickSeries(CANDLE_OPTS).setData(bars);
-  oneMinChartInstance.timeScale().fitContent();
-}
-
 function renderAll() {
   renderSetupTypeOptions();
   renderCalloutLog();
@@ -1371,7 +1295,7 @@ function wireEvents() {
     if (!btn) return;
     if (btn.dataset.action === 'edit-callout') editCallout(btn.dataset.id);
     if (btn.dataset.action === 'delete-callout') deleteCallout(btn.dataset.id);
-    if (btn.dataset.action === 'view-charts') openChartsModal(btn.dataset.date, btn.dataset.symbol);
+    if (btn.dataset.action === 'view-charts') openCandleFromCallout(btn.dataset.date, btn.dataset.symbol);
   });
 
   document.getElementById('newSetupTypeBtn').addEventListener('click', () => openSetupTypeModal());
@@ -1396,18 +1320,32 @@ function wireEvents() {
   document.getElementById('tradesModalOverlay').addEventListener('click', e => {
     if (e.target.id === 'tradesModalOverlay') closeSetupTrades();
   });
+  function openCandleModal(dateStr, symbol, entry, exit) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    let url = `candlestick-chart.html?year=${y}&month=${m}&day=${d}&symbol=${encodeURIComponent(symbol)}`;
+    if (entry && exit) url += `&entry=${encodeURIComponent(entry)}&exit=${encodeURIComponent(exit)}`;
+    document.getElementById('candleModalTitle').textContent = `${symbol} — ${fmtTradeDate(dateStr)}`;
+    document.getElementById('candleModalFrame').src = url;
+    document.getElementById('candleModalOverlay').classList.add('open');
+  }
+  function openCandleFromCallout(calloutDate, symbol) {
+    openCandleModal(addDays(calloutDate, 1), symbol);
+  }
   document.getElementById('setupTradesBody').addEventListener('click', e => {
     const tr = e.target.closest('tr[data-date]');
     if (!tr) return;
-    const [y, m, d] = tr.dataset.date.split('-').map(Number);
-    let url = `candlestick.html?year=${y}&month=${m}&day=${d}&symbol=${encodeURIComponent(tr.dataset.symbol)}`;
-    if (tr.dataset.entry && tr.dataset.exit) url += `&entry=${encodeURIComponent(tr.dataset.entry)}&exit=${encodeURIComponent(tr.dataset.exit)}`;
-    window.location.href = url;
+    openCandleModal(tr.dataset.date, tr.dataset.symbol, tr.dataset.entry, tr.dataset.exit);
   });
-
-  document.getElementById('chartsModalCloseBtn').addEventListener('click', closeChartsModal);
-  document.getElementById('chartsModalOverlay').addEventListener('click', e => {
-    if (e.target.id === 'chartsModalOverlay') closeChartsModal();
+  function closeCandleModal() {
+    document.getElementById('candleModalOverlay').classList.remove('open');
+    document.getElementById('candleModalFrame').src = 'about:blank';
+  }
+  document.getElementById('candleModalCloseBtn').addEventListener('click', closeCandleModal);
+  document.getElementById('candleModalOverlay').addEventListener('click', e => {
+    if (e.target.id === 'candleModalOverlay') closeCandleModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeCandleModal();
   });
 }
 

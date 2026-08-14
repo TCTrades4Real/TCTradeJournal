@@ -60,23 +60,6 @@
     }
     @media (min-width: 1024px) { .charts-wrap { padding: 0 12px 20px; } }
 
-    /* ── Breadcrumb ──────────────────────────────────── */
-    .breadcrumb {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 14px;
-      font-size: 13px;
-      color: #9ca3af;
-    }
-    .breadcrumb a {
-      color: #9ca3af;
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-    .breadcrumb a:hover { color: var(--text-primary); }
-    .breadcrumb-sep { opacity: 0.4; }
-
     /* ── Header ──────────────────────────────────────── */
     .page-header {
       display: flex;
@@ -126,7 +109,7 @@
       flex: 1;
       min-width: 0;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
       gap: 8px;
     }
 
@@ -367,79 +350,6 @@
     .tip-val   { font-variant-numeric: tabular-nums; text-align: right; }
     .tip-divider { border-top: 1px solid var(--glass-border); margin: 4px 0; }
 
-    @keyframes videoHaloPulse {
-      0%, 100% { opacity: 0.9; }
-      50%      { opacity: 0.25; }
-    }
-
-    /* ── Trade video modal ────────────────────────────── */
-    #videoModalOverlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 9500;
-      background: rgba(0, 0, 0, 0.75);
-      align-items: center;
-      justify-content: center;
-    }
-    #videoModalOverlay.open { display: flex; }
-    #videoModalBox {
-      position: relative;
-      width: min(920px, 92vw);
-      background: #08081a;
-      border: 1px solid var(--glass-border);
-      border-radius: 10px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-      overflow: hidden;
-    }
-    #videoModalOverlay.fullscreen #videoModalBox {
-      width: 100vw;
-      height: 100vh;
-      border-radius: 0;
-      max-width: none;
-    }
-    #videoModalFrameWrap {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      background: #000;
-    }
-    #videoModalOverlay.fullscreen #videoModalFrameWrap {
-      height: calc(100vh - 44px);
-      aspect-ratio: auto;
-    }
-    #videoModalFrameWrap iframe {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      border: 0;
-    }
-    #videoModalBar {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 6px;
-      padding: 6px 8px;
-      background: rgba(255,255,255,0.03);
-      border-bottom: 1px solid var(--glass-border);
-    }
-    .video-modal-btn {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid var(--glass-border);
-      color: var(--text-primary);
-      border-radius: 5px;
-      width: 28px;
-      height: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 14px;
-      line-height: 1;
-    }
-    .video-modal-btn:hover { background: rgba(255,255,255,0.16); }
-
     /* ── Status overlay ───────────────────────────────── */
     #chartStatus {
       display: none;
@@ -547,6 +457,39 @@
       flex: 1;
       min-width: 0;
     }
+    .chart-outer-daily {
+      flex: 0 0 300px;
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+    }
+    .chart-pane-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.02em;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+    #chartMainDaily {
+      flex: 1;
+      min-height: 0;
+    }
+    #chartStatusDaily {
+      display: none;
+      position: absolute;
+      inset: 10px 10px 10px 10px;
+      top: 34px;
+      z-index: 10;
+      background: #000000;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    #chartStatusDaily.visible { display: flex; }
     .chart-tf-label {
       position: absolute;
       bottom: 28px;
@@ -567,6 +510,7 @@
 <script src="nav.js"></script>
 <script>
   (function(){
+    if (window.self !== window.top) return; // always embedded in a chart popup — no nav, no margin
     var s = document.createElement('style');
     s.textContent = 'body{margin-left:200px!important;margin-right:0!important;transition:none!important;}';
     document.head.appendChild(s);
@@ -588,16 +532,6 @@
 </div>
 
 <div class="page-hdr">
-<div class="breadcrumb">
-  <a href="index.html">Calendar</a>
-  <span class="breadcrumb-sep">›</span>
-  <a id="breadcrumbMonth" href="#">Month</a>
-  <span class="breadcrumb-sep">›</span>
-  <a id="breadcrumbDay" href="#">Day</a>
-  <span class="breadcrumb-sep">›</span>
-  <span>Candlestick</span>
-</div>
-
 <div class="page-header">
   <div class="page-title" id="pageTitle">Candlestick Chart</div>
   <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
@@ -605,6 +539,15 @@
       <div class="toggle-track" id="rothTrack"><div class="toggle-thumb"></div></div>
       Roth
     </label>
+    <label class="toggle-wrap" onclick="toggleRealTradesMode()" style="cursor:pointer;user-select:none;">
+      <div class="toggle-track on" id="realTradesTrack"><div class="toggle-thumb"></div></div>
+      Real
+    </label>
+    <label class="toggle-wrap" onclick="toggleBacktestMode()" style="cursor:pointer;user-select:none;">
+      <div class="toggle-track" id="backtestTrack"><div class="toggle-thumb"></div></div>
+      Backtest
+    </label>
+    <select id="backtestSourceSelect" class="tf-btn" style="display:none;margin-left:-4px" onchange="onBacktestSourceChange(this.value)"></select>
     <div style="display:flex;gap:6px;">
       <button class="nav-btn disabled" id="btnPrev" title="Previous trading day">&#8592;</button>
       <button class="nav-btn disabled" id="btnNext" title="Next trading day">&#8594;</button>
@@ -620,9 +563,10 @@
 
 <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
   <div class="tf-selector" id="tfSelector" style="margin-bottom:0">
-    <button class="tf-btn active" data-tf="1">1m</button>
-    <button class="tf-btn" data-tf="2">2m</button>
+    <button class="tf-btn" data-tf="1">1m</button>
+    <button class="tf-btn active" data-tf="2">2m</button>
     <button class="tf-btn" data-tf="5">5m</button>
+    <button class="tf-btn" data-tf="15">15m</button>
   </div>
   <div style="width:1px;height:22px;background:var(--glass-border);flex-shrink:0;"></div>
   <button class="tool-btn" id="btnLongPos" onclick="toggleLongPosTool()" title="Long Position (Esc to cancel)">
@@ -672,6 +616,14 @@
 </div>
 
 <div class="charts-row">
+  <div class="chart-outer chart-outer-daily" id="chartOuterDaily">
+    <div class="chart-pane-title">Daily</div>
+    <div id="chartStatusDaily" class="visible">
+      <div class="status-spinner"></div>
+      <div class="status-msg">Loading…</div>
+    </div>
+    <div id="chartMainDaily"></div>
+  </div>
   <div class="chart-outer" id="chartOuter">
     <div id="chartStatus" class="visible">
       <div class="status-spinner"></div>
@@ -685,24 +637,11 @@
       <svg id="fsIconExpand" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg>
       <svg id="fsIconCollapse" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="display:none"><path d="M5 1v4H1M9 5V1h4M9 13v-4h4M1 9h4v4"/></svg>
     </button>
-    <span class="chart-tf-label" id="leftTfLabel">1m</span>
+    <span class="chart-tf-label" id="leftTfLabel">2m</span>
   </div>
 </div>
 <div id="dotTooltip"></div>
 </div><!-- /.charts-wrap -->
-
-<div id="videoModalOverlay">
-  <div id="videoModalBox">
-    <div id="videoModalBar">
-      <button type="button" class="video-modal-btn" id="videoModalMaxBtn" title="Full screen">⛶</button>
-      <button type="button" class="video-modal-btn" id="videoModalCloseBtn" title="Close">✕</button>
-    </div>
-    <div id="videoModalFrameWrap">
-      <iframe id="videoModalFrame" src="" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-    </div>
-  </div>
-</div>
-
 
 <script>
   const MONTHS = [
@@ -715,10 +654,12 @@
   let curYear, curMonth, curDay;
   let chartInstance   = null;
   let candleSeriesRef = null;
+  let dailyChartInstance   = null;
+  let dailyCandleSeriesRef = null;
   let markerCleanup   = null;
   let execMarkersOn   = true;
   let activeSymbol    = null;
-  let activeInterval  = 1;      // current timeframe in minutes
+  let activeInterval  = 2;      // current timeframe in minutes
   let rawCandles      = null;   // 1m candles for active symbol
   let activeExecs       = [];     // executions for active symbol
   let ohlcvCache        = {};     // loaded from ohlcv_YYYY-MM-DD.json
@@ -739,66 +680,265 @@
   let allSymbolExecs  = [];       // all execs for current symbol (unfiltered by account)
   let rothPillsVisible = false;
 
-  // Trade video links
-  let tradeVideos = {};
-  const VIDEO_TOKEN = 'TCJ_VIDEO_TOKEN_2025';
-  const VIDEO_API   = 'save_video.php';
+  let realTradesMode = true;      // showing real executions on the chart
+  let backtestMode   = false;     // overlaying backtest trades on top of real executions
+  let backtestSources = [];       // [{ id, label, trades }] — one entry per backtest tool found
+  let activeBacktestSource = 0;   // index into backtestSources
+  let activeBacktestExecs  = [];  // synthesized buy/sell execs for the active symbol/day, shown additively
 
-  // Video modal (YouTube popup, maximizable)
-  const videoModalOverlay = document.getElementById('videoModalOverlay');
-  const videoModalFrame   = document.getElementById('videoModalFrame');
-  const videoModalMaxBtn  = document.getElementById('videoModalMaxBtn');
-  const videoModalCloseBtn = document.getElementById('videoModalCloseBtn');
+  function currentBacktestTrades() { return backtestSources[activeBacktestSource]?.trades || []; }
 
-  function youtubeEmbedUrl(url) {
-    let id = null, start = null;
-    try {
-      const u = new URL(url);
-      if (u.hostname.includes('youtu.be')) {
-        id = u.pathname.slice(1);
-      } else if (u.hostname.includes('youtube.com')) {
-        if (u.pathname === '/watch') id = u.searchParams.get('v');
-        else if (u.pathname.startsWith('/embed/')) id = u.pathname.split('/')[2];
-        else if (u.pathname.startsWith('/shorts/')) id = u.pathname.split('/')[2];
-      }
-      const t = u.searchParams.get('t') || u.searchParams.get('start');
-      if (t) start = parseInt(t, 10) || null;
-    } catch (_) { /* not a full URL */ }
-    if (!id) return null;
-    let embed = `https://www.youtube.com/embed/${id}?autoplay=1`;
-    if (start) embed += `&start=${start}`;
-    return embed;
+  // Combined list handed to the marker renderer: real (account-filtered) execs, gated by
+  // realTradesMode, plus the backtest overlay. activeTrades (real P&L lookups) stays real-only.
+  function displayExecs() { return (realTradesMode ? activeExecs : []).concat(activeBacktestExecs); }
+
+  function synthesizeBacktestExecs(symbol, dateStr) {
+    return currentBacktestTrades()
+      .filter(t => t.date === dateStr && t.symbol === symbol)
+      .flatMap(t => ([
+        { symbol: t.symbol, side: 'buy',  qty: t.shares, time: `${t.entry_time}:00`, price: t.entry_price, backtest: true },
+        { symbol: t.symbol, side: 'sell', qty: t.shares, time: `${t.exit_time}:00`,  price: t.exit_price,  backtest: true },
+      ]));
   }
 
-  function openVideoModal(url) {
-    const embed = youtubeEmbedUrl(url);
-    videoModalFrame.src = embed || url;
-    videoModalOverlay.classList.add('open');
-  }
-
-  function closeVideoModal() {
-    if (document.fullscreenElement === videoModalOverlay) document.exitFullscreen();
-    videoModalOverlay.classList.remove('open', 'fullscreen');
-    videoModalFrame.src = '';
-  }
-
-  videoModalCloseBtn.addEventListener('click', closeVideoModal);
-  videoModalOverlay.addEventListener('click', e => {
-    if (e.target === videoModalOverlay) closeVideoModal();
-  });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && videoModalOverlay.classList.contains('open')) closeVideoModal();
-  });
-  videoModalMaxBtn.addEventListener('click', () => {
-    if (document.fullscreenElement === videoModalOverlay) {
-      document.exitFullscreen();
-    } else {
-      videoModalOverlay.requestFullscreen?.();
+  // Redraws markers in place from the current activeExecs/activeBacktestExecs — does not
+  // touch nav, pills, or which real trade day/symbol is being viewed.
+  function redrawExecMarkers() {
+    if (!rawCandles || !chartInstance || !candleSeriesRef) return;
+    if (markerCleanup) { markerCleanup(); markerCleanup = null; }
+    const timeMap     = buildTimeMap(rawCandles);
+    const barsTimeMap = buildTimeMap(activeBars);
+    const dotTipEl    = document.getElementById('dotTooltip');
+    if (execMarkersOn) {
+      markerCleanup = renderExecMarkers(displayExecs(), timeMap, barsTimeMap, {
+        chartInst: chartInstance, seriesRef: candleSeriesRef,
+        containerId: 'chartMain', dotTipEl,
+      });
     }
-  });
-  videoModalOverlay.addEventListener('fullscreenchange', () => {
-    videoModalOverlay.classList.toggle('fullscreen', document.fullscreenElement === videoModalOverlay);
-  });
+    updateDailyMarkers();
+  }
+
+  /* ── Daily (trailing ~2-week) context pane ─────────── */
+  let dailyPaneDate      = null; // "YYYY-MM-DD" of the trade day currently loaded in the daily pane
+  let dailyMarkerCleanup = null;
+
+  // Same triangle markers as the intraday chart, but every fill from the day pins to the
+  // same x (the single daily bar) — daily bars have no intraday time resolution — and the
+  // y (priceToCoordinate) naturally separates fills at different prices.
+  function renderDailyExecMarkers(executions) {
+    if (dailyMarkerCleanup) { dailyMarkerCleanup(); dailyMarkerCleanup = null; }
+    if (!executions?.length || !dailyChartInstance || !dailyCandleSeriesRef || !dailyPaneDate) return;
+
+    const execTradePnl = new Map();
+    for (const trade of activeTrades) {
+      let buyCost = 0, sellRev = 0;
+      for (const ex of trade) { if (ex.side === 'buy') buyCost += ex.qty * ex.price; else sellRev += ex.qty * ex.price; }
+      const pnl = sellRev - buyCost;
+      for (const ex of trade) execTradePnl.set(`${ex.time}_${ex.side}_${ex.price}`, pnl);
+    }
+
+    const container = document.getElementById('chartMainDaily');
+    container.style.position = 'relative';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('style',
+      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:5;');
+    container.appendChild(svg);
+
+    const dotTipEl = document.getElementById('dotTooltip');
+
+    function calcRadius() {
+      try {
+        const spacing = dailyChartInstance.timeScale().options().barSpacing;
+        return Math.min(Math.max(spacing * 0.22, 8), 16);
+      } catch (_) { return 8; }
+    }
+
+    function redraw() {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      const x = dailyChartInstance.timeScale().timeToCoordinate(dailyPaneDate);
+      if (x == null) return;
+      const r = calcRadius();
+
+      for (const ex of executions) {
+        const y = dailyCandleSeriesRef.priceToCoordinate(ex.price);
+        if (y == null) continue;
+
+        const tradePnl = execTradePnl.get(`${ex.time}_${ex.side}_${ex.price}`) ?? 0;
+        const color = triangleColor(ex, tradePnl);
+        const isBuy = ex.side === 'buy';
+        const pts   = trianglePoints(x, y, r, isBuy);
+
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        dot.setAttribute('points', pts);
+        dot.setAttribute('fill', color);
+        dot.setAttribute('stroke', 'rgba(255,255,255,0.6)');
+        dot.setAttribute('stroke-width', '1');
+        dot.style.pointerEvents = 'all';
+        dot.style.cursor = 'crosshair';
+
+        const sideLabel = isBuy ? 'BUY' : 'SELL';
+        dot.addEventListener('mouseenter', e => {
+          dotTipEl.innerHTML =
+            `<span style="color:${color};font-weight:600">${sideLabel}</span>&nbsp;&nbsp;$${ex.price.toFixed(2)}<br>` +
+            `<span style="color:#6b7280;font-size:11px">${ex.time.slice(0, 5)}</span>`;
+          dotTipEl.style.display = 'block';
+          dotTipEl.style.left = (e.clientX + 14) + 'px';
+          dotTipEl.style.top  = (e.clientY - 36) + 'px';
+        });
+        dot.addEventListener('mousemove', e => {
+          dotTipEl.style.left = (e.clientX + 14) + 'px';
+          dotTipEl.style.top  = (e.clientY - 36) + 'px';
+        });
+        dot.addEventListener('mouseleave', () => { dotTipEl.style.display = 'none'; });
+
+        svg.appendChild(dot);
+      }
+    }
+
+    redraw();
+    requestAnimationFrame(redraw);
+    dailyChartInstance.timeScale().subscribeVisibleLogicalRangeChange(redraw);
+    try { dailyChartInstance.priceScale('right').subscribeVisiblePriceRangeChange(redraw); } catch (_) {}
+
+    dailyMarkerCleanup = () => {
+      try { dailyChartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(redraw); } catch (_) {}
+      try { dailyChartInstance.priceScale('right').unsubscribeVisiblePriceRangeChange(redraw); } catch (_) {}
+      svg.remove();
+    };
+  }
+
+  function updateDailyMarkers() {
+    renderDailyExecMarkers(displayExecs());
+  }
+
+  async function renderDailyPane(symbol, dateStr) {
+    const status    = document.getElementById('chartStatusDaily');
+    const container = document.getElementById('chartMainDaily');
+    dailyPaneDate = null;
+    if (dailyMarkerCleanup) { dailyMarkerCleanup(); dailyMarkerCleanup = null; }
+    if (dailyChartInstance) { dailyChartInstance.remove(); dailyChartInstance = null; dailyCandleSeriesRef = null; }
+    container.innerHTML = '';
+
+    status.innerHTML = '<div class="status-spinner"></div><div class="status-msg">Loading…</div>';
+    status.className = 'visible';
+
+    let bars;
+    try {
+      const res = await fetch(`ohlcv_daily/${encodeURIComponent(symbol)}.json`);
+      bars = res.ok ? await res.json() : null;
+    } catch (_) { bars = null; }
+
+    if (!bars || !bars.length) {
+      status.innerHTML = `<div class="status-msg error">No daily chart cached for ${symbol}</div>
+        <div class="status-hint">Run <code>python fetch_ohlcv_daily.py</code> locally to fetch it.</div>`;
+      return;
+    }
+    const windowed = bars.filter(b => b.time <= dateStr).slice(-15);
+    if (!windowed.length) {
+      status.innerHTML = `<div class="status-msg error">No daily bars cached for ${symbol} around ${dateStr}</div>
+        <div class="status-hint">Run <code>python fetch_ohlcv_daily.py</code> to refresh.</div>`;
+      return;
+    }
+    status.className = '';
+
+    dailyChartInstance = LightweightCharts.createChart(container, {
+      autoSize: true,
+      layout: {
+        background: { type: 'solid', color: '#000000' },
+        textColor: '#9ca3af',
+        fontFamily: "'Inter', -apple-system, sans-serif",
+        fontSize: 11,
+      },
+      grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+      rightPriceScale: { borderColor: '#2a2a2a', textColor: '#9ca3af' },
+      timeScale: { borderColor: '#2a2a2a' },
+      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    });
+
+    const candleSeries = dailyChartInstance.addCandlestickSeries({
+      upColor:         'rgb(8,153,129)',
+      downColor:       'rgb(242,54,69)',
+      borderUpColor:   'rgb(8,153,129)',
+      borderDownColor: 'rgb(242,54,69)',
+      wickUpColor:     'rgb(8,153,129)',
+      wickDownColor:   'rgb(242,54,69)',
+    });
+    candleSeries.setData(windowed);
+    dailyCandleSeriesRef = candleSeries;
+
+    dailyChartInstance.priceScale('right').applyOptions({ scaleMargins: { top: 0.05, bottom: 0.25 } });
+    const volumeSeries = dailyChartInstance.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'vol' });
+    dailyChartInstance.priceScale('vol').applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } });
+    volumeSeries.setData(windowed.map(b => ({
+      time: b.time, value: b.volume,
+      color: b.close >= b.open ? 'rgba(8,153,129,0.35)' : 'rgba(242,54,69,0.35)',
+    })));
+
+    dailyPaneDate = dateStr;
+    updateDailyMarkers();
+    dailyChartInstance.timeScale().fitContent();
+  }
+
+  function toggleRealTradesMode() {
+    realTradesMode = !realTradesMode;
+    document.getElementById('realTradesTrack').classList.toggle('on', realTradesMode);
+    redrawExecMarkers();
+  }
+
+  // Re-fetches the overlay for the current symbol/day and redraws markers in place.
+  function refreshBacktestOverlay() {
+    const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
+    activeBacktestExecs = (backtestMode && activeSymbol) ? synthesizeBacktestExecs(activeSymbol, dateStr) : [];
+    redrawExecMarkers();
+  }
+
+  // Loads backtesting.py's export (per-year files + index) and normalizes it to a
+  // common trade shape: { symbol, date, entry_time, exit_time, entry_price, exit_price, shares, pnl }
+  async function loadBacktestSources() {
+    const sources = [];
+
+    try {
+      const r = await fetch('backtest/backtest_index.json');
+      if (r.ok) {
+        const btIdx = await r.json();
+        const yearFiles = await Promise.all((btIdx.years || []).map(yr =>
+          fetch(`backtest/backtest_trades_${yr}.json`).then(rr => rr.ok ? rr.json() : null).catch(() => null)
+        ));
+        let legacyTrades = [];
+        let label = 'Legacy';
+        for (const yf of yearFiles) {
+          if (!yf?.trades) continue;
+          if (yf.strategy) label = yf.strategy;
+          legacyTrades = legacyTrades.concat(yf.trades.map(t => ({
+            symbol: t.symbol, date: t.date,
+            entry_time: t.entry_time, exit_time: t.exit_time,
+            entry_price: t.entry, exit_price: t.exit,
+            shares: t.shares, pnl: t.pnl,
+          })));
+        }
+        if (legacyTrades.length) sources.push({ id: 'legacy', label, trades: legacyTrades });
+      }
+    } catch (_) {}
+
+    return sources;
+  }
+
+  function renderBacktestSourceSelect() {
+    const sel = document.getElementById('backtestSourceSelect');
+    if (backtestSources.length > 1) {
+      sel.innerHTML = backtestSources.map((s, i) => `<option value="${i}">${s.label}</option>`).join('');
+      sel.value = String(activeBacktestSource);
+      sel.style.display = backtestMode ? '' : 'none';
+    } else {
+      sel.style.display = 'none';
+    }
+  }
+
+  function onBacktestSourceChange(idxStr) {
+    activeBacktestSource = parseInt(idxStr, 10) || 0;
+    refreshBacktestOverlay();
+    refreshBacktestPills();
+  }
 
   // Pane size state (persists across timeframe changes and page reloads)
   function loadPaneState(key, def) {
@@ -1288,6 +1428,15 @@
     });
   }
 
+  /* ── Backtest overlay toggle ─────────────────────────── */
+  function toggleBacktestMode() {
+    backtestMode = !backtestMode;
+    document.getElementById('backtestTrack').classList.toggle('on', backtestMode);
+    renderBacktestSourceSelect();
+    refreshBacktestOverlay();
+    refreshBacktestPills();
+  }
+
   function toggleAccount(acct) {
     if (activeAccounts.has(acct)) activeAccounts.delete(acct);
     else activeAccounts.add(acct);
@@ -1296,16 +1445,7 @@
     if (!rawCandles || !allSymbolExecs.length) return;
     activeExecs = filterExecsByAccount(allSymbolExecs);
     activeTrades = groupExecutionsIntoTrades(activeExecs);
-    if (markerCleanup)  { markerCleanup();  markerCleanup  = null; }
-    const timeMap     = buildTimeMap(rawCandles);
-    const barsTimeMap = buildTimeMap(activeBars);
-    const dotTipEl    = document.getElementById('dotTooltip');
-    if (execMarkersOn) {
-      markerCleanup = renderExecMarkers(activeExecs, timeMap, barsTimeMap, {
-        chartInst: chartInstance, seriesRef: candleSeriesRef,
-        containerId: 'chartMain', dotTipEl,
-      });
-    }
+    redrawExecMarkers();
   }
 
   function filterExecsByAccount(execs) {
@@ -1518,6 +1658,20 @@
 
   /* ── SVG execution markers ───────────────────────── */
   // Returns a cleanup function. Caller is responsible for calling previous cleanup and storing the new one.
+  // Shared visual language for execution triangles — used by both the intraday chart's
+  // markers and the daily pane's markers so they look identical.
+  function triangleColor(ex, tradePnl) {
+    const isRoth = (ex.account || '').toLowerCase().includes('roth');
+    if (ex.backtest || isRoth) return ex.side === 'buy' ? 'rgb(76,29,149)' : 'rgb(196,181,253)';
+    if (ex.side === 'buy') return 'rgb(34,197,94)';
+    return tradePnl >= 0 ? 'rgb(239,68,68)' : 'rgb(249,115,22)';
+  }
+  function trianglePoints(x, y, r, isBuy) {
+    return isBuy
+      ? `${x},${y - r} ${x - r * 0.866},${y + r * 0.5} ${x + r * 0.866},${y + r * 0.5}`
+      : `${x},${y + r} ${x - r * 0.866},${y - r * 0.5} ${x + r * 0.866},${y - r * 0.5}`;
+  }
+
   function renderExecMarkers(executions, timeMap, barsTimeMap, ctx) {
     const chartInst   = ctx?.chartInst   ?? chartInstance;
     const seriesRef   = ctx?.seriesRef   ?? candleSeriesRef;
@@ -1533,7 +1687,7 @@
       const ts    = execToTimestamp(ex.time, timeMap);
       const tsBar = execToTimestamp(ex.time, posMap);
       if (ts == null || tsBar == null) continue;
-      resolved.push({ ts, tsBar, price: ex.price, side: ex.side, account: ex.account || '' });
+      resolved.push({ ts, tsBar, price: ex.price, side: ex.side, account: ex.account || '', backtest: !!ex.backtest });
     }
     if (!resolved.length) return null;
 
@@ -1545,27 +1699,20 @@
       'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:5;');
     container.appendChild(svg);
 
-    // Build map: exec key → trade PnL, and exec key → roundtrip entry HH:MM
-    const execTradePnl       = new Map();
-    const execRoundtripEntry = new Map();
+    // Build map: exec key → trade PnL
+    const execTradePnl = new Map();
     for (const trade of activeTrades) {
       let buyCost = 0, sellRev = 0;
       for (const ex of trade) {
         if (ex.side === 'buy')  buyCost  += ex.qty * ex.price;
         else                    sellRev  += ex.qty * ex.price;
       }
-      const pnl       = sellRev - buyCost;
-      const entryHHMM = trade[0].time.slice(0, 5);
+      const pnl = sellRev - buyCost;
       for (const ex of trade) {
         const ts = execToTimestamp(ex.time, timeMap);
-        if (ts != null) {
-          execTradePnl.set(`${ts}_${ex.side}_${ex.price}`, pnl);
-          execRoundtripEntry.set(`${ts}_${ex.side}_${ex.price}`, entryHHMM);
-        }
+        if (ts != null) execTradePnl.set(`${ts}_${ex.side}_${ex.price}`, pnl);
       }
     }
-
-    const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
 
     function calcRadius() {
       try {
@@ -1585,48 +1732,17 @@
         const y = seriesRef.priceToCoordinate(m.price);
         if (x == null || y == null) continue;
 
-        const isRoth = m.account.toLowerCase().includes('roth');
-        let color;
-        if (isRoth) {
-          color = m.side === 'buy' ? 'rgb(76,29,149)' : 'rgb(196,181,253)';
-        } else if (m.side === 'buy') {
-          color = 'rgb(34,197,94)';
-        } else {
-          const tradePnl = execTradePnl.get(`${m.ts}_${m.side}_${m.price}`) ?? 0;
-          color = tradePnl >= 0 ? 'rgb(239,68,68)' : 'rgb(249,115,22)';
-        }
-
-        const isBuy = m.side === 'buy';
-        const pts = isBuy
-          ? `${x},${y - r} ${x - r * 0.866},${y + r * 0.5} ${x + r * 0.866},${y + r * 0.5}`
-          : `${x},${y + r} ${x - r * 0.866},${y - r * 0.5} ${x + r * 0.866},${y - r * 0.5}`;
+        const tradePnl = execTradePnl.get(`${m.ts}_${m.side}_${m.price}`) ?? 0;
+        const color  = triangleColor(m, tradePnl);
+        const isBuy  = m.side === 'buy';
+        const pts    = trianglePoints(x, y, r, isBuy);
         const dot = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
         dot.setAttribute('points', pts);
         dot.setAttribute('fill', color);
-        const execKey   = `${m.ts}_${m.side}_${m.price}`;
-        const entryHHMM = execRoundtripEntry.get(execKey);
-        const tradeKey  = entryHHMM ? `${dateStr}_${activeSymbol}_${entryHHMM}` : null;
-        const hasVideo  = tradeKey && !!tradeVideos[tradeKey];
-
-        if (hasVideo) {
-          const halo = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-          halo.setAttribute('cx', x);
-          halo.setAttribute('cy', y);
-          halo.setAttribute('r', r * 1.7);
-          halo.setAttribute('fill', 'none');
-          halo.setAttribute('stroke', 'rgba(255,220,50,0.85)');
-          halo.setAttribute('stroke-width', '2');
-          halo.style.pointerEvents = 'none';
-          halo.style.filter = 'drop-shadow(0 0 6px rgba(255,220,50,0.9))';
-          halo.style.animation = 'videoHaloPulse 1.6s ease-in-out infinite';
-          svg.appendChild(halo);
-        }
-
-        dot.setAttribute('stroke', hasVideo ? 'rgba(255,220,50,0.95)' : 'rgba(255,255,255,0.6)');
-        dot.setAttribute('stroke-width', hasVideo ? '2.5' : '1');
-        if (hasVideo) dot.style.filter = 'drop-shadow(0 0 4px rgba(255,220,50,0.85))';
+        dot.setAttribute('stroke', 'rgba(255,255,255,0.6)');
+        dot.setAttribute('stroke-width', '1');
         dot.style.pointerEvents = 'all';
-        dot.style.cursor = isBuy ? 'pointer' : 'crosshair';
+        dot.style.cursor = 'crosshair';
 
         const sideLabel = m.side === 'buy' ? 'BUY' : 'SELL';
         const timeStr   = tsToET(m.ts);
@@ -1645,34 +1761,6 @@
         dot.addEventListener('mouseleave', () => {
           dotTipEl.style.display = 'none';
         });
-
-        if (isBuy && tradeKey) {
-          dot.addEventListener('click', ev => {
-            ev.stopPropagation();
-            const existing = tradeVideos[tradeKey] || '';
-            if (!ev.altKey && existing) {
-              openVideoModal(existing);
-              return;
-            }
-            const url = prompt(
-              existing ? 'YouTube URL (clear to remove):' : 'YouTube URL for this trade:',
-              existing
-            );
-            if (url === null) return; // cancelled
-            if (url.trim() === '') {
-              delete tradeVideos[tradeKey];
-              fetch(VIDEO_API, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: VIDEO_TOKEN, action: 'delete', key: tradeKey }) });
-            } else {
-              tradeVideos[tradeKey] = url.trim();
-              fetch(VIDEO_API, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: VIDEO_TOKEN, action: 'set', key: tradeKey, url: url.trim() }) });
-              openVideoModal(url.trim());
-            }
-            // Re-draw markers to update stroke color
-            redraw();
-          });
-        }
 
         svg.appendChild(dot);
       }
@@ -1783,7 +1871,7 @@
     activeInterval = mins;
     document.querySelectorAll('.tf-btn').forEach(b =>
       b.classList.toggle('active', +b.dataset.tf === mins));
-    if (rawCandles) renderChart(rawCandles, activeExecs, mins);
+    if (rawCandles) renderChart(rawCandles, displayExecs(), mins);
   }
 
   /* ── Chart render ────────────────────────────────── */
@@ -2151,9 +2239,12 @@
     showLoading(`Loading 1-min data for ${symbol}…`);
     document.getElementById('chartLegend').style.display = 'none';
 
+    const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
+
     allSymbolExecs = (dayData.executions || []).filter(e => e.symbol === symbol);
     activeExecs    = filterExecsByAccount(allSymbolExecs);
     activeTrades   = groupExecutionsIntoTrades(activeExecs);
+    activeBacktestExecs = backtestMode ? synthesizeBacktestExecs(symbol, dateStr) : [];
 
     // Deep-linked from trades.html for one specific roundtrip — lock the view to just it
     if (pendingTradeZoom) {
@@ -2166,13 +2257,13 @@
       if (match) { activeExecs = match; activeTrades = [match]; allSymbolExecs = match; }
     }
 
+    renderDailyPane(symbol, dateStr);
 
     // ── 1. Try local ohlcv_YYYY-MM-DD.json cache ─────
-    const dateStr    = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
     const localData  = ohlcvCache[symbol];
     if (localData?.length) {
       rawCandles = localData;
-      renderChart(rawCandles, activeExecs, activeInterval);
+      renderChart(rawCandles, displayExecs(), activeInterval);
       return;
     }
 
@@ -2206,6 +2297,7 @@
       <span class="sym-pill-stack">
         <span class="pill-sub ${dayCashCls}"><span class="pill-sub-label">CASH</span>${fmtPnl(dayCashPnl)}</span>
         <span class="pill-sub roth-pill-sub ${dayRothCls}" style="display:${rothPillsVisible ? '' : 'none'}"><span class="pill-sub-label">ROTH</span>${fmtPnl(dayRothPnl)}</span>
+        <span class="pill-sub bt-pill-sub zero" data-sym="__DAY__" style="display:none"><span class="pill-sub-label">BT</span>${fmtPnl(0)}</span>
       </span>`;
     container.appendChild(dayPill);
 
@@ -2231,6 +2323,7 @@
         <span class="sym-pill-stack">
           <span class="pill-sub ${cashCls}"><span class="pill-sub-label">CASH</span>${fmtPnl(cashPnl)}</span>
           <span class="pill-sub roth-pill-sub ${rothCls}" style="display:${rothPillsVisible ? '' : 'none'}"><span class="pill-sub-label">ROTH</span>${fmtPnl(rothPnl)}</span>
+          <span class="pill-sub bt-pill-sub zero" data-sym="${sym}" style="display:none"><span class="pill-sub-label">BT</span>${fmtPnl(0)}</span>
         </span>`;
 
       pill.onclick = () => loadSymbol(sym, dayData);
@@ -2239,7 +2332,39 @@
     }
     container.appendChild(inner);
 
+    refreshBacktestPills();
     loadSymbol(defaultSym, dayData);
+  }
+
+  // Fills in the BT sub-row on each pill with that symbol's backtest PnL for the
+  // current day/source, and toggles its visibility with the Backtest mode switch.
+  function refreshBacktestPills() {
+    const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
+    const sums = {};
+    if (backtestMode) {
+      for (const t of currentBacktestTrades()) {
+        if (t.date !== dateStr) continue;
+        sums[t.symbol] = (sums[t.symbol] || 0) + (t.pnl || 0);
+      }
+    }
+    let dayTotal = 0;
+    document.querySelectorAll('.bt-pill-sub[data-sym]').forEach(el => {
+      const sym = el.dataset.sym;
+      if (sym === '__DAY__') return;
+      const pnl = sums[sym] || 0;
+      dayTotal += pnl;
+      const cls = pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : 'zero';
+      el.className = `pill-sub bt-pill-sub ${cls}`;
+      el.style.display = backtestMode ? '' : 'none';
+      el.innerHTML = `<span class="pill-sub-label">BT</span>${fmtPnl(pnl)}`;
+    });
+    const dayEl = document.querySelector('.bt-pill-sub[data-sym="__DAY__"]');
+    if (dayEl) {
+      const cls = dayTotal > 0 ? 'pos' : dayTotal < 0 ? 'neg' : 'zero';
+      dayEl.className = `pill-sub bt-pill-sub ${cls}`;
+      dayEl.style.display = backtestMode ? '' : 'none';
+      dayEl.innerHTML = `<span class="pill-sub-label">BT</span>${fmtPnl(dayTotal)}`;
+    }
   }
 
   /* ── Nav helpers ─────────────────────────────────── */
@@ -2268,8 +2393,10 @@
   }
 
   function navTo(entry) {
+    const bt   = backtestMode ? `&backtest=1&src=${activeBacktestSource}` : '';
+    const real = realTradesMode ? '' : '&real=0';
     window.location.href =
-      `candlestick.html?year=${entry.year}&month=${entry.month}&day=${entry.day}`;
+      `candlestick-chart.html?year=${entry.year}&month=${entry.month}&day=${entry.day}${bt}${real}`;
   }
 
   /* ── Init ────────────────────────────────────────── */
@@ -2282,6 +2409,11 @@
   const paramEntry = params.get('entry') || null;
   const paramExit  = params.get('exit')  || null;
   if (paramEntry && paramExit) pendingTradeZoom = { entryTime: paramEntry, exitTime: paramExit };
+  backtestMode = params.get('backtest') === '1';
+  activeBacktestSource = parseInt(params.get('src') || '0', 10) || 0;
+  realTradesMode = params.get('real') !== '0';
+  document.getElementById('backtestTrack').classList.toggle('on', backtestMode);
+  document.getElementById('realTradesTrack').classList.toggle('on', realTradesMode);
 
   // Timeframe buttons
   document.querySelectorAll('.tf-btn[data-tf]').forEach(btn => {
@@ -2395,12 +2527,6 @@
     });
   })();
 
-  // Breadcrumb
-  document.getElementById('breadcrumbMonth').href        = `month.html?year=${curYear}&month=${curMonth}`;
-  document.getElementById('breadcrumbMonth').textContent = `${MONTHS[curMonth - 1]} ${curYear}`;
-  document.getElementById('breadcrumbDay').href          = `day.html?year=${curYear}&month=${curMonth}&day=${curDay}`;
-  document.getElementById('breadcrumbDay').textContent   = ordinal(curDay);
-
   // Title
   const d = new Date(curYear, curMonth - 1, curDay);
   const titleStr = `${DAYS_OF_WEEK[d.getDay()]}, ${MONTHS[curMonth - 1]} ${ordinal(curDay)} ${curYear}`;
@@ -2410,13 +2536,15 @@
   async function init() {
     try {
       const ohlcvFile = `ohlcv/ohlcv_${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}.json`;
-      const [idx, ohlcv, videos] = await Promise.all([
+      const [idx, ohlcv, sources] = await Promise.all([
         fetch('calendar/calendar_index.json').then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }),
         fetch(ohlcvFile).then(r => r.ok ? r.json() : {}).catch(() => ({})),
-        fetch('trade_videos.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+        loadBacktestSources(),
       ]);
       ohlcvCache  = ohlcv;
-      tradeVideos = videos;
+      backtestSources = sources;
+      if (activeBacktestSource >= backtestSources.length) activeBacktestSource = 0;
+      renderBacktestSourceSelect();
 
       const files = await Promise.all(idx.years.map(yr =>
         fetch(`calendar/calendar_data_${yr}.json`).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
@@ -2458,6 +2586,30 @@
         `Run <code>python calendar_data.py</code>`
       );
     }
+  }
+
+  // Embedded in a chart popup iframe — clamp the page to the iframe's
+  // viewport height so nothing forces a vertical scrollbar; the chart absorbs
+  // whatever space is left after the header/pills/toolbar above it.
+  if (window.self !== window.top) {
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    document.body.style.minHeight = '0';
+
+    const fitChartHeight = () => {
+      const outer = document.getElementById('chartOuter');
+      if (!outer) return;
+      const avail = window.innerHeight - outer.getBoundingClientRect().top - 8;
+      document.getElementById('chartMain').style.height = Math.max(200, avail) + 'px';
+    };
+
+    const ro = new ResizeObserver(fitChartHeight);
+    ['.page-hdr', '#chartLegend', '#longPosPanel'].forEach(sel => {
+      const el = document.querySelector(sel);
+      if (el) ro.observe(el);
+    });
+    window.addEventListener('resize', fitChartHeight);
+    fitChartHeight();
   }
 
   initAuth(() => init());

@@ -371,6 +371,23 @@
     .acct-badge-cash { background: rgba(34,197,94,0.15); color: #22c55e; }
     .acct-badge-roth { background: rgba(168,85,247,0.15); color: #a855f7; }
     .acct-badge-other { background: rgba(255,255,255,0.06); color: #9ca3af; }
+
+    /* ── Candlestick modal ───────────────────────────── */
+    .cdl-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9600;
+      background: rgba(0,0,0,0.75); align-items: center; justify-content: center;
+    }
+    .cdl-overlay.open { display: flex; }
+    .cdl-box {
+      width: 96vw; max-width: 1600px; height: 94vh; max-height: 94vh;
+      background: #141414; border: 1px solid var(--glass-border); border-radius: 10px;
+      padding: 16px; display: flex; flex-direction: column;
+    }
+    .cdl-head { display: flex; align-items: center; margin-bottom: 12px; flex-shrink: 0; }
+    .cdl-head span { flex: 1; font-size: 16px; color: #fff; font-weight: 500; }
+    .cdl-close { background: none; border: none; color: #6b7280; font-size: 16px; cursor: pointer; }
+    .cdl-close:hover { color: #e0e0e0; }
+    .cdl-box iframe { flex: 1; width: 100%; border: none; border-radius: 6px; background: #0f0f0f; }
   </style>
 </head>
 <body>
@@ -387,6 +404,16 @@
     <div class="g_id_signin" data-type="standard" data-theme="filled_black"
       data-size="large" data-shape="rectangular"></div>
     <div id="authError"></div>
+  </div>
+</div>
+
+<div class="cdl-overlay" id="candleModalOverlay">
+  <div class="cdl-box">
+    <div class="cdl-head">
+      <span id="candleModalTitle">Candlestick View</span>
+      <button class="cdl-close" id="candleModalCloseBtn">✕</button>
+    </div>
+    <iframe id="candleModalFrame" src="about:blank"></iframe>
   </div>
 </div>
 
@@ -895,16 +922,23 @@ function renderTable() {
 
 function openCandlestick(t) {
   const [y, m, d] = t.date.split('-').map(Number);
-  const navList = filteredTrades.map(ft => {
-    const [fy, fm, fd] = ft.date.split('-').map(Number);
-    return { year: fy, month: fm, day: fd, symbol: ft.symbol };
-  });
-  const idx = filteredTrades.indexOf(t);
-  sessionStorage.setItem('tcj_tradeNav', JSON.stringify(navList));
-  let url = `candlestick.html?year=${y}&month=${m}&day=${d}&symbol=${encodeURIComponent(t.symbol)}&tradeNavIdx=${idx}`;
+  let url = `candlestick-chart.html?year=${y}&month=${m}&day=${d}&symbol=${encodeURIComponent(t.symbol)}`;
   if (t.entry_time && t.exit_time) url += `&entry=${encodeURIComponent(t.entry_time)}&exit=${encodeURIComponent(t.exit_time)}`;
-  window.location.href = url;
+  document.getElementById('candleModalTitle').textContent = `${t.symbol} — ${fmtDate(t.date)}`;
+  document.getElementById('candleModalFrame').src = url;
+  document.getElementById('candleModalOverlay').classList.add('open');
 }
+function closeCandleModal() {
+  document.getElementById('candleModalOverlay').classList.remove('open');
+  document.getElementById('candleModalFrame').src = 'about:blank';
+}
+document.getElementById('candleModalCloseBtn').addEventListener('click', closeCandleModal);
+document.getElementById('candleModalOverlay').addEventListener('click', e => {
+  if (e.target.id === 'candleModalOverlay') closeCandleModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeCandleModal();
+});
 
 /* ─── Pagination ─── */
 function renderPagination(total) {

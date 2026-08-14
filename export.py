@@ -551,6 +551,10 @@ if __name__ == "__main__":
     import subprocess, sys
     subprocess.run([sys.executable, "calendar_data.py"], check=True)
     subprocess.run([sys.executable, "fetch_ohlcv.py"], check=True)
+    if os.path.exists("fetch_ohlcv_daily.py"):
+        subprocess.run([sys.executable, "fetch_ohlcv_daily.py"], check=True)
+    else:
+        print("fetch_ohlcv_daily.py not found — skipping daily OHLCV step")
     if os.path.exists("compute_mfe_mae.py"):
         subprocess.run([sys.executable, "compute_mfe_mae.py"], check=True)
     else:
@@ -625,7 +629,7 @@ if __name__ == "__main__":
         # Upload dashboard HTML + JSON files
         for local, remote_name in [
             ("dashboard/account_balance.json", "account_balance.json"),
-            ("dashboard/candlestick.html",     "candlestick.html"),
+            ("dashboard/candlestick-chart.html", "candlestick-chart.html"),
             ("dashboard/monte_carlo.html",     "monte_carlo.html"),
             ("dashboard/reports.html",         "reports.html"),
             ("dashboard/day.html",             "day.html"),

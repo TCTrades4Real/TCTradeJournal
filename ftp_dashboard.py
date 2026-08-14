@@ -26,7 +26,7 @@ FILES = [
     "dashboard/index.html",
     "dashboard/month.html",
     "dashboard/day.html",
-    "dashboard/candlestick.html",
+    "dashboard/candlestick-chart.html",
     "dashboard/monte_carlo.html",
     "dashboard/reports.html",
     "dashboard/trades.html",

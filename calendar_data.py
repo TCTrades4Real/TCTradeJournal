@@ -335,6 +335,33 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
     return result
 
 
+def load_existing_annotations(out_path):
+    """
+    Return {(month, day, symbol, account, entry_time, exit_time, pnl): (mfe, mae)}
+    from a previously-written calendar file. calendar_data.py rebuilds roundtrips
+    fresh from the CSVs on every run (no mfe/mae), so without this compute_mfe_mae.py
+    would have to recompute the entire history every time instead of just new trades.
+    """
+    if not os.path.exists(out_path):
+        return {}
+    try:
+        with open(out_path) as f:
+            existing = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+    lookup = {}
+    for year_data in existing.values():
+        for month, month_data in year_data.items():
+            for day, day_data in (month_data.get('days') or {}).items():
+                for rt in day_data.get('roundtrips') or []:
+                    if rt.get('mfe') is None or rt.get('mae') is None:
+                        continue
+                    key = (month, day, rt.get('symbol'), rt.get('account', ''),
+                           rt.get('entry_time'), rt.get('exit_time'), rt.get('pnl'))
+                    lookup[key] = (rt['mfe'], rt['mae'])
+    return lookup
+
+
 def main():
     parser = argparse.ArgumentParser(description='Build calendar P&L JSON from trade CSVs')
     parser.add_argument('--year', type=int, help='Filter to a specific year (default: all years)')
@@ -355,6 +382,17 @@ def main():
     available_years = []
     for year, year_data in data.items():
         out_path = os.path.join(cal_dir, f'calendar_data_{year}.json')
+
+        annotations = load_existing_annotations(out_path)
+        if annotations:
+            for month, month_data in year_data.items():
+                for day, day_data in month_data['days'].items():
+                    for rt in day_data.get('roundtrips') or []:
+                        key = (month, day, rt.get('symbol'), rt.get('account', ''),
+                               rt.get('entry_time'), rt.get('exit_time'), rt.get('pnl'))
+                        if key in annotations:
+                            rt['mfe'], rt['mae'] = annotations[key]
+
         with open(out_path, 'w') as f:
             json.dump({year: year_data}, f, indent=2)
         available_years.append(int(year))

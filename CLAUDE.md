@@ -21,15 +21,17 @@ fetch_ohlcv.py       → pre-fetch 1-min OHLCV from Schwab (~10 days of history)
 compute_mfe_mae.py   → reads per-year calendar JSONs + per-day OHLCV
                        → adds mfe/mae fields to each roundtrip in calendar JSONs
 
-fetch_ohlcv_daily.py → pre-fetch daily OHLCV for watchlist callout symbols (standalone,
-                       not part of the export.py pipeline — run manually after adding callouts)
+fetch_ohlcv_daily.py → pre-fetch daily OHLCV for watchlist callout symbols + every symbol
+                       traded this year (part of the export.py pipeline; also runnable
+                       standalone, e.g. after adding callouts or for an ad-hoc symbol)
                        → write dashboard/ohlcv_daily/SYMBOL.json
 
 dashboard/
   index.html         → monthly calendar view
   month.html         → monthly PnL grid
   day.html           → daily symbol table + intraday chart
-  candlestick.html   → per-symbol candlestick chart + trade markers
+  candlestick-chart.html → per-symbol candlestick chart + trade markers; not a page of its own —
+                       loaded in an iframe popup by day.html, trades.html, and watchlists.html
   reports.html       → trading stats, equity curves, MFE/MAE analysis, Monte Carlo
   trades.html        → trade log
   watchlists.html    → catalog of a trader's watchlist callouts + setup playbook stats
@@ -45,8 +47,10 @@ Running `python export.py` executes the entire pipeline in order:
 1. Fetch Schwab executions → write `trade_data/` CSVs
 2. `calendar_data.py` → write per-year calendar JSONs
 3. `fetch_ohlcv.py` → fetch/cache missing 1-min OHLCV bars
-4. `compute_mfe_mae.py` → annotate roundtrips with MFE/MAE
-5. FTP upload all calendar JSONs, changed OHLCV files, and all dashboard HTML/JS to tctrades.com
+4. `fetch_ohlcv_daily.py` → fetch/cache daily OHLCV for callout symbols + every symbol traded
+   this year (skips whatever's already cached)
+5. `compute_mfe_mae.py` → annotate roundtrips with MFE/MAE
+6. FTP upload all calendar JSONs, changed OHLCV files, and all dashboard HTML/JS to tctrades.com
 
 ---
 
@@ -55,8 +59,9 @@ Running `python export.py` executes the entire pipeline in order:
 1. **export.py** → Schwab API → `trade_data/YYYY-MM-DD-AccountStatement.csv`
 2. **calendar_data.py** → reads all CSVs → `dashboard/calendar/calendar_data_YYYY.json`
 3. **fetch_ohlcv.py** → Schwab API → `dashboard/ohlcv/ohlcv_YYYY-MM-DD.json`
-4. **compute_mfe_mae.py** → reads calendar + OHLCV → writes `mfe`/`mae` into calendar JSONs
-5. **Dashboard HTML files** → fetch calendar JSONs via relative paths (works on file:// and tctrades.com)
+4. **fetch_ohlcv_daily.py** → Schwab API → `dashboard/ohlcv_daily/SYMBOL.json`
+5. **compute_mfe_mae.py** → reads calendar + OHLCV → writes `mfe`/`mae` into calendar JSONs
+6. **Dashboard HTML files** → fetch calendar JSONs via relative paths (works on file:// and tctrades.com)
 
 ---
 
@@ -69,7 +74,7 @@ Running `python export.py` executes the entire pipeline in order:
 | `dashboard/calendar/calendar_data_YYYY.json` | Per-year roundtrips with mfe/mae, daily PnL |
 | `dashboard/ohlcv/ohlcv_YYYY-MM-DD.json` | Per-day 1-min OHLCV cache `{SYMBOL: [bars...]}` |
 | `dashboard/ohlcv/.uploaded` | Manifest of OHLCV files already FTP'd (skips re-upload) |
-| `dashboard/ohlcv_daily/SYMBOL.json` | Per-symbol daily OHLCV cache for watchlist callout charts (array of bars, `time` as `YYYY-MM-DD`) |
+| `dashboard/ohlcv_daily/SYMBOL.json` | Per-symbol daily OHLCV cache for the candlestick popup's daily pane — covers watchlist callouts + every symbol traded this year (array of bars, `time` as `YYYY-MM-DD`) |
 | `dashboard/watchlist_setups/data.json` | Watchlist callouts + setup-type taxonomy — synced live via `dashboard/api/setups.php`, not pushed by routine `ftp_dashboard.py` runs |
 
 ---
@@ -104,10 +109,15 @@ python compute_mfe_mae.py --year 2026 # one year only
   page write directly to `dashboard/watchlist_setups/data.json` on the live server, gated by
   a per-device write key bootstrapped through the existing Google sign-in (see `auth.js`).
   This is why `ftp_dashboard.py` deliberately excludes that JSON from its default push.
-- **Charts**: clicking a symbol pill on a callout opens daily (~2 week trailing) and 1-minute
-  charts for the trade day, rendered from `dashboard/ohlcv_daily/SYMBOL.json` and the existing
-  `dashboard/ohlcv/ohlcv_YYYY-MM-DD.json`. Run `python fetch_ohlcv_daily.py` after adding new
-  callouts to populate the daily cache — it isn't part of the `export.py` pipeline.
+- **Charts**: clicking a symbol pill on a callout opens the same `candlestick-chart.html` popup
+  used by day.html/trades.html, for the trade day (`date + 1`) and that symbol.
+- **Daily pane**: `candlestick-chart.html` itself shows a compact trailing daily-bars chart
+  (candles + volume, ~15 bars ending on the loaded trade day) alongside the main intraday
+  chart, on every popup on every page. Reads `dashboard/ohlcv_daily/SYMBOL.json` — shows a
+  "no daily chart cached" message until that symbol/date window has been fetched. Callouts
+  populate it automatically via the bulk `fetch_ohlcv_daily.py` run; for any other symbol
+  (e.g. a day.html/trades.html trade with no callout), fetch it on demand with
+  `python fetch_ohlcv_daily.py --symbol SYM [--date YYYY-MM-DD]`.
 
 ---
 
@@ -115,8 +125,11 @@ python compute_mfe_mae.py --year 2026 # one year only
 
 - All HTML files are standalone — open directly as `file://`, no web server needed
 - Calendar JSONs are split per-year; `reports.html` loads all years via `calendar_index.json`
-- OHLCV data in per-day files under `dashboard/ohlcv/` (used by `candlestick.html` and `compute_mfe_mae.py`)
-- `candlestick.html`: LightweightCharts SVG overlay for trade markers (z-index layering)
+- OHLCV data in per-day files under `dashboard/ohlcv/` (used by `candlestick-chart.html` and `compute_mfe_mae.py`)
+- `candlestick-chart.html`: LightweightCharts SVG overlay for trade markers (z-index layering); always
+  rendered inside an iframe popup (`window.self !== window.top` gates its own nav/margin/auth-adjacent
+  logic) — day.html, trades.html, and watchlists.html each own an identical `.cdl-overlay` popup that
+  points the iframe at it with `?year=&month=&day=&symbol=` (optionally `&entry=&exit=`)
 - `day.html`: Chart.js intraday PnL chart
 - `reports.html` Monte Carlo: loss cap is `N × R` (clamps losses, does not exclude them); default 1.25R
 - Symbol pills show REAL PnL with green `rgb(11,98,71)` / red `rgb(140,31,31)`
@@ -136,8 +149,13 @@ python fetch_ohlcv.py
 # Compute MFE/MAE from cached OHLCV (run after fetch_ohlcv.py)
 python compute_mfe_mae.py
 
-# Pre-fetch daily OHLCV for watchlist callout symbols (run after adding new callouts)
+# Pre-fetch daily OHLCV for watchlist callouts + every symbol traded this year (runs
+# automatically as part of export.py; call directly to top up without a full export)
 python fetch_ohlcv_daily.py
+
+# Fetch daily OHLCV for any symbol on demand, callout or not (trailing ~2 weeks ending
+# today, or ending --date if given) — populates the candlestick popup's daily pane
+python fetch_ohlcv_daily.py --symbol AAPL [--date YYYY-MM-DD]
 ```
 
 ---
@@ -153,7 +171,7 @@ python ftp_dashboard.py
 This uploads the changed files to `tctrades.com` using the credentials in `.vscode/sftp.json`. The script accepts optional file paths to upload only specific files:
 
 ```bash
-python ftp_dashboard.py dashboard/candlestick.html dashboard/nav.js
+python ftp_dashboard.py dashboard/candlestick-chart.html dashboard/nav.js
 ```
 
 **Always run this after saving dashboard edits.** Do not skip it.

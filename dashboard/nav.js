@@ -1,6 +1,9 @@
 (function () {
   'use strict';
 
+  // Loaded inside an iframe (e.g. the candlestick popup on day.html) → skip the nav entirely.
+  if (window.self !== window.top) return;
+
   const COLLAPSED_W = 56;
   const EXPANDED_W  = 200;
 
@@ -28,7 +31,6 @@
     report:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>`,
     sim:   `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="16" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="16" r="1.2" fill="currentColor"/><circle cx="16" cy="16" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>`,
     trades:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>`,
-    exitplan:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 8.5 5-8.5 5-8.5-5z"/><path d="m3.5 12 8.5 5 8.5-5"/><path d="m3.5 17 8.5 5 8.5-5"/></svg>`,
     watchlist:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 3v2a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V3"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/></svg>`,
     left:  `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`,
     right: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`,
@@ -38,11 +40,10 @@
     { href: 'index.html',       label: 'Dashboard',   icon: I.home   },
     { href: 'month.html',       label: 'Month',        icon: I.month  },
     { href: 'day.html',         label: 'Day',           icon: I.day    },
+    { href: 'watchlists.html',  label: 'Watchlists',    icon: I.watchlist },
     { href: 'reports.html',     label: 'Reports',       icon: I.report },
     { href: 'trades.html',      label: 'Trades',        icon: I.trades },
-    { href: 'watchlists.html',  label: 'Watchlists',    icon: I.watchlist },
     { href: 'monte_carlo.html', label: 'Simulator',     icon: I.sim    },
-    { href: 'partial_exit_planner.html', label: 'Exit Planner', icon: I.exitplan },
   ];
 
   /* ── Styles ─────────────────────────────────────────── */
