@@ -470,39 +470,10 @@
     .stats-tab.active { color: #ffffff; background: #1a1a1a; border-color: #6366f1; }
 
 
-    /* ── Auth overlay ───────────────────────────────── */
-    .auth-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.88);
-      display: flex; align-items: center; justify-content: center; z-index: 9999;
-    }
-    .auth-card {
-      background: var(--bg-card); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--glass-border); border-radius: 10px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-      padding: 40px; text-align: center; width: 300px;
-    }
-    .auth-title { font-size: 18px; color: #fff; margin-bottom: 6px; }
-    .auth-sub   { color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
-    #authError  { color: #f87171; font-size: 12px; margin-top: 12px; min-height: 16px; }
   </style>
-  <script src="auth.js"></script>
 </head>
 <body>
 <script src="nav.js"></script>
-
-<div id="authOverlay" class="auth-overlay" style="display:none">
-  <div class="auth-card">
-    <div class="auth-title">TC Trade Journal</div>
-    <div class="auth-sub">Sign in to continue</div>
-    <div id="g_id_onload"
-      data-client_id="413954462899-jcup1smhjuh6londv3tcsmil17cog1vv.apps.googleusercontent.com"
-      data-callback="_verify"
-      data-auto_prompt="false"></div>
-    <div class="g_id_signin" data-type="standard" data-theme="filled_black"
-      data-size="large" data-shape="rectangular"></div>
-    <div id="authError"></div>
-  </div>
-</div>
 
 <div class="breadcrumb">
   <a href="index.html">Calendar</a>
@@ -1049,7 +1020,7 @@
     }
   }
 
-  initAuth(() => init());
+  init();
 </script>
 </body>
 </html>

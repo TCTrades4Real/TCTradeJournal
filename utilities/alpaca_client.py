@@ -23,10 +23,10 @@ _ET = ZoneInfo('America/New_York')
 
 # alpaca-py's own RESTClient already retries a 429 internally (3 attempts, fixed 3s wait)
 # before giving up and raising APIError with status_code=429 — fine for one isolated hit,
-# not enough when a batch fetch (backtesting.py's auto-fetch, fetch_ticks.py) burns through
-# many symbol/days back to back and the limit stays exhausted across several of those. This
-# wraps each actual network call with its own outer exponential-backoff retry on top, so a
-# sustained 429 gets waited out instead of surfacing as a skipped symbol/day after only ~9s.
+# not enough when a batch fetch burns through many symbol/days back to back and the limit
+# stays exhausted across several of those. This wraps each actual network call with its own
+# outer exponential-backoff retry on top, so a sustained 429 gets waited out instead of
+# surfacing as a skipped symbol/day after only ~9s.
 _BACKOFF_MAX_ATTEMPTS = 5
 _BACKOFF_BASE_SECONDS = 5.0
 _BACKOFF_MAX_SECONDS  = 60.0

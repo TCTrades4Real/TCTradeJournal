@@ -16,7 +16,6 @@ import json
 import os
 import sys
 import argparse
-import ftplib
 from datetime import datetime
 
 # Alpaca client — initialised once in main(), shared by fetch helpers
@@ -31,31 +30,6 @@ INDEX_PATH   = os.path.join(CAL_DIR, 'calendar_index.json')
 
 def day_path(date_str):
     return os.path.join(OHLCV_DIR, f'ohlcv_{date_str}.json')
-
-
-def ftp_upload(local_path):
-    """Upload a single file using credentials from .vscode/sftp.json."""
-    try:
-        import pathlib
-        cfg      = json.loads(pathlib.Path('.vscode/sftp.json').read_text())
-        host     = cfg['host']
-        port     = cfg.get('port', 21)
-        user     = cfg['username']
-        password = cfg['password']
-        remote   = cfg['remotePath'].rstrip('/')
-        filename = os.path.basename(local_path)
-        with ftplib.FTP() as ftp:
-            ftp.connect(host, port)
-            ftp.login(user, password)
-            try:
-                ftp.mkd(f'{remote}/ohlcv')
-            except ftplib.error_perm:
-                pass
-            with open(local_path, 'rb') as f:
-                ftp.storbinary(f'STOR {remote}/ohlcv/{filename}', f)
-        print(f'  [ftp] uploaded ohlcv/{filename}')
-    except Exception as e:
-        print(f'  [ftp error] {e}')
 
 
 def load_calendar_pairs():
@@ -230,7 +204,6 @@ def main():
             os.makedirs(OHLCV_DIR, exist_ok=True)
             with open(path, 'w') as f:
                 json.dump(day_cache, f, separators=(',', ':'))
-            ftp_upload(path)
 
     print(f'\nFetched: {fetched}  |  Skipped (cached): {skipped}  |  No data: {failed}')
 

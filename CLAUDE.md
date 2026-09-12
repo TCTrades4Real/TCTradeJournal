@@ -2,9 +2,19 @@
 
 ## Overview
 Day-trading journal. Pulls real trades from TradeZero (live account) and OHLCV price
-history from Alpaca, and renders a browser-based dashboard. Historical trades from a
-retired Schwab integration remain in `trade_data/*.csv` as frozen history — still parsed
-into the calendar on every run, just no longer added to going forward.
+history from Alpaca, and renders a browser-based dashboard. Runs entirely locally — no
+hosting involved. Historical trades from a retired Schwab integration remain in
+`trade_data/*.csv` as frozen history — still parsed into the calendar on every run, just
+no longer added to going forward.
+
+Dashboard pages fetch calendar/OHLCV JSON via relative paths, which Chrome/Edge block
+under `file://` (CORS). Serve locally instead:
+
+```bash
+cd dashboard
+python -m http.server 8000
+# then open http://localhost:8000/index.html
+```
 
 ---
 
@@ -50,15 +60,11 @@ Running `python import_tradezero.py` executes the entire pipeline in order:
    today's realized PnL) — non-fatal if it fails
 4. `fetch_ohlcv.py` → fetch/cache missing 1-min OHLCV bars (Alpaca)
 5. `compute_mfe_mae.py` → annotate roundtrips with MFE/MAE
-6. FTP upload the changed calendar JSONs + balance box (pass `--no-upload` to skip)
 
 **Known limitation:** TradeZero's `/orders` endpoint only returns *today's* orders — no
 working historical-range endpoint exists. `import_tradezero.py` must run same-day. It's
 safe to re-run later the same day: `calendar_data.py` always rebuilds the full calendar
 JSON from scratch, so re-running never double-counts.
-
-`fetch_ohlcv.py` uploads its own changed files to `tctrades.com` incrementally as it runs
-(independent of step 6 above).
 
 ---
 
@@ -68,7 +74,7 @@ JSON from scratch, so re-running never double-counts.
 2. **calendar_data.py** (`build_and_write`, called by import_tradezero.py) → `dashboard/calendar/calendar_data_YYYY.json`
 3. **fetch_ohlcv.py** → Alpaca API → `dashboard/ohlcv/ohlcv_YYYY-MM-DD.json`
 4. **compute_mfe_mae.py** → reads calendar + OHLCV → writes `mfe`/`mae` into calendar JSONs
-5. **Dashboard HTML files** → fetch calendar JSONs via relative paths (works on file:// and tctrades.com)
+5. **Dashboard HTML files** → fetch calendar JSONs via relative paths (served locally over `http://`, see Dashboard Notes)
 
 ---
 
@@ -106,11 +112,13 @@ python compute_mfe_mae.py --year 2026 # one year only
 
 ## Dashboard Notes
 
-- All HTML files are standalone — open directly as `file://`, no web server needed
+- All HTML files are standalone, but must be served over `http://` (not `file://`) —
+  Chrome/Edge block `fetch()` of local JSON under `file://`. Run `python -m http.server 8000`
+  from `dashboard/` and open `http://localhost:8000/index.html`
 - Calendar JSONs are split per-year; `reports.html` loads all years via `calendar_index.json`
 - OHLCV data in per-day files under `dashboard/ohlcv/` (used by `candlestick-chart.html` and `compute_mfe_mae.py`)
 - `candlestick-chart.html`: LightweightCharts SVG overlay for trade markers (z-index layering); always
-  rendered inside an iframe popup (`window.self !== window.top` gates its own nav/margin/auth-adjacent
+  rendered inside an iframe popup (`window.self !== window.top` gates its own nav/margin
   logic) — day.html and trades.html each own an identical `.cdl-overlay` popup that
   points the iframe at it with `?year=&month=&day=&symbol=` (optionally `&entry=&exit=`)
 - `candlestick-chart.html` symbol pills show one combined "MARGIN" value per symbol (no
@@ -125,7 +133,7 @@ python compute_mfe_mae.py --year 2026 # one year only
 ---
 
 ```bash
-# Full pipeline: fetch TradeZero trades → rebuild calendar → OHLCV → MFE/MAE → FTP deploy
+# Full pipeline: fetch TradeZero trades → rebuild calendar → OHLCV → MFE/MAE
 python import_tradezero.py
 
 # Calendar only (after manually dropping CSVs into trade_data/, no TradeZero fetch)
@@ -140,37 +148,12 @@ python compute_mfe_mae.py
 
 ---
 
-## Dashboard FTP Deploy
-
-After modifying any file in `dashboard/` (HTML, JS) — including `nav.js`, `auth.js`, and all `.html` pages — run:
-
-```bash
-python ftp_dashboard.py
-```
-
-This uploads the changed files to `tctrades.com` using the credentials in `.vscode/sftp.json`. The script accepts optional file paths to upload only specific files:
-
-```bash
-python ftp_dashboard.py dashboard/candlestick-chart.html dashboard/nav.js
-```
-
-Each upload is size-verified against the local file (with one retry) — a failed
-verification raises instead of silently reporting success.
-
-**Always run this after saving dashboard edits.** Do not skip it.
-
-`import_tradezero.py` uploads calendar JSONs and the account balance box itself (not via
-`ftp_dashboard.py`'s default file list) as the final pipeline step.
-
----
-
 ## External Integrations
 
 | Service | Purpose |
 |---------|---------|
 | TradeZero API | Live trade fetch (today's filled orders + account balance) |
 | Alpaca API (`alpaca-py`, SIP feed) | OHLCV price history (1-min + daily bars) |
-| HostGator FTP | Hosts tctrades.com dashboard |
 
 Schwab (`schwabdev`) and Tradervue export were retired — `trade_data/*.csv` from Schwab
 remains as frozen historical data, still parsed by `calendar_data.py` on every run.

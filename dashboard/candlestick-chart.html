@@ -434,21 +434,6 @@
     }
     .lp-clear:hover { color: var(--text-primary); border-color: var(--glass-border); }
 
-    /* ── Auth overlay ───────────────────────────────── */
-    .auth-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.88);
-      display: flex; align-items: center; justify-content: center; z-index: 9999;
-    }
-    .auth-card {
-      background: var(--bg-card); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--glass-border); border-radius: 10px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-      padding: 40px; text-align: center; width: 300px;
-    }
-    .auth-title { font-size: 18px; color: #fff; margin-bottom: 6px; }
-    .auth-sub   { color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
-    #authError  { color: #f87171; font-size: 12px; margin-top: 12px; min-height: 16px; }
-
     .chart-tf-label {
       position: absolute;
       bottom: 28px;
@@ -463,7 +448,6 @@
       pointer-events: none;
     }
   </style>
-  <script src="auth.js"></script>
 </head>
 <body>
 <script src="nav.js"></script>
@@ -475,20 +459,6 @@
     document.head.appendChild(s);
   })();
 </script>
-
-<div id="authOverlay" class="auth-overlay" style="display:none">
-  <div class="auth-card">
-    <div class="auth-title">TC Trade Journal</div>
-    <div class="auth-sub">Sign in to continue</div>
-    <div id="g_id_onload"
-      data-client_id="413954462899-jcup1smhjuh6londv3tcsmil17cog1vv.apps.googleusercontent.com"
-      data-callback="_verify"
-      data-auto_prompt="false"></div>
-    <div class="g_id_signin" data-type="standard" data-theme="filled_black"
-      data-size="large" data-shape="rectangular"></div>
-    <div id="authError"></div>
-  </div>
-</div>
 
 <div class="page-hdr">
 <div class="page-header">
@@ -509,8 +479,8 @@
 
 <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
   <div class="tf-selector" id="tfSelector" style="margin-bottom:0">
-    <button class="tf-btn" data-tf="1">1m</button>
-    <button class="tf-btn active" data-tf="2">2m</button>
+    <button class="tf-btn active" data-tf="1">1m</button>
+    <button class="tf-btn" data-tf="2">2m</button>
     <button class="tf-btn" data-tf="5">5m</button>
     <button class="tf-btn" data-tf="15">15m</button>
   </div>
@@ -539,10 +509,6 @@
     <div class="toggle-track on" id="realTradesToggleTrack"><div class="toggle-thumb"></div></div>
     <span id="realTradesToggleLabel">Real trades</span>
   </div>
-  <div class="toggle-wrap" id="btnBacktest" onclick="toggleBacktestTrades()">
-    <div class="toggle-track" id="backtestToggleTrack"><div class="toggle-thumb"></div></div>
-    <span id="backtestToggleLabel">Backtest trades</span>
-  </div>
 </div>
 <div id="longPosPanel">
   <span style="color:#6b7280">Qty</span>
@@ -552,11 +518,12 @@
 </div>
 
 <div class="chart-legend" id="chartLegend" style="display:none">
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(34,197,94)"></span> Buy</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(239,68,68)"></span> Sell (win)</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(249,115,22)"></span> Sell (loss)</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(76,29,149)"></span> Roth entry</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(196,181,253)"></span> Roth exit</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(34,197,94);border-radius:2px;transform:rotate(45deg)"></span> Entry</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(59,130,246);border-radius:2px;transform:rotate(45deg)"></span> Partial exit</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(249,115,22);border-radius:2px;transform:rotate(45deg)"></span> Exit (win)</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(239,68,68);border-radius:2px;transform:rotate(45deg)"></span> Exit (loss)</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(76,29,149);border-radius:2px;transform:rotate(45deg)"></span> Roth entry</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(196,181,253);border-radius:2px;transform:rotate(45deg)"></span> Roth exit</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(22,26,52);border:1px solid #2e3248"></span> Pre-market</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(22,26,52);border:1px solid #2e3248"></span> After-hours</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(128,255,255)"></span> 9 EMA</span>
@@ -565,9 +532,6 @@
   <span class="legend-item"><span class="legend-dot" style="background:rgb(246,197,72)"></span> VWAP</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(33,150,243)"></span> MACD (9,12,9)</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(255,152,0)"></span> Signal (9)</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(59,130,246);border-radius:2px;transform:rotate(45deg)"></span> Backtest entry</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(34,197,94);border-radius:2px;transform:rotate(45deg)"></span> Backtest exit (win)</span>
-  <span class="legend-item"><span class="legend-dot" style="background:rgb(244,63,94);border-radius:2px;transform:rotate(45deg)"></span> Backtest exit (loss)</span>
 </div>
 
 <div class="chart-outer" id="chartOuter">
@@ -602,7 +566,7 @@
   let markerCleanup   = null;
   let execMarkersOn   = true;
   let activeSymbol    = null;
-  let activeInterval  = 2;      // current timeframe in minutes
+  let activeInterval  = 1;      // current timeframe in minutes
   let rawCandles      = null;   // 1m candles for active symbol
   let activeExecs       = [];     // executions for active symbol
   let ohlcvCache        = {};     // loaded from ohlcv_YYYY-MM-DD.json
@@ -620,10 +584,6 @@
   let activeBars   = null;        // aggregated bars at current timeframe (for snap)
 
   let allSymbolExecs  = [];       // all execs for current symbol
-
-  let backtestTradesOn    = false;  // [Backtest trades] toggle state
-  let backtestYearCache   = {};     // year -> parsed backtest_trades_YYYY.json (or null if missing)
-  let backtestMarkerCleanup = null;
 
   function displayExecs() { return activeExecs; }
 
@@ -1332,200 +1292,17 @@
 
   /* ── SVG execution markers ───────────────────────── */
   // Returns a cleanup function. Caller is responsible for calling previous cleanup and storing the new one.
-  function triangleColor(ex, tradePnl) {
-    const isRoth = (ex.account || '').toLowerCase().includes('roth');
-    if (isRoth) return ex.side === 'buy' ? 'rgb(76,29,149)' : 'rgb(196,181,253)';
-    if (ex.side === 'buy') return 'rgb(34,197,94)';
-    return tradePnl >= 0 ? 'rgb(239,68,68)' : 'rgb(249,115,22)';
-  }
-  function trianglePoints(x, y, r, isBuy) {
-    return isBuy
-      ? `${x},${y - r} ${x - r * 0.866},${y + r * 0.5} ${x + r * 0.866},${y + r * 0.5}`
-      : `${x},${y + r} ${x - r * 0.866},${y - r * 0.5} ${x + r * 0.866},${y - r * 0.5}`;
+  // role: 'entry' (opening side of the round-trip), 'partial' (interim closing fill),
+  // or 'exit' (the fill that flattens the position).
+  function realTradeColor(role, tradePnl, isRoth) {
+    if (isRoth) return role === 'entry' ? 'rgb(76,29,149)' : 'rgb(196,181,253)';
+    if (role === 'entry')   return 'rgb(34,197,94)';
+    if (role === 'partial') return 'rgb(59,130,246)';
+    return tradePnl >= 0 ? 'rgb(249,115,22)' : 'rgb(239,68,68)';
   }
 
-  /* ── SVG backtest-trade markers ──────────────────── */
-  // Same rendering approach as renderExecMarkers, but sourced from the
-  // dashboard/backtest/backtest_trades_YYYY.json export instead of live executions,
-  // and drawn as diamonds so they read as distinct from real fills at a glance.
-  // Returns a cleanup function, or null if nothing to draw.
   function diamondPoints(x, y, r) {
     return `${x},${y - r} ${x + r},${y} ${x},${y + r} ${x - r},${y}`;
-  }
-
-  function renderBacktestMarkers(trades, timeMap, barsTimeMap, ctx) {
-    const chartInst   = ctx?.chartInst   ?? chartInstance;
-    const seriesRef   = ctx?.seriesRef   ?? candleSeriesRef;
-    const containerId = ctx?.containerId ?? 'chartMain';
-    const dotTipEl    = ctx?.dotTipEl    ?? document.getElementById('dotTooltip');
-
-    if (!trades?.length || !chartInst || !seriesRef) return null;
-
-    const resolved = [];
-    for (const t of trades) {
-      const entryTs    = execToTimestamp(t.entry_time, timeMap);
-      const entryTsBar = execToTimestamp(t.entry_time, barsTimeMap || timeMap);
-      const exitTs     = execToTimestamp(t.exit_time,  timeMap);
-      const exitTsBar  = execToTimestamp(t.exit_time,  barsTimeMap || timeMap);
-      if (entryTs == null || entryTsBar == null || exitTs == null || exitTsBar == null) continue;
-
-      const partials = [];
-      for (const p of (t.partials || [])) {
-        const pTs    = execToTimestamp(p.time, timeMap);
-        const pTsBar = execToTimestamp(p.time, barsTimeMap || timeMap);
-        if (pTs == null || pTsBar == null) continue;
-        partials.push({ partial: p, pTs, pTsBar });
-      }
-
-      resolved.push({ trade: t, entryTs, entryTsBar, exitTs, exitTsBar, partials });
-    }
-    if (!resolved.length) return null;
-
-    const container = document.getElementById(containerId);
-    container.style.position = 'relative';
-
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.id = 'backtestMarkersSvg';
-    svg.setAttribute('style',
-      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:5;');
-    container.appendChild(svg);
-
-    const ENTRY_COLOR   = 'rgb(59,130,246)';
-    const WIN_COLOR     = 'rgb(34,197,94)';
-    const LOSS_COLOR    = 'rgb(244,63,94)';
-    const PARTIAL_COLOR = 'rgb(245,158,11)';
-
-    function calcRadius() {
-      try {
-        const spacing = chartInst.timeScale().options().barSpacing;
-        return Math.min(Math.max(spacing * 0.2, 7), 14);
-      } catch (_) { return 4; }
-    }
-
-    function addDiamond(x, y, r, color, onHover) {
-      const el = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      el.setAttribute('points', diamondPoints(x, y, r));
-      el.setAttribute('fill', color);
-      el.setAttribute('stroke', 'rgba(255,255,255,0.7)');
-      el.setAttribute('stroke-width', '1');
-      el.style.pointerEvents = 'all';
-      el.style.cursor = 'crosshair';
-      el.addEventListener('mouseenter', e => {
-        dotTipEl.innerHTML = onHover();
-        dotTipEl.style.display = 'block';
-        dotTipEl.style.left = (e.clientX + 14) + 'px';
-        dotTipEl.style.top  = (e.clientY - 36) + 'px';
-      });
-      el.addEventListener('mousemove', e => {
-        dotTipEl.style.left = (e.clientX + 14) + 'px';
-        dotTipEl.style.top  = (e.clientY - 36) + 'px';
-      });
-      el.addEventListener('mouseleave', () => { dotTipEl.style.display = 'none'; });
-      svg.appendChild(el);
-    }
-
-    function redraw() {
-      while (svg.firstChild) svg.removeChild(svg.firstChild);
-      if (!chartInst || !seriesRef) return;
-      const timeScale = chartInst.timeScale();
-      const r = calcRadius();
-
-      for (const m of resolved) {
-        const t   = m.trade;
-        const win = t.pnl >= 0;
-
-        const ex = timeScale.timeToCoordinate(m.entryTsBar);
-        const ey = seriesRef.priceToCoordinate(t.entry);
-        const xx = timeScale.timeToCoordinate(m.exitTsBar);
-        const xy = seriesRef.priceToCoordinate(t.exit);
-
-        if (ex != null && ey != null && xx != null && xy != null) {
-          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          line.setAttribute('x1', ex); line.setAttribute('y1', ey);
-          line.setAttribute('x2', xx); line.setAttribute('y2', xy);
-          line.setAttribute('stroke', win ? WIN_COLOR : LOSS_COLOR);
-          line.setAttribute('stroke-width', '1');
-          line.setAttribute('stroke-dasharray', '3,3');
-          line.setAttribute('opacity', '0.55');
-          svg.appendChild(line);
-        }
-
-        if (ex != null && ey != null) {
-          addDiamond(ex, ey, r, ENTRY_COLOR, () =>
-            `<span style="color:${ENTRY_COLOR};font-weight:600">BACKTEST ENTRY</span>&nbsp;&nbsp;$${t.entry.toFixed(4)}<br>` +
-            `<span style="color:#6b7280;font-size:11px">${tsToET(m.entryTs)} &middot; ${t.shares} sh &middot; stop $${t.stop.toFixed(4)}</span>`);
-        }
-        if (xx != null && xy != null) {
-          const color = win ? WIN_COLOR : LOSS_COLOR;
-          addDiamond(xx, xy, r, color, () =>
-            `<span style="color:${color};font-weight:600">BACKTEST EXIT</span>&nbsp;&nbsp;$${t.exit.toFixed(4)}<br>` +
-            `<span style="color:#6b7280;font-size:11px">${tsToET(m.exitTs)} &middot; ${t.exit_reason} &middot; ${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)}</span>`);
-        }
-
-        for (const pm of m.partials) {
-          const px = timeScale.timeToCoordinate(pm.pTsBar);
-          const py = seriesRef.priceToCoordinate(pm.partial.price);
-          if (px == null || py == null) continue;
-          addDiamond(px, py, r * 0.65, PARTIAL_COLOR, () =>
-            `<span style="color:${PARTIAL_COLOR};font-weight:600">PARTIAL EXIT</span>&nbsp;&nbsp;$${pm.partial.price.toFixed(4)}<br>` +
-            `<span style="color:#6b7280;font-size:11px">${tsToET(pm.pTs)} &middot; ${pm.partial.shares} sh</span>`);
-        }
-      }
-    }
-
-    redraw();
-    requestAnimationFrame(redraw);
-    chartInst.timeScale().subscribeVisibleLogicalRangeChange(redraw);
-    try { chartInst.priceScale('right').subscribeVisiblePriceRangeChange(redraw); } catch (_) {}
-
-    return () => {
-      try { chartInst.timeScale().unsubscribeVisibleLogicalRangeChange(redraw); } catch (_) {}
-      try { chartInst.priceScale('right').unsubscribeVisiblePriceRangeChange(redraw); } catch (_) {}
-      svg.remove();
-    };
-  }
-
-  /* ── Backtest trades toggle ──────────────────────── */
-  async function loadBacktestYear(year) {
-    if (year in backtestYearCache) return backtestYearCache[year];
-    try {
-      const r = await fetch(`backtest/backtest_trades_${year}.json`);
-      backtestYearCache[year] = r.ok ? await r.json() : null;
-    } catch (_) {
-      backtestYearCache[year] = null;
-    }
-    return backtestYearCache[year];
-  }
-
-  function getActiveBacktestTrades() {
-    const yearData = backtestYearCache[curYear];
-    if (!yearData?.trades?.length || !activeSymbol) return [];
-    const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
-    return yearData.trades.filter(t => t.symbol === activeSymbol && t.date === dateStr);
-  }
-
-  function redrawBacktestMarkers() {
-    if (backtestMarkerCleanup) { backtestMarkerCleanup(); backtestMarkerCleanup = null; }
-    if (!backtestTradesOn || !rawCandles || !chartInstance || !candleSeriesRef) return;
-
-    const trades = getActiveBacktestTrades();
-    const label  = document.getElementById('backtestToggleLabel');
-    if (label) label.textContent = `Backtest trades${trades.length ? ` (${trades.length})` : ''}`;
-    if (!trades.length) return;
-
-    const timeMap     = buildTimeMap(rawCandles);
-    const barsTimeMap = buildTimeMap(activeBars || rawCandles);
-    backtestMarkerCleanup = renderBacktestMarkers(trades, timeMap, barsTimeMap, {
-      chartInst: chartInstance, seriesRef: candleSeriesRef,
-      containerId: 'chartMain', dotTipEl: document.getElementById('dotTooltip'),
-    });
-  }
-
-  async function toggleBacktestTrades() {
-    backtestTradesOn = !backtestTradesOn;
-    document.getElementById('backtestToggleTrack').classList.toggle('on', backtestTradesOn);
-    if (backtestTradesOn) await loadBacktestYear(curYear);
-    redrawBacktestMarkers();
   }
 
   function renderExecMarkers(executions, timeMap, barsTimeMap, ctx) {
@@ -1555,25 +1332,48 @@
       'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:5;');
     container.appendChild(svg);
 
-    // Build map: exec key → trade PnL
-    const execTradePnl = new Map();
+    // Build map: exec key → { role, pnl } describing its part in the round-trip.
+    // A round-trip's opening side (whichever side the group starts on) are entries;
+    // the fill that flattens the position is the exit; anything else closing is a partial.
+    // tradeLines: one dotted connector per closed round-trip, from its first entry
+    // to its final exit.
+    const execRole  = new Map();
+    const tradeLines = [];
     for (const trade of activeTrades) {
-      let buyCost = 0, sellRev = 0;
+      if (!trade.length) continue;
+      const openSide = trade[0].side;
+      let buyCost = 0, sellRev = 0, netPos = 0;
       for (const ex of trade) {
-        if (ex.side === 'buy')  buyCost  += ex.qty * ex.price;
-        else                    sellRev  += ex.qty * ex.price;
+        if (ex.side === 'buy') { buyCost += ex.qty * ex.price; netPos += ex.qty; }
+        else                   { sellRev += ex.qty * ex.price; netPos -= ex.qty; }
       }
-      const pnl = sellRev - buyCost;
-      for (const ex of trade) {
+      const pnl    = sellRev - buyCost;
+      const closed = Math.abs(netPos) < 0.001;
+      const lastIdx = trade.length - 1;
+      trade.forEach((ex, i) => {
         const ts = execToTimestamp(ex.time, timeMap);
-        if (ts != null) execTradePnl.set(`${ts}_${ex.side}_${ex.price}`, pnl);
+        if (ts == null) return;
+        const role = ex.side === openSide ? 'entry' : (closed && i === lastIdx ? 'exit' : 'partial');
+        execRole.set(`${ts}_${ex.side}_${ex.price}`, { role, pnl });
+      });
+
+      if (closed && trade.length > 1) {
+        const first = trade[0], last = trade[lastIdx];
+        const firstTsBar = execToTimestamp(first.time, posMap);
+        const lastTsBar  = execToTimestamp(last.time,  posMap);
+        if (firstTsBar != null && lastTsBar != null) {
+          tradeLines.push({
+            firstTsBar, firstPrice: first.price, lastTsBar, lastPrice: last.price,
+            pnl, isRoth: (first.account || '').toLowerCase().includes('roth'),
+          });
+        }
       }
     }
 
     function calcRadius() {
       try {
         const spacing = chartInst.timeScale().options().barSpacing;
-        return Math.min(Math.max(spacing * 0.22, 8), 16);
+        return Math.min(Math.max(spacing * 0.18, 6), 13);
       } catch (_) { return 4; }
     }
 
@@ -1583,15 +1383,33 @@
       const timeScale = chartInst.timeScale();
       const r = calcRadius();
 
+      for (const tl of tradeLines) {
+        const x1 = timeScale.timeToCoordinate(tl.firstTsBar);
+        const y1 = seriesRef.priceToCoordinate(tl.firstPrice);
+        const x2 = timeScale.timeToCoordinate(tl.lastTsBar);
+        const y2 = seriesRef.priceToCoordinate(tl.lastPrice);
+        if (x1 == null || y1 == null || x2 == null || y2 == null) continue;
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+        line.setAttribute('stroke', realTradeColor('exit', tl.pnl, tl.isRoth));
+        line.setAttribute('stroke-width', '1');
+        line.setAttribute('stroke-dasharray', '3,3');
+        line.setAttribute('opacity', '0.55');
+        svg.appendChild(line);
+      }
+
       for (const m of resolved) {
         const x = timeScale.timeToCoordinate(m.tsBar);
         const y = seriesRef.priceToCoordinate(m.price);
         if (x == null || y == null) continue;
 
-        const tradePnl = execTradePnl.get(`${m.ts}_${m.side}_${m.price}`) ?? 0;
-        const color  = triangleColor(m, tradePnl);
-        const isBuy  = m.side === 'buy';
-        const pts    = trianglePoints(x, y, r, isBuy);
+        const isRoth = (m.account || '').toLowerCase().includes('roth');
+        const info   = execRole.get(`${m.ts}_${m.side}_${m.price}`) || { role: m.side === 'buy' ? 'entry' : 'exit', pnl: 0 };
+        const color  = realTradeColor(info.role, info.pnl, isRoth);
+        const rad    = info.role === 'partial' ? r * 0.75 : r;
+        const pts    = diamondPoints(x, y, rad);
         const dot = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
         dot.setAttribute('points', pts);
         dot.setAttribute('fill', color);
@@ -1601,11 +1419,12 @@
         dot.style.cursor = 'crosshair';
 
         const sideLabel = m.side === 'buy' ? 'BUY' : 'SELL';
+        const roleLabel = info.role === 'entry' ? 'ENTRY' : info.role === 'partial' ? 'PARTIAL EXIT' : 'EXIT';
         const timeStr   = tsToET(m.ts);
         dot.addEventListener('mouseenter', e => {
           dotTipEl.innerHTML =
-            `<span style="color:${color};font-weight:600">${sideLabel}</span>&nbsp;&nbsp;$${m.price.toFixed(2)}<br>` +
-            `<span style="color:#6b7280;font-size:11px">${timeStr}</span>`;
+            `<span style="color:${color};font-weight:600">${roleLabel}</span>&nbsp;&nbsp;$${m.price.toFixed(2)}<br>` +
+            `<span style="color:#6b7280;font-size:11px">${sideLabel} &middot; ${timeStr}</span>`;
           dotTipEl.style.display = 'block';
           dotTipEl.style.left = (e.clientX + 14) + 'px';
           dotTipEl.style.top  = (e.clientY - 36) + 'px';
@@ -1795,7 +1614,6 @@
     if (rulerState.subCleanup) { rulerState.subCleanup(); rulerState.subCleanup = null; }
     if (rulerState.svg)        { rulerState.svg.remove();  rulerState.svg        = null; }
     if (markerCleanup)    { markerCleanup();    markerCleanup    = null; }
-    if (backtestMarkerCleanup) { backtestMarkerCleanup(); backtestMarkerCleanup = null; }
     if (chartInstance) { chartInstance.remove(); chartInstance = null; }
     candleSeriesRef = null;
 
@@ -2044,7 +1862,6 @@
         containerId: 'chartMain', dotTipEl: document.getElementById('dotTooltip'),
       });
     }
-    redrawBacktestMarkers();
 
     // Restore previous zoom or zoom to exec span
     if (savedRange) {
@@ -2130,25 +1947,13 @@
   }
 
   /* ── Render symbol pills ─────────────────────────── */
-  async function renderPills(symbols, defaultSym, dayData) {
+  function renderPills(symbols, defaultSym, dayData) {
     const container = document.getElementById('symPills');
     container.innerHTML = '';
-
-    const dateStr = `${curYear}-${String(curMonth).padStart(2,'0')}-${String(curDay).padStart(2,'0')}`;
-
-    // Backtest (SIM) P&L for this day, keyed by symbol
-    const btYear = await loadBacktestYear(curYear);
-    const simPnlBySymbol = {};
-    for (const t of (btYear?.trades || [])) {
-      if (t.date !== dateStr) continue;
-      simPnlBySymbol[t.symbol] = (simPnlBySymbol[t.symbol] || 0) + t.pnl;
-    }
 
     // Day pill
     const dayPnl = Object.values(symbols).reduce((s, sd) => s + (sd.pnl || 0), 0);
     const dayCls = dayPnl > 0 ? 'pos' : dayPnl < 0 ? 'neg' : 'zero';
-    const daySimPnl = Object.values(simPnlBySymbol).reduce((s, v) => s + v, 0);
-    const daySimCls = daySimPnl > 0 ? 'pos' : daySimPnl < 0 ? 'neg' : 'zero';
     const dayPill = document.createElement('div');
     dayPill.className = 'sym-pill';
     dayPill.style.cssText = 'cursor:default;border-color:transparent;background:transparent;color:#ffffff;width:fit-content;flex-shrink:0;';
@@ -2156,7 +1961,6 @@
       <span class="sym-pill-name">Day</span>
       <span class="sym-pill-stack">
         <span class="pill-sub ${dayCls}"><span class="pill-sub-label">CASH</span>${fmtPnl(dayPnl)}</span>
-        <span class="pill-sub ${daySimCls}"><span class="pill-sub-label">SIM</span>${fmtPnl(daySimPnl)}</span>
       </span>`;
     container.appendChild(dayPill);
 
@@ -2173,13 +1977,10 @@
       pill.dataset.sym = sym;
       pill.dataset.pnl = sd.pnl;
       const cls = sd.pnl > 0 ? 'pos' : sd.pnl < 0 ? 'neg' : 'zero';
-      const symSimPnl = simPnlBySymbol[sym] || 0;
-      const clsSim = symSimPnl > 0 ? 'pos' : symSimPnl < 0 ? 'neg' : 'zero';
       pill.innerHTML = `
         <span class="sym-pill-name">${sym}</span>
         <span class="sym-pill-stack">
           <span class="pill-sub ${cls}"><span class="pill-sub-label">CASH</span>${fmtPnl(sd.pnl || 0)}</span>
-          <span class="pill-sub ${clsSim}"><span class="pill-sub-label">SIM</span>${fmtPnl(symSimPnl)}</span>
         </span>`;
 
       pill.onclick = () => loadSymbol(sym, dayData);
@@ -2392,7 +2193,7 @@
 
       const symbols  = dayData.symbols;
       const firstSym = (paramSym && symbols[paramSym]) ? paramSym : Object.keys(symbols)[0];
-      await renderPills(symbols, firstSym, dayData);
+      renderPills(symbols, firstSym, dayData);
     } catch (err) {
       showError(
         `Error loading data: ${err.message}`,
@@ -2425,7 +2226,7 @@
     fitChartHeight();
   }
 
-  initAuth(() => init());
+  init();
 </script>
 
 </body>

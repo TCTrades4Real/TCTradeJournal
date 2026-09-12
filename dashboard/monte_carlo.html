@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simulator — TC Trade Journal</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="auth.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -718,12 +717,6 @@
             display: block;
         }
 
-        /* ── Auth overlay ── */
-        .auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:9999;}
-        .auth-card{background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:40px;text-align:center;width:300px;}
-        .auth-title{font-size:18px;color:#fff;margin-bottom:6px;}
-        .auth-sub{color:#9ca3af;font-size:13px;margin-bottom:24px;}
-        #authError{color:#f87171;font-size:12px;margin-top:12px;min-height:16px;}
         /* ── Breadcrumb ── */
         .breadcrumb{display:flex;align-items:center;gap:6px;font-size:13px;color:#9ca3af;margin-bottom:14px;}
         .breadcrumb a{color:#9ca3af;text-decoration:none;transition:color 0.15s;}
@@ -968,20 +961,6 @@
 </head>
 <body>
     <script src="nav.js"></script>
-
-    <div id="authOverlay" class="auth-overlay" style="display:none">
-      <div class="auth-card">
-        <div class="auth-title">TC Trade Journal</div>
-        <div class="auth-sub">Sign in to continue</div>
-        <div id="g_id_onload"
-          data-client_id="413954462899-jcup1smhjuh6londv3tcsmil17cog1vv.apps.googleusercontent.com"
-          data-callback="_verify"
-          data-auto_prompt="false"></div>
-        <div class="g_id_signin" data-type="standard" data-theme="filled_black"
-          data-size="large" data-shape="rectangular"></div>
-        <div id="authError"></div>
-      </div>
-    </div>
 
     <div class="breadcrumb">
       <a href="index.html">Dashboard</a>
@@ -2316,7 +2295,7 @@
           });
         }
 
-        initAuth(() => pageInit());
+        pageInit();
     </script>
 </body>
 </html>

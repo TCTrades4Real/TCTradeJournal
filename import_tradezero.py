@@ -13,8 +13,7 @@ the same day is safe: calendar_data.py always rebuilds the full calendar JSON fr
 scratch, so this never double-counts.
 
 Usage:
-    python import_tradezero.py             # fetch, merge, rebuild calendar JSONs, FTP upload
-    python import_tradezero.py --no-upload # skip the FTP upload step
+    python import_tradezero.py             # fetch, merge, rebuild calendar JSONs
 """
 import sys
 import os
@@ -115,7 +114,6 @@ def normalize(orders):
 
 def main():
     parser = argparse.ArgumentParser(description='Import TradeZero live trades into the calendar JSONs')
-    parser.add_argument('--no-upload', action='store_true', help='Skip the FTP upload step (uploads by default)')
     args = parser.parse_args()
 
     client = build_live_client()
@@ -138,7 +136,7 @@ def main():
     print(f'  {len(schwab_execs)} Schwab executions')
 
     executions = sorted(schwab_execs + tz_execs, key=lambda x: x['dt'])
-    written = cal.build_and_write(executions)
+    cal.build_and_write(executions)
 
     try:
         tz_daily_roundtrips, _, _ = cal.compute_daily_details(tz_execs)
@@ -148,7 +146,6 @@ def main():
         with open(balance_path, 'w') as f:
             json.dump({'balance': account.get('equity') if account else None,
                        'pnl_today': pnl_today}, f)
-        written.append(balance_path)
         print(f"\nAccount balance: ${account.get('equity'):,.2f}  (today PnL: ${pnl_today:+,.2f})"
               if account else '\nWarning: could not find TZ live account in accounts list')
     except Exception as e:
@@ -158,10 +155,6 @@ def main():
     subprocess.run([sys.executable, 'fetch_ohlcv.py'], check=True, cwd=_HERE)
     if os.path.exists(os.path.join(_HERE, 'compute_mfe_mae.py')):
         subprocess.run([sys.executable, 'compute_mfe_mae.py'], check=True, cwd=_HERE)
-
-    if not args.no_upload:
-        print('\nUploading changed calendar files...')
-        subprocess.run([sys.executable, 'ftp_dashboard.py'] + written, check=True, cwd=_HERE)
 
 
 if __name__ == '__main__':

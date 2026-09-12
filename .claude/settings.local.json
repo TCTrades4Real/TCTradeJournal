@@ -6,7 +6,8 @@
       "Bash(python _stop_optimize.py)",
       "Bash(python _trade_features.py)",
       "Bash(python _entry_filter_sim.py)",
-      "PowerShell($raw = Get-Content \"c:\\\\Users\\\\iamtc\\\\Documents\\\\DayTrading\\\\GitHub\\\\TCTradeJournal\\\\dashboard\\\\calendar\\\\calendar_data_2026.json\" -Raw; $json = $raw | ConvertFrom-Json; $may = $json.\"2026\".\"5\"; $may.days | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name | Sort-Object {[int]$_})"
+      "PowerShell($raw = Get-Content \"c:\\\\Users\\\\iamtc\\\\Documents\\\\DayTrading\\\\GitHub\\\\TCTradeJournal\\\\dashboard\\\\calendar\\\\calendar_data_2026.json\" -Raw; $json = $raw | ConvertFrom-Json; $may = $json.\"2026\".\"5\"; $may.days | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name | Sort-Object {[int]$_})",
+      "Read(//c/Users/iamtc/AppData/Local/Temp/icon_preview/**)"
     ]
   }
 }
