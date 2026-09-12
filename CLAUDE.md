@@ -1,67 +1,74 @@
 # TCTradeJournal — Project Guide
 
 ## Overview
-Day-trading journal. Pulls real trades from Schwab and renders a browser-based dashboard.
+Day-trading journal. Pulls real trades from TradeZero (live account) and OHLCV price
+history from Alpaca, and renders a browser-based dashboard. Historical trades from a
+retired Schwab integration remain in `trade_data/*.csv` as frozen history — still parsed
+into the calendar on every run, just no longer added to going forward.
 
 ---
 
 ## Architecture
 
 ```
-export.py            → fetch Schwab executions → write trade_data/ CSVs
-                       → auto-runs full pipeline (see Pipeline section)
+import_tradezero.py  → fetch today's filled TradeZero live orders
+                       → merge with historical Schwab CSVs in trade_data/
+                       → calendar_data.py's build_and_write() → dashboard/calendar/calendar_data_YYYY.json
+                       → write dashboard/account_balance.json (TZ live equity + today's PnL)
+                       → auto-runs the rest of the pipeline (see Pipeline section)
 
-calendar_data.py     → parse trade_data/ CSVs
+calendar_data.py     → parse trade_data/ CSVs (+ executions handed in by import_tradezero.py)
                        → write dashboard/calendar/calendar_data_YYYY.json (per-year)
                        → write dashboard/calendar/calendar_index.json
 
-fetch_ohlcv.py       → pre-fetch 1-min OHLCV from Schwab (~10 days of history)
+fetch_ohlcv.py       → pre-fetch 1-min OHLCV from Alpaca (SIP feed, years of history)
                        → write dashboard/ohlcv/ohlcv_YYYY-MM-DD.json (per-day)
 
 compute_mfe_mae.py   → reads per-year calendar JSONs + per-day OHLCV
                        → adds mfe/mae fields to each roundtrip in calendar JSONs
-
-fetch_ohlcv_daily.py → pre-fetch daily OHLCV for watchlist callout symbols + every symbol
-                       traded this year (part of the export.py pipeline; also runnable
-                       standalone, e.g. after adding callouts or for an ad-hoc symbol)
-                       → write dashboard/ohlcv_daily/SYMBOL.json
 
 dashboard/
   index.html         → monthly calendar view
   month.html         → monthly PnL grid
   day.html           → daily symbol table + intraday chart
   candlestick-chart.html → per-symbol candlestick chart + trade markers; not a page of its own —
-                       loaded in an iframe popup by day.html, trades.html, and watchlists.html
+                       loaded in an iframe popup by day.html and trades.html
   reports.html       → trading stats, equity curves, MFE/MAE analysis, Monte Carlo
   trades.html        → trade log
-  watchlists.html    → catalog of a trader's watchlist callouts + setup playbook stats
-  api/setups.php     → write endpoint for watchlists.html (cross-device sync)
 ```
 
 ---
 
-## Full Pipeline (export.py)
+## Full Pipeline (import_tradezero.py)
 
-Running `python export.py` executes the entire pipeline in order:
+Running `python import_tradezero.py` executes the entire pipeline in order:
 
-1. Fetch Schwab executions → write `trade_data/` CSVs
-2. `calendar_data.py` → write per-year calendar JSONs
-3. `fetch_ohlcv.py` → fetch/cache missing 1-min OHLCV bars
-4. `fetch_ohlcv_daily.py` → fetch/cache daily OHLCV for callout symbols + every symbol traded
-   this year (skips whatever's already cached)
+1. Fetch today's filled TradeZero live orders, tag them `account="TZLive"`
+2. Merge with historical Schwab executions read from `trade_data/` CSVs, rebuild the
+   calendar via `calendar_data.build_and_write()` → per-year calendar JSONs
+3. Write `dashboard/account_balance.json` from the TradeZero live account (equity +
+   today's realized PnL) — non-fatal if it fails
+4. `fetch_ohlcv.py` → fetch/cache missing 1-min OHLCV bars (Alpaca)
 5. `compute_mfe_mae.py` → annotate roundtrips with MFE/MAE
-6. FTP upload all calendar JSONs, changed OHLCV files, and all dashboard HTML/JS to tctrades.com
+6. FTP upload the changed calendar JSONs + balance box (pass `--no-upload` to skip)
+
+**Known limitation:** TradeZero's `/orders` endpoint only returns *today's* orders — no
+working historical-range endpoint exists. `import_tradezero.py` must run same-day. It's
+safe to re-run later the same day: `calendar_data.py` always rebuilds the full calendar
+JSON from scratch, so re-running never double-counts.
+
+`fetch_ohlcv.py` uploads its own changed files to `tctrades.com` incrementally as it runs
+(independent of step 6 above).
 
 ---
 
 ## Data Flow
 
-1. **export.py** → Schwab API → `trade_data/YYYY-MM-DD-AccountStatement.csv`
-2. **calendar_data.py** → reads all CSVs → `dashboard/calendar/calendar_data_YYYY.json`
-3. **fetch_ohlcv.py** → Schwab API → `dashboard/ohlcv/ohlcv_YYYY-MM-DD.json`
-4. **fetch_ohlcv_daily.py** → Schwab API → `dashboard/ohlcv_daily/SYMBOL.json`
-5. **compute_mfe_mae.py** → reads calendar + OHLCV → writes `mfe`/`mae` into calendar JSONs
-6. **Dashboard HTML files** → fetch calendar JSONs via relative paths (works on file:// and tctrades.com)
+1. **import_tradezero.py** → TradeZero API → merged with `trade_data/YYYY-MM-DD-{Cash|Roth}-AccountStatement.csv` (historical Schwab, frozen)
+2. **calendar_data.py** (`build_and_write`, called by import_tradezero.py) → `dashboard/calendar/calendar_data_YYYY.json`
+3. **fetch_ohlcv.py** → Alpaca API → `dashboard/ohlcv/ohlcv_YYYY-MM-DD.json`
+4. **compute_mfe_mae.py** → reads calendar + OHLCV → writes `mfe`/`mae` into calendar JSONs
+5. **Dashboard HTML files** → fetch calendar JSONs via relative paths (works on file:// and tctrades.com)
 
 ---
 
@@ -69,13 +76,13 @@ Running `python export.py` executes the entire pipeline in order:
 
 | File | Purpose |
 |------|---------|
-| `utilities/config.py` | Schwab API keys, account hash, Tradervue creds |
+| `utilities/config.py` | TradeZero API keys (paper + live), Alpaca API keys, Tradervue creds, legacy Schwab fields (unused, kept harmlessly) |
+| `utilities/tradezero_client.py` | Thin TradeZero REST client — `get_orders()` (today only), `get_account()` |
+| `utilities/alpaca_client.py` | Thin wrapper around alpaca-py's `StockHistoricalDataClient` — `get_minute_bars()`, `get_daily_bars()` |
 | `dashboard/calendar/calendar_index.json` | List of available years |
-| `dashboard/calendar/calendar_data_YYYY.json` | Per-year roundtrips with mfe/mae, daily PnL |
+| `dashboard/calendar/calendar_data_YYYY.json` | Per-year roundtrips with mfe/mae, daily PnL, `account` field (`Cash`/`Roth` = historical Schwab, `TZLive` = TradeZero) |
 | `dashboard/ohlcv/ohlcv_YYYY-MM-DD.json` | Per-day 1-min OHLCV cache `{SYMBOL: [bars...]}` |
-| `dashboard/ohlcv/.uploaded` | Manifest of OHLCV files already FTP'd (skips re-upload) |
-| `dashboard/ohlcv_daily/SYMBOL.json` | Per-symbol daily OHLCV cache for the candlestick popup's daily pane — covers watchlist callouts + every symbol traded this year (array of bars, `time` as `YYYY-MM-DD`) |
-| `dashboard/watchlist_setups/data.json` | Watchlist callouts + setup-type taxonomy — synced live via `dashboard/api/setups.php`, not pushed by routine `ftp_dashboard.py` runs |
+| `dashboard/account_balance.json` | `{balance, pnl_today}` — TradeZero live account equity + today's realized PnL, read by `nav.js`'s sidebar figure and `monte_carlo.html`'s starting-balance seed |
 
 ---
 
@@ -97,30 +104,6 @@ python compute_mfe_mae.py --year 2026 # one year only
 
 ---
 
-## Watchlists (dashboard/watchlists.html)
-
-- Catalogs the setups a trader you follow calls out in his nightly watchlists: logged as
-  "callouts" (date, symbol(s), setup type, thesis, key levels, outcome), grouped into a
-  "Setup Playbook" of named setup types with computed stats (PnL, accuracy, profit factor,
-  avg winner/loser, cents/share, etc.) drawn from your own trades on the linked symbol/date.
-- **Trade linking**: a callout's date is the night the watchlist was posted — the actual
-  trade day is the *day after*. All trade-linking and chart-fetching windows use `date + 1`.
-- **Sync**: no local-edit-then-publish for this data — `dashboard/api/setups.php` lets the
-  page write directly to `dashboard/watchlist_setups/data.json` on the live server, gated by
-  a per-device write key bootstrapped through the existing Google sign-in (see `auth.js`).
-  This is why `ftp_dashboard.py` deliberately excludes that JSON from its default push.
-- **Charts**: clicking a symbol pill on a callout opens the same `candlestick-chart.html` popup
-  used by day.html/trades.html, for the trade day (`date + 1`) and that symbol.
-- **Daily pane**: `candlestick-chart.html` itself shows a compact trailing daily-bars chart
-  (candles + volume, ~15 bars ending on the loaded trade day) alongside the main intraday
-  chart, on every popup on every page. Reads `dashboard/ohlcv_daily/SYMBOL.json` — shows a
-  "no daily chart cached" message until that symbol/date window has been fetched. Callouts
-  populate it automatically via the bulk `fetch_ohlcv_daily.py` run; for any other symbol
-  (e.g. a day.html/trades.html trade with no callout), fetch it on demand with
-  `python fetch_ohlcv_daily.py --symbol SYM [--date YYYY-MM-DD]`.
-
----
-
 ## Dashboard Notes
 
 - All HTML files are standalone — open directly as `file://`, no web server needed
@@ -128,19 +111,24 @@ python compute_mfe_mae.py --year 2026 # one year only
 - OHLCV data in per-day files under `dashboard/ohlcv/` (used by `candlestick-chart.html` and `compute_mfe_mae.py`)
 - `candlestick-chart.html`: LightweightCharts SVG overlay for trade markers (z-index layering); always
   rendered inside an iframe popup (`window.self !== window.top` gates its own nav/margin/auth-adjacent
-  logic) — day.html, trades.html, and watchlists.html each own an identical `.cdl-overlay` popup that
+  logic) — day.html and trades.html each own an identical `.cdl-overlay` popup that
   points the iframe at it with `?year=&month=&day=&symbol=` (optionally `&entry=&exit=`)
-- `day.html`: Chart.js intraday PnL chart
+- `candlestick-chart.html` symbol pills show one combined "MARGIN" value per symbol (no
+  Cash/Roth/TZ breakdown). Buy/sell triangle markers: green/red for Cash and TZLive trades
+  (same color, no distinction), purple for Roth trades (still visually distinct)
+- `day.html`: Chart.js intraday PnL chart; symbol table shows one combined "Margin" column
+  (no Cash/Roth/TZ breakdown) — the account-level split still exists in the underlying JSON
+  (`pnl_cash`/`pnl_roth`/`pnl_tz`) and drives the All/Cash/Roth/TZ Live stats-bar tabs
 - `reports.html` Monte Carlo: loss cap is `N × R` (clamps losses, does not exclude them); default 1.25R
 - Symbol pills show REAL PnL with green `rgb(11,98,71)` / red `rgb(140,31,31)`
 
 ---
 
 ```bash
-# Full pipeline: fetch new trades → rebuild calendar → MFE/MAE → FTP deploy
-python export.py
+# Full pipeline: fetch TradeZero trades → rebuild calendar → OHLCV → MFE/MAE → FTP deploy
+python import_tradezero.py
 
-# Calendar only (after manually dropping CSVs into trade_data/)
+# Calendar only (after manually dropping CSVs into trade_data/, no TradeZero fetch)
 python calendar_data.py
 
 # Pre-fetch 1-min OHLCV for candlestick charts
@@ -148,14 +136,6 @@ python fetch_ohlcv.py
 
 # Compute MFE/MAE from cached OHLCV (run after fetch_ohlcv.py)
 python compute_mfe_mae.py
-
-# Pre-fetch daily OHLCV for watchlist callouts + every symbol traded this year (runs
-# automatically as part of export.py; call directly to top up without a full export)
-python fetch_ohlcv_daily.py
-
-# Fetch daily OHLCV for any symbol on demand, callout or not (trailing ~2 weeks ending
-# today, or ending --date if given) — populates the candlestick popup's daily pane
-python fetch_ohlcv_daily.py --symbol AAPL [--date YYYY-MM-DD]
 ```
 
 ---
@@ -174,9 +154,13 @@ This uploads the changed files to `tctrades.com` using the credentials in `.vsco
 python ftp_dashboard.py dashboard/candlestick-chart.html dashboard/nav.js
 ```
 
+Each upload is size-verified against the local file (with one retry) — a failed
+verification raises instead of silently reporting success.
+
 **Always run this after saving dashboard edits.** Do not skip it.
 
-`export.py` runs FTP deploy automatically as the final pipeline step.
+`import_tradezero.py` uploads calendar JSONs and the account balance box itself (not via
+`ftp_dashboard.py`'s default file list) as the final pipeline step.
 
 ---
 
@@ -184,7 +168,9 @@ python ftp_dashboard.py dashboard/candlestick-chart.html dashboard/nav.js
 
 | Service | Purpose |
 |---------|---------|
-| Schwab API (`schwabdev`) | Live trade fetch, price history (OHLCV source, ~10 days) |
-| Tradervue API | Optional trade journal import |
-| MrProfit | CSV export format |
+| TradeZero API | Live trade fetch (today's filled orders + account balance) |
+| Alpaca API (`alpaca-py`, SIP feed) | OHLCV price history (1-min + daily bars) |
 | HostGator FTP | Hosts tctrades.com dashboard |
+
+Schwab (`schwabdev`) and Tradervue export were retired — `trade_data/*.csv` from Schwab
+remains as frozen historical data, still parsed by `calendar_data.py` on every run.

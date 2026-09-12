@@ -370,6 +370,7 @@
     }
     .acct-badge-cash { background: rgba(34,197,94,0.15); color: #22c55e; }
     .acct-badge-roth { background: rgba(168,85,247,0.15); color: #a855f7; }
+    .acct-badge-tzlive { background: rgba(20,184,166,0.15); color: #14b8a6; }
     .acct-badge-other { background: rgba(255,255,255,0.06); color: #9ca3af; }
 
     /* ── Candlestick modal ───────────────────────────── */
@@ -495,6 +496,7 @@
       <button class="quick-btn active" data-acct="all">All</button>
       <button class="quick-btn" data-acct="cash">Cash</button>
       <button class="quick-btn" data-acct="roth">Roth</button>
+      <button class="quick-btn" data-acct="tz">TZ Live</button>
     </div>
   </div>
 
@@ -899,7 +901,7 @@ function renderTable() {
     const tr = document.createElement('tr');
     const pnlCls = t.pnl > 0 ? 'pnl-pos' : t.pnl < 0 ? 'pnl-neg' : '';
     const acct = (t.account || '').toLowerCase();
-    const acctCls = acct.includes('cash') ? 'acct-badge-cash' : acct.includes('roth') ? 'acct-badge-roth' : 'acct-badge-other';
+    const acctCls = acct.includes('cash') ? 'acct-badge-cash' : acct.includes('roth') ? 'acct-badge-roth' : acct.includes('tz') ? 'acct-badge-tzlive' : 'acct-badge-other';
     const acctLabel = t.account || '—';
     tr.innerHTML = `
       <td>${fmtDate(t.date)}</td>

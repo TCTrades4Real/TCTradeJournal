@@ -5,17 +5,15 @@ utilities/config.py
 secrets.py
 credentials.json
 token.json
-schwab_token.json
 .vscode/sftp.json
 
 # Large data caches — not worth versioning
 dashboard/ohlcv_data.json
-dashboard/ohlcv_backtest_cache.json
-dashboard/backtest_results.json
 dashboard/calendar_data.json
 dashboard/calendar/
 dashboard/ohlcv/
 dashboard/live/
+tick_data/
 
 # Trade data CSVs (personal financial data)
 trade_data/
@@ -35,3 +33,6 @@ venv/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Scheduled task logs
+logs/

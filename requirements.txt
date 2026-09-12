@@ -1,5 +1,5 @@
 # Core trading & brokerage
-schwabdev==3.0.3
+alpaca-py==0.44.0
 
 # AI / sentiment
 anthropic==0.87.0

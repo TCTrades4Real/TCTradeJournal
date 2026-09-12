@@ -238,6 +238,7 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
         total_pnl      = round(sum(rt['pnl'] for rt in roundtrips), 2)
         total_pnl_cash = round(sum(rt['pnl'] for rt in roundtrips if 'cash' in rt.get('account', '').lower()), 2)
         total_pnl_roth = round(sum(rt['pnl'] for rt in roundtrips if 'roth' in rt.get('account', '').lower()), 2)
+        total_pnl_tz   = round(sum(rt['pnl'] for rt in roundtrips if 'tz' in rt.get('account', '').lower()), 2)
         total_trades = len(roundtrips)
         winning = [rt for rt in roundtrips if rt['pnl'] > 0]
         losing  = [rt for rt in roundtrips if rt['pnl'] < 0]
@@ -247,7 +248,7 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
         for rt in roundtrips:
             s = rt['symbol']
             if s not in sym_map:
-                sym_map[s] = {'trades': 0, 'shares': 0, 'pnl': 0.0, 'pnl_cash': 0.0, 'pnl_roth': 0.0}
+                sym_map[s] = {'trades': 0, 'shares': 0, 'pnl': 0.0, 'pnl_cash': 0.0, 'pnl_roth': 0.0, 'pnl_tz': 0.0}
             sym_map[s]['trades'] += 1
             sym_map[s]['shares'] += int(rt['qty'])
             sym_map[s]['pnl']     = round(sym_map[s]['pnl'] + rt['pnl'], 2)
@@ -256,6 +257,8 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
                 sym_map[s]['pnl_cash'] = round(sym_map[s]['pnl_cash'] + rt['pnl'], 2)
             elif 'roth' in acct:
                 sym_map[s]['pnl_roth'] = round(sym_map[s]['pnl_roth'] + rt['pnl'], 2)
+            elif 'tz' in acct:
+                sym_map[s]['pnl_tz'] = round(sym_map[s]['pnl_tz'] + rt['pnl'], 2)
 
         # ── Stats ─────────────────────────────────────────
         accuracy       = round(len(winning) / total_trades * 100, 2) if total_trades else 0
@@ -293,6 +296,7 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
             'pnl':      total_pnl,
             'pnl_cash': total_pnl_cash,
             'pnl_roth': total_pnl_roth,
+            'pnl_tz':   total_pnl_tz,
             'trades':   total_trades,
             'symbols':  sym_map,
             'roundtrips': [
@@ -362,23 +366,20 @@ def load_existing_annotations(out_path):
     return lookup
 
 
-def main():
-    parser = argparse.ArgumentParser(description='Build calendar P&L JSON from trade CSVs')
-    parser.add_argument('--year', type=int, help='Filter to a specific year (default: all years)')
-    args = parser.parse_args()
-
-    print(f'Reading CSVs from: {CSV_FOLDER}')
-    executions = parse_csvs(CSV_FOLDER)
-    print(f'Loaded {len(executions)} executions across all files')
-
+def build_and_write(executions, filter_year=None):
+    """Compute round-trips from a list of executions and write calendar_data_YYYY.json +
+    calendar_index.json (preserving any existing mfe/mae annotations). Returns the list of
+    written file paths. Shared by main() (Schwab CSVs) and import_tradezero.py (Schwab CSVs
+    + TradeZero live executions merged together)."""
     daily_roundtrips, daily_volume, daily_executions = compute_daily_details(executions)
     print(f'Computed P&L for {len(daily_roundtrips)} trading days')
 
-    data = build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=args.year)
+    data = build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=filter_year)
 
     cal_dir = os.path.join(OUTPUT_DIR, 'calendar')
     os.makedirs(cal_dir, exist_ok=True)
 
+    written = []
     available_years = []
     for year, year_data in data.items():
         out_path = os.path.join(cal_dir, f'calendar_data_{year}.json')
@@ -396,11 +397,13 @@ def main():
         with open(out_path, 'w') as f:
             json.dump({year: year_data}, f, indent=2)
         available_years.append(int(year))
+        written.append(out_path)
         print(f'Written: {out_path}')
 
     index_path = os.path.join(cal_dir, 'calendar_index.json')
     with open(index_path, 'w') as f:
         json.dump({'years': sorted(available_years)}, f)
+    written.append(index_path)
     print(f'Written: {index_path}')
 
     for year in sorted(data):
@@ -409,6 +412,20 @@ def main():
             total = data[year][month]['total']
             sign  = '+' if total >= 0 else ''
             print(f'  {year}-{month_name:10s} {sign}${total:.2f}')
+
+    return written
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Build calendar P&L JSON from trade CSVs')
+    parser.add_argument('--year', type=int, help='Filter to a specific year (default: all years)')
+    args = parser.parse_args()
+
+    print(f'Reading CSVs from: {CSV_FOLDER}')
+    executions = parse_csvs(CSV_FOLDER)
+    print(f'Loaded {len(executions)} executions across all files')
+
+    build_and_write(executions, filter_year=args.year)
 
 
 if __name__ == '__main__':

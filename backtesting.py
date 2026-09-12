@@ -9,7 +9,11 @@ ENTRY CONDITIONS  (2-min bars, long only, session open -> 16:00 ET)
                  OR |EMA9 - EMA20| / max <= 2.5%
   5. Prev bar high > prev bar EMA9
   6. Prev bar EMA9 > prev bar VWAP
-  Fill: trigger price (no slippage)
+  Fill: first 5-second sub-bar that crosses the trigger (max(trigger, that sub-bar's open))
+  No new entry on the same 1-min bar as an exit — the entry fill-scan can't tell which
+  sub-bars came after the exit within that bar, so it could otherwise fill a "new" position
+  on a tick at or before the one that closed the old one (verified against raw tick data:
+  every same-bar case sampled had entry_ts <= exit_ts, which can't happen in real trading).
 
 EXIT CONDITIONS  (first hit wins except partial TPs)
   1. Bar low <= most recently completed 2-min bar low (as of entry) x 0.99    hard stop (fixed)
@@ -18,14 +22,21 @@ EXIT CONDITIONS  (first hit wins except partial TPs)
 #  3. Partial TPs: 1/2 at 1R, then 1/4 of remainder at each R
   4. EOD: close at last bar
 
-SIZING  shares = floor($25 / risk-per-share)
+SIZING  shares = floor($5 / risk-per-share)
         risk-per-share = entry - (prior_2min_bar_low x 0.99)
 
+Reads 5-second OHLCV bars from tick_data/ (built from raw Alpaca trade prints by
+fetch_ticks.py — run that first), not the 1-min dashboard/ohlcv/ cache. Sub-bar granularity
+lets stop-vs-target ordering within a strategy bar resolve by real time order instead of
+guessing off the bar's aggregate high/low.
+
 Usage:
-    python backtesting.py
+    python fetch_ticks.py                   # pre-fetch tick_data/ (run once, or after new trades)
+    python backtesting.py                   # runs, writes dashboard/backtest/backtest_trades_YYYY.json + backtest_index.json, FTP uploads
     python backtesting.py --from-date 2025-09-01
     python backtesting.py --symbol SIDU
-    python backtesting.py --export          # writes dashboard/backtest/backtest_trades_YYYY.json + backtest_index.json
+    python backtesting.py --no-export       # skip writing the JSON export
+    python backtesting.py --no-upload       # export but skip the FTP upload
 """
 
 import bisect
@@ -40,7 +51,12 @@ from collections import defaultdict, OrderedDict
 _ET       = ZoneInfo('America/New_York')
 _HERE     = os.path.dirname(__file__)
 CAL_DIR   = os.path.join(_HERE, 'dashboard', 'calendar')
-OHLCV_DIR = os.path.join(_HERE, 'dashboard', 'ohlcv')
+TICK_DIR  = os.path.join(_HERE, 'tick_data')
+
+# Re-pull today's tick data from Alpaca on every run (today's session is still filling in
+# intraday) instead of trusting whatever's already cached in tick_data/. Set False once
+# today's session has closed, or to skip the extra fetch and just use the cache as-is.
+REFETCH_TODAY_TICKS = False
 
 # ╔══════════════════════════════════════════════════════════════╗
 # ║                  STRATEGY PARAMETERS                        ║
@@ -52,7 +68,7 @@ OHLCV_DIR = os.path.join(_HERE, 'dashboard', 'ohlcv')
 DEFAULT_FROM_DATE  = '2025-09-01'   # YYYY-MM-DD; override with --from-date
 
 # ── Sizing ────────────────────────────────────────────────────
-RISK_PER_TRADE     = 100           # dollars risked per trade
+RISK_PER_TRADE     = 10              # dollars risked per trade
 
 # ── Entry ─────────────────────────────────────────────────────
 ENTRY_MULT         = 1.01           # breakout trigger: bar high > prev high * this
@@ -63,8 +79,8 @@ EMA_SLOW           = 20             # slow EMA period (2-min bars)
 MACD_FAST          = 12             # MACD fast EMA
 MACD_SLOW          = 26             # MACD slow EMA
 MACD_SIG           = 9              # MACD signal EMA
-EMA_PROX_HIGH      = 0.10          # |prev_high - EMA9| / max <= this  (proximity A)
-EMA_PROX_CROSS     = 0.03          # |EMA9 - EMA20| / max    <= this   (proximity B)
+EMA_PROX_HIGH      = 0.10          # |prev_high - EMA9| / max <= this  (proximity A) .10
+EMA_PROX_CROSS     = 0.03         # |EMA9 - EMA20| / max    <= this   (proximity B) .03
 # ── Exit ──────────────────────────────────────────────────────
 STOP_MULT          = 0.99           # stop = prev 2-min bar low * this
                                      # trail activates once (highest low since entry x STOP_MULT) > entry
@@ -139,6 +155,16 @@ def _aggregate(bars_1min, minutes, with_vwap=False):
             if with_vwap:
                 e['vwap'] = vwap
     return list(slots.values())
+
+
+def _group_by_slot(fine_bars, minutes):
+    """Map each `minutes`-bucket slot -> time-ordered list of the finer-grained input
+    bars (e.g. 5-second bars) that make it up. Used to replay a strategy bar's own
+    sub-bars in real time order when resolving stop-vs-target ordering."""
+    groups = defaultdict(list)
+    for b in sorted(fine_bars, key=lambda b: b['time']):
+        groups[_slot(b['time'], minutes)].append(b)
+    return groups
 
 
 def ts_to_hhmm(ts):
@@ -237,8 +263,18 @@ def backtest_symbol_day(symbol, date_str, bars_1min, first_trade_hhmm, bar_minut
                          momentum_extra_minutes=2, exit_macd_filter=None, exit_extra_minutes=2,
                          min_risk_per_share=None, entry_cutoff_hhmm=None,
                          partial_tp_bar_close=False, half_exit_breakdown=False,
-                         require_above_pm_high=False):
-    bars = _aggregate(bars_1min, bar_minutes, with_vwap=True)
+                         require_above_pm_high=False, partial_tp_break_pct=None,
+                         block_reentry_same_bar=False,
+                         min_volume=None, entry_mult=None,
+                         require_ema_proximity=True, ema_prox_high=None, ema_prox_cross=None,
+                         require_high_above_ema9=True, require_ema9_above_vwap=True):
+    min_volume     = MIN_VOLUME     if min_volume     is None else min_volume
+    entry_mult     = ENTRY_MULT     if entry_mult     is None else entry_mult
+    ema_prox_high  = EMA_PROX_HIGH  if ema_prox_high  is None else ema_prox_high
+    ema_prox_cross = EMA_PROX_CROSS if ema_prox_cross is None else ema_prox_cross
+
+    bars     = _aggregate(bars_1min, bar_minutes, with_vwap=True)
+    sub_bars = _group_by_slot(bars_1min, bar_minutes)
 
     pm_high = premarket_high(bars_1min) if require_above_pm_high else None
 
@@ -308,10 +344,12 @@ def backtest_symbol_day(symbol, date_str, bars_1min, first_trade_hhmm, bar_minut
 
     open_positions = []
     trades         = []
+    last_exit_i    = None
 
     for i in range(1, len(bars)):
         cur  = bars[i]
         prev = bars[i - 1]
+        had_position = bool(open_positions)
 
         # ── update open positions ─────────────────────────────────────────
         still_open = []
@@ -339,126 +377,181 @@ def backtest_symbol_day(symbol, date_str, bars_1min, first_trade_hhmm, bar_minut
                 effective_stop = trail_stop
                 stop_reason    = 'trail'
 
-            # stop hits remaining shares
-            if cur['low'] <= effective_stop:
-                exit_px = effective_stop
-                pnl     = pos['realized_pnl'] + (exit_px - pos['entry']) * pos['shares_rem']
-                trades.append({**pos,
-                                'exit': round(exit_px, 4),
-                                'exit_reason': stop_reason,
-                                'exit_time': ts_to_hhmm(cur['time']),
-                                'exit_ts': cur['time'],
-                                'pnl': round(pnl, 2),
-                                'max_r': round((pos['max_high'] - pos['entry']) / pos['R'], 4),
-                                'exit_r': round((exit_px - pos['entry']) / pos['R'], 4)})
-                continue
+            # Replay this strategy bar's own finer sub-bars (e.g. 5-second bars) in real
+            # time order, so a stop and a target that both fall inside the same 1-2 minute
+            # bar resolve by whichever actually happened first, instead of guessing off the
+            # bar's aggregate high/low. Falls back to the bar itself if no finer data is
+            # available for this slot.
+            closed = False
+            for sb in sub_bars.get(cur['slot']) or [cur]:
 
-            # (optional) half-size derisk: fires once per trade, the first time a bar's low
-            # breaks below BOTH avg cost (entry) and the prior bar's low. "Prior bar" excludes
-            # the entry bar itself (i - 1 == entry_i) since comparing against the candle the
-            # trade was triggered off of isn't a real breakdown signal. Sells half of whatever
-            # shares remain at the breached level; the other half stays subject to the normal
-            # stop/trail/TP/EOD exits below.
-            if half_exit_breakdown and not pos['half_exit_done'] and i - 1 != pos['entry_i']:
-                breakdown_px = min(pos['entry'], prev['low'])
-                if cur['low'] < breakdown_px:
-                    pos['half_exit_done'] = True
-                    sell = min(pos['shares_rem'], max(1, math.floor(pos['shares_rem'] * 0.5)))
-                    pos['realized_pnl'] += (breakdown_px - pos['entry']) * sell
-                    pos['shares_rem']   -= sell
-                    if pos['shares_rem'] == 0:
-                        trades.append({**pos,
-                                        'exit': round(breakdown_px, 4),
-                                        'exit_reason': 'half_exit',
-                                        'exit_time': ts_to_hhmm(cur['time']),
-                                        'exit_ts': cur['time'],
-                                        'pnl': round(pos['realized_pnl'], 2),
-                                        'max_r': round((pos['max_high'] - pos['entry']) / pos['R'], 4),
-                                        'exit_r': round((breakdown_px - pos['entry']) / pos['R'], 4)})
-                        continue
-
-            # (optional) momentum exit: MACD < signal on the fully-closed prior bar AND price
-            # breaks below that same-timeframe prior bar's low. Exits at the breached low level.
-            if exit_macd_filter is not None:
-                exit_px = None
-                if exit_macd_filter in ('1min', 'either'):
-                    macd_p1, sig_p1 = macd[i - 1], sig[i - 1]
-                    if macd_p1 is not None and sig_p1 is not None and macd_p1 < sig_p1 \
-                            and cur['low'] < prev['low']:
-                        exit_px = prev['low']
-                if exit_px is None and exit_macd_filter in ('extra', 'either'):
-                    m2  = prior_exit_macd2(cur['time'])
-                    s2  = prior_exit_sig2(cur['time'])
-                    lo2 = prior_exit_low2(cur['time'])
-                    if m2 is not None and s2 is not None and lo2 is not None and m2 < s2 \
-                            and cur['low'] < lo2:
-                        exit_px = lo2
-                if exit_px is not None:
-                    pnl = pos['realized_pnl'] + (exit_px - pos['entry']) * pos['shares_rem']
+                # stop hits remaining shares
+                if sb['low'] <= effective_stop:
+                    exit_px = effective_stop
+                    pnl     = pos['realized_pnl'] + (exit_px - pos['entry']) * pos['shares_rem']
                     trades.append({**pos,
                                     'exit': round(exit_px, 4),
-                                    'exit_reason': 'macd_exit',
-                                    'exit_time': ts_to_hhmm(cur['time']),
-                                    'exit_ts': cur['time'],
+                                    'exit_reason': stop_reason,
+                                    'exit_time': ts_to_hhmm(sb['time']),
+                                    'exit_ts': sb['time'],
                                     'pnl': round(pnl, 2),
                                     'max_r': round((pos['max_high'] - pos['entry']) / pos['R'], 4),
                                     'exit_r': round((exit_px - pos['entry']) / pos['R'], 4)})
-                    continue
+                    closed = True
+                    break
 
-            # full-size exit once price hits the target (whichever threshold is closer to entry)
-            if pos['full_tp'] is not None and cur['high'] >= pos['full_tp']:
-                exit_px = pos['full_tp']
-                pnl     = pos['realized_pnl'] + (exit_px - pos['entry']) * pos['shares_rem']
-                trades.append({**pos,
-                                'exit': round(exit_px, 4),
-                                'exit_reason': 'tp',
-                                'exit_time': ts_to_hhmm(cur['time']),
-                                'exit_ts': cur['time'],
-                                'pnl': round(pnl, 2),
-                                'max_r': round((pos['max_high'] - pos['entry']) / pos['R'], 4),
-                                'exit_r': round((exit_px - pos['entry']) / pos['R'], 4)})
-                continue
+                # (optional) half-size derisk: fires once per trade, the first time a
+                # sub-bar's low breaks below BOTH avg cost (entry) and the prior bar's low.
+                # "Prior bar" excludes the entry bar itself (i - 1 == entry_i) since
+                # comparing against the candle the trade was triggered off of isn't a real
+                # breakdown signal. Sells half of whatever shares remain at the breached
+                # level; the other half stays subject to the normal stop/trail/TP/EOD exits.
+                if half_exit_breakdown and not pos['half_exit_done'] and i - 1 != pos['entry_i']:
+                    breakdown_px = min(pos['entry'], prev['low'])
+                    if sb['low'] < breakdown_px:
+                        pos['half_exit_done'] = True
+                        sell = min(pos['shares_rem'], max(1, math.floor(pos['shares_rem'] * 0.5)))
+                        pos['realized_pnl'] += (breakdown_px - pos['entry']) * sell
+                        pos['shares_rem']   -= sell
+                        pos['partials'].append({'time': ts_to_hhmm(sb['time']), 'ts': sb['time'],
+                                                 'price': round(breakdown_px, 4), 'shares': sell})
+                        if pos['shares_rem'] == 0:
+                            trades.append({**pos,
+                                            'exit': round(breakdown_px, 4),
+                                            'exit_reason': 'half_exit',
+                                            'exit_time': ts_to_hhmm(sb['time']),
+                                            'exit_ts': sb['time'],
+                                            'pnl': round(pos['realized_pnl'], 2),
+                                            'max_r': round((pos['max_high'] - pos['entry']) / pos['R'], 4),
+                                            'exit_r': round((breakdown_px - pos['entry']) / pos['R'], 4)})
+                            closed = True
+                            break
 
-            # partial TP exits: sell 25% of remaining shares at each step (R-multiple, or a
-            # fixed $ step when partial_tp_step_dollar is set)
-            if partial_tp:
-                step = partial_tp_step_dollar if partial_tp_step_dollar is not None else pos['R']
-                last_tp_px = pos['entry']   # track last exit price for final record
-                while cur['high'] >= pos['next_tp'] and pos['shares_rem'] > 0:
-                    tp_px      = pos['next_tp']
-                    sell       = min(pos['shares_rem'], max(1, math.floor(pos['shares_rem'] * 0.25)))
-                    pos['realized_pnl'] += (tp_px - pos['entry']) * sell
-                    pos['shares_rem']   -= sell
-                    pos['next_tp']       = round(pos['next_tp'] + step, 4)
-                    pos['tp_count']     += 1
-                    last_tp_px           = tp_px
-
-                    if pos['shares_rem'] == 0:
+                # (optional) momentum exit: MACD < signal on the fully-closed prior bar AND
+                # price breaks below that same-timeframe prior bar's low. Exits at the
+                # breached low level.
+                if exit_macd_filter is not None:
+                    exit_px = None
+                    if exit_macd_filter in ('1min', 'either'):
+                        macd_p1, sig_p1 = macd[i - 1], sig[i - 1]
+                        if macd_p1 is not None and sig_p1 is not None and macd_p1 < sig_p1 \
+                                and sb['low'] < prev['low']:
+                            exit_px = prev['low']
+                    if exit_px is None and exit_macd_filter in ('extra', 'either'):
+                        m2  = prior_exit_macd2(cur['time'])
+                        s2  = prior_exit_sig2(cur['time'])
+                        lo2 = prior_exit_low2(cur['time'])
+                        if m2 is not None and s2 is not None and lo2 is not None and m2 < s2 \
+                                and sb['low'] < lo2:
+                            exit_px = lo2
+                    if exit_px is not None:
+                        pnl = pos['realized_pnl'] + (exit_px - pos['entry']) * pos['shares_rem']
                         trades.append({**pos,
-                                       'exit': round(last_tp_px, 4),
-                                       'exit_reason': 'tp',
-                                       'exit_time': ts_to_hhmm(cur['time']),
-                                       'exit_ts': cur['time'],
-                                       'pnl': round(pos['realized_pnl'], 2),
-                                       'max_r': round((pos['max_high'] - pos['entry']) / pos['R'], 4),
-                                       'exit_r': round((last_tp_px - pos['entry']) / pos['R'], 4)})
+                                        'exit': round(exit_px, 4),
+                                        'exit_reason': 'macd_exit',
+                                        'exit_time': ts_to_hhmm(sb['time']),
+                                        'exit_ts': sb['time'],
+                                        'pnl': round(pnl, 2),
+                                        'max_r': round((pos['max_high'] - pos['entry']) / pos['R'], 4),
+                                        'exit_r': round((exit_px - pos['entry']) / pos['R'], 4)})
+                        closed = True
                         break
 
-            # partial TP: sell 25% of remaining shares whenever this bar closes above avg cost
-            # (fills at that bar's close, fires at most once per bar)
-            elif partial_tp_bar_close and cur['close'] > pos['entry'] and pos['shares_rem'] > 0:
+                # full-size exit once price hits the target (whichever threshold is closer to entry)
+                if pos['full_tp'] is not None and sb['high'] >= pos['full_tp']:
+                    exit_px = pos['full_tp']
+                    pnl     = pos['realized_pnl'] + (exit_px - pos['entry']) * pos['shares_rem']
+                    trades.append({**pos,
+                                    'exit': round(exit_px, 4),
+                                    'exit_reason': 'tp',
+                                    'exit_time': ts_to_hhmm(sb['time']),
+                                    'exit_ts': sb['time'],
+                                    'pnl': round(pnl, 2),
+                                    'max_r': round((pos['max_high'] - pos['entry']) / pos['R'], 4),
+                                    'exit_r': round((exit_px - pos['entry']) / pos['R'], 4)})
+                    closed = True
+                    break
+
+                # (optional) partial exit on a break of the previous bar's high by
+                # partial_tp_break_pct or more — sells 25% of remaining shares, at most once per
+                # bar, once the break_partial_active_i gate (set at entry) has been reached.
+                if partial_tp_break_pct is not None and i >= pos['break_partial_active_i'] \
+                        and pos['break_partial_last_i'] != i:
+                    break_px = prev['high'] * (1 + partial_tp_break_pct)
+                    if sb['high'] >= break_px:
+                        pos['break_partial_last_i'] = i
+                        sell = min(pos['shares_rem'], max(1, math.floor(pos['shares_rem'] * 0.25)))
+                        pos['realized_pnl'] += (break_px - pos['entry']) * sell
+                        pos['shares_rem']   -= sell
+                        pos['tp_count']     += 1
+                        pos['partials'].append({'time': ts_to_hhmm(sb['time']), 'ts': sb['time'],
+                                                 'price': round(break_px, 4), 'shares': sell})
+
+                        if pos['shares_rem'] == 0:
+                            trades.append({**pos,
+                                           'exit': round(break_px, 4),
+                                           'exit_reason': 'tp',
+                                           'exit_time': ts_to_hhmm(sb['time']),
+                                           'exit_ts': sb['time'],
+                                           'pnl': round(pos['realized_pnl'], 2),
+                                           'max_r': round((pos['max_high'] - pos['entry']) / pos['R'], 4),
+                                           'exit_r': round((break_px - pos['entry']) / pos['R'], 4)})
+                            closed = True
+                            break
+
+                # partial TP exits: sell 25% of remaining shares at each step (R-multiple, or a
+                # fixed $ step when partial_tp_step_dollar is set)
+                if partial_tp:
+                    step = partial_tp_step_dollar if partial_tp_step_dollar is not None else pos['R']
+                    last_tp_px = pos['entry']   # track last exit price for final record
+                    while sb['high'] >= pos['next_tp'] and pos['shares_rem'] > 0:
+                        tp_px      = pos['next_tp']
+                        sell       = min(pos['shares_rem'], max(1, math.floor(pos['shares_rem'] * 0.25)))
+                        pos['realized_pnl'] += (tp_px - pos['entry']) * sell
+                        pos['shares_rem']   -= sell
+                        pos['next_tp']       = round(pos['next_tp'] + step, 4)
+                        pos['tp_count']     += 1
+                        last_tp_px           = tp_px
+                        pos['partials'].append({'time': ts_to_hhmm(sb['time']), 'ts': sb['time'],
+                                                 'price': round(tp_px, 4), 'shares': sell})
+
+                        if pos['shares_rem'] == 0:
+                            trades.append({**pos,
+                                           'exit': round(last_tp_px, 4),
+                                           'exit_reason': 'tp',
+                                           'exit_time': ts_to_hhmm(sb['time']),
+                                           'exit_ts': sb['time'],
+                                           'pnl': round(pos['realized_pnl'], 2),
+                                           'max_r': round((pos['max_high'] - pos['entry']) / pos['R'], 4),
+                                           'exit_r': round((last_tp_px - pos['entry']) / pos['R'], 4)})
+                            break
+                    if pos['shares_rem'] == 0:
+                        closed = True
+                        break
+
+            if closed:
+                continue
+
+            # partial TP: sell 25% of remaining shares whenever this bar closes above avg cost.
+            # The decision isn't knowable until the bar's last tick prints, so the fill is dated
+            # to that last sub-bar, not cur['time'] (which _aggregate sets to the bar's *open*
+            # tick — using it here would date this fill before ticks earlier in the same bar).
+            if partial_tp_bar_close and cur['close'] > pos['entry'] and pos['shares_rem'] > 0:
                 tp_px = cur['close']
+                bar_close_ts = (sub_bars.get(cur['slot']) or [cur])[-1]['time']
                 sell  = min(pos['shares_rem'], max(1, math.floor(pos['shares_rem'] * 0.25)))
                 pos['realized_pnl'] += (tp_px - pos['entry']) * sell
                 pos['shares_rem']   -= sell
                 pos['tp_count']     += 1
+                pos['partials'].append({'time': ts_to_hhmm(bar_close_ts), 'ts': bar_close_ts,
+                                         'price': round(tp_px, 4), 'shares': sell})
 
                 if pos['shares_rem'] == 0:
                     trades.append({**pos,
                                    'exit': round(tp_px, 4),
                                    'exit_reason': 'tp',
-                                   'exit_time': ts_to_hhmm(cur['time']),
-                                   'exit_ts': cur['time'],
+                                   'exit_time': ts_to_hhmm(bar_close_ts),
+                                   'exit_ts': bar_close_ts,
                                    'pnl': round(pos['realized_pnl'], 2),
                                    'max_r': round((pos['max_high'] - pos['entry']) / pos['R'], 4),
                                    'exit_r': round((tp_px - pos['entry']) / pos['R'], 4)})
@@ -466,6 +559,9 @@ def backtest_symbol_day(symbol, date_str, bars_1min, first_trade_hhmm, bar_minut
             if pos['shares_rem'] > 0:
                 still_open.append(pos)
         open_positions = still_open
+
+        if block_reentry_same_bar and had_position and not open_positions:
+            last_exit_i = i
 
         # ── look for new entry ────────────────────────────────────────────
         if cur['slot'] < start_slot:
@@ -475,6 +571,9 @@ def backtest_symbol_day(symbol, date_str, bars_1min, first_trade_hhmm, bar_minut
             continue
 
         if open_positions:          # only 1 position at a time
+            continue
+
+        if block_reentry_same_bar and last_exit_i == i:
             continue
 
         e9_prev  = ema9[i - 1]
@@ -489,16 +588,37 @@ def backtest_symbol_day(symbol, date_str, bars_1min, first_trade_hhmm, bar_minut
             if trigger is None:
                 continue
         else:
-            trigger = prev['high'] * ENTRY_MULT
+            trigger = prev['high'] * entry_mult
             if prior_extra_high is not None:
                 extra_high = prior_extra_high(cur['time'])
                 if extra_high is not None:
-                    trigger = min(trigger, extra_high * ENTRY_MULT)
-        entry_px = trigger + FILL_SLIP
-
+                    trigger = min(trigger, extra_high * entry_mult)
         # 1. breakout
         if cur['high'] < trigger:
             continue
+
+        # 1+2. breakout + volume, evaluated tick-by-tick (per 5-second sub-bar), not once per
+        # bar close: find the first sub-bar where price has actually crossed the trigger AND
+        # cumulative volume from this bar's open through that sub-bar already clears
+        # MIN_VOLUME — same no-look-ahead discipline as the rest of this engine. A bar whose
+        # total volume only clears 25k *after* price already dropped back below the trigger,
+        # or whose crossing tick doesn't yet have 25k behind it, must not fire. Fill price:
+        # the first tick that satisfies both, catching gap-through slippage on fast breakouts.
+        subs = sub_bars.get(cur['slot']) or []
+        fill_sub = None
+        cum_vol = 0
+        for sb in subs:
+            cum_vol += sb['volume']
+            if sb['high'] >= trigger and cum_vol >= min_volume:
+                fill_sub = sb
+                break
+
+        if subs and fill_sub is None:
+            continue   # no tick this bar had trigger + volume threshold together
+        if not subs and cur['volume'] < min_volume:
+            continue   # no sub-bar data available — fall back to the bar-level volume check
+
+        entry_px = (max(trigger, fill_sub['open']) if fill_sub is not None else trigger) + FILL_SLIP
 
         # 1b. (optional) fill price itself must clear the fresh new_high_bars-bar high — filters
         # backside/chop entries. Compares entry_px (known at the trigger moment), not cur['high']
@@ -507,10 +627,6 @@ def backtest_symbol_day(symbol, date_str, bars_1min, first_trade_hhmm, bar_minut
             lookback = bars[max(0, i - new_high_bars):i]
             if not lookback or entry_px < max(b['high'] for b in lookback):
                 continue
-
-        # 2. volume
-        if cur['volume'] < MIN_VOLUME:
-            continue
 
         # 2b. (optional) momentum filter — reads only the fully-closed previous bar (i-1),
         # never the current bar's own close-derived indicators (that would be look-ahead).
@@ -542,18 +658,19 @@ def backtest_symbol_day(symbol, date_str, bars_1min, first_trade_hhmm, bar_minut
             if not (ok_native or ok_extra):
                 continue
 
-        # 3. EMA proximity (either condition)
-        prox_high  = abs(prev['high'] - e9_prev) / max(prev['high'], e9_prev)
-        prox_cross = abs(e9_prev - e20_prev)     / max(e9_prev, e20_prev)
-        if prox_high > EMA_PROX_HIGH and prox_cross > EMA_PROX_CROSS:
+        # 3. (optional) EMA proximity (both conditions)
+        if require_ema_proximity:
+            prox_high  = abs(prev['high'] - e9_prev) / max(prev['high'], e9_prev)
+            prox_cross = abs(e9_prev - e20_prev)     / max(e9_prev, e20_prev)
+            if prox_high > ema_prox_high or prox_cross > ema_prox_cross:
+                continue
+
+        # 4. (optional) prev bar high > prev bar EMA9
+        if require_high_above_ema9 and prev['high'] <= e9_prev:
             continue
 
-        # 4. prev bar high > prev bar EMA9
-        if prev['high'] <= e9_prev:
-            continue
-
-        # 5. prev bar EMA9 > prev bar VWAP
-        if e9_prev <= prev['vwap']:
+        # 5. (optional) prev bar EMA9 > prev bar VWAP
+        if require_ema9_above_vwap and e9_prev <= prev['vwap']:
             continue
 
         # 6. (optional) entry price must not be below VWAP
@@ -610,6 +727,13 @@ def backtest_symbol_day(symbol, date_str, bars_1min, first_trade_hhmm, bar_minut
             full_tp_candidates.append(entry_px + full_tp_dollar)
         full_tp = min(full_tp_candidates) if full_tp_candidates else None
 
+        # (optional) break-of-prior-high partial exit: active from the entry bar itself when
+        # the entry price came in below that bar's prior-candle high (room left before the
+        # threshold), otherwise deferred to the next bar — an entry that already fired at/above
+        # the prior high (the normal breakout case) would trivially re-trigger this off the same
+        # move that produced the entry.
+        break_partial_active_i = i if entry_px < prev['high'] else i + 1
+
         open_positions.append(dict(
             date=date_str, symbol=symbol,
             entry=round(entry_px, 4), stop=round(stop_px, 4),
@@ -625,6 +749,9 @@ def backtest_symbol_day(symbol, date_str, bars_1min, first_trade_hhmm, bar_minut
             realized_pnl=0.0,
             full_tp=round(full_tp, 4) if full_tp is not None else None,
             half_exit_done=False,
+            break_partial_active_i=break_partial_active_i,
+            break_partial_last_i=-1,
+            partials=[],
         ))
 
     # EOD
@@ -646,12 +773,92 @@ def backtest_symbol_day(symbol, date_str, bars_1min, first_trade_hhmm, bar_minut
 
 # ── data loading ──────────────────────────────────────────────────────────────
 
-def load_ohlcv_day(date_str):
-    path = os.path.join(OHLCV_DIR, f'ohlcv_{date_str}.json')
+def load_tick_day(date_str):
+    """5-second OHLCV bars (built from raw trade prints by fetch_ticks.py)."""
+    path = os.path.join(TICK_DIR, f'ticks_{date_str}.json')
     if not os.path.exists(path):
         return {}
     with open(path) as f:
         return json.load(f)
+
+
+_alpaca_client = None
+_alpaca_client_failed = False
+
+
+def _get_alpaca_client():
+    """Lazy, memoized Alpaca client — only ever touched when a fetch is actually needed,
+    so a fully-cached run never requires credentials to be configured."""
+    global _alpaca_client, _alpaca_client_failed
+    if _alpaca_client is not None or _alpaca_client_failed:
+        return _alpaca_client
+    try:
+        from utilities import config
+        from utilities.alpaca_client import AlpacaClient
+        _alpaca_client = AlpacaClient(config.ALPACA_API_KEY_ID, config.ALPACA_API_SECRET_KEY,
+                                       feed=config.ALPACA_DATA_FEED)
+    except Exception as e:
+        print(f'  [alpaca unavailable] {e} — skipping missing tick data fetch')
+        _alpaca_client_failed = True
+    return _alpaca_client
+
+
+INVALID_SYMBOLS_PATH = os.path.join(TICK_DIR, 'invalid_symbols.json')
+
+_invalid_symbols = None
+
+
+def _load_invalid_symbols():
+    """Symbols Alpaca has told us don't exist — loaded once per process, persisted to
+    tick_data/invalid_symbols.json so future runs never waste a fetch on them again."""
+    global _invalid_symbols
+    if _invalid_symbols is None:
+        if os.path.exists(INVALID_SYMBOLS_PATH):
+            with open(INVALID_SYMBOLS_PATH) as f:
+                _invalid_symbols = set(json.load(f))
+        else:
+            _invalid_symbols = set()
+    return _invalid_symbols
+
+
+def _mark_symbol_invalid(symbol):
+    invalid = _load_invalid_symbols()
+    invalid.add(symbol)
+    os.makedirs(TICK_DIR, exist_ok=True)
+    with open(INVALID_SYMBOLS_PATH, 'w') as f:
+        json.dump(sorted(invalid), f, indent=2)
+
+
+def fetch_missing_tick_symbol(date_str, symbol, day_cache):
+    """Fetch + bucket one symbol's tick data via Alpaca, merge it into day_cache (the same
+    dict object held in tick_cache[date_str], so other symbols already cached for this date
+    aren't lost), and persist the whole day back to tick_data/. Returns the bucketed bars,
+    or [] if the fetch wasn't possible (including symbols already known-invalid)."""
+    from fetch_ticks import bucket_trades, BUCKET_SECONDS, day_path
+
+    if symbol in _load_invalid_symbols():
+        return []
+
+    client = _get_alpaca_client()
+    if client is None:
+        return []
+    try:
+        trades = client.get_trades(symbol, date_str)
+    except Exception as e:
+        if 'invalid symbol' in str(e).lower() or 'symbol not found' in str(e).lower():
+            _mark_symbol_invalid(symbol)
+            print(f'  [invalid symbol] {symbol} — added to {INVALID_SYMBOLS_PATH}, will skip from now on')
+        else:
+            print(f'  [fetch error] {symbol} {date_str}: {e}')
+        return []
+
+    bars = bucket_trades(trades, BUCKET_SECONDS)
+    day_cache[symbol] = bars
+    os.makedirs(TICK_DIR, exist_ok=True)
+    with open(day_path(date_str), 'w') as f:
+        json.dump(day_cache, f, separators=(',', ':'))
+    print(f'  fetched tick data: {symbol} {date_str} ({len(bars)} bars)')
+    return bars
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -660,13 +867,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--from-date', default=DEFAULT_FROM_DATE)
     parser.add_argument('--symbol',    default=None)
-    parser.add_argument('--export',    action='store_true',
-                        help='Write trades to dashboard/backtest/backtest_trades_YYYY.json')
-    parser.add_argument('--upload',    action='store_true',
-                        help='FTP upload backtest files after --export (implies --export)')
+    parser.add_argument('--no-export', action='store_true',
+                        help='Skip writing dashboard/backtest/backtest_trades_YYYY.json (exports by default)')
+    parser.add_argument('--no-upload', action='store_true',
+                        help='Skip the FTP upload step (uploads by default)')
     args = parser.parse_args()
-    if args.upload:
-        args.export = True
+    args.export = not args.no_export
+    args.upload = args.export and not args.no_upload
 
     with open(os.path.join(CAL_DIR, 'calendar_index.json')) as f:
         years = [str(y) for y in json.load(f).get('years', [])]
@@ -701,60 +908,70 @@ def main():
 
     print(f'Symbol-days to scan: {len(opportunities)}')
 
-    A_BAR_MIN         = 1        # [A] entry timeframe (minutes)
-    A_STOP_MIN        = 2        # [A] hard-stop reference timeframe (minutes)
-    A_EXTRA_MIN       = 2        # [A] extra OR-trigger timeframe (minutes)
-    A_TRAIL_MIN       = 2        # [A] trail-stop reference timeframe (minutes)
-    A_MOMENTUM_FILTER = 'macd'   # [A] require MACD > signal (beat the 9EMA>20EMA alternative in the sweep)
-    A_PARTIAL_TP_BAR_CLOSE = True  # [A] sell 1/4 of remaining shares on any bar close > avg cost
+    A_BAR_MIN         = 1        # entry timeframe (minutes)
+    A_STOP_MIN        = 2        # hard-stop reference timeframe (minutes)
+    A_EXTRA_MIN       = 2        # extra OR-trigger timeframe (minutes)
+    A_TRAIL_MIN       = 2        # trail-stop reference timeframe (minutes)
+    A_MOMENTUM_FILTER = 'macd'   # require MACD > signal (beat the 9EMA>20EMA alternative in the sweep)
+    A_PARTIAL_TP_BAR_CLOSE = True  # sell 1/4 of remaining shares on any bar close > avg cost
+    A_FULL_TP_DOLLAR = 1.00      # full exit once price reaches entry + $1.00 (whichever is closer)
 
-    # [B] = [A] plus a downside derisk: sell half of remaining shares, once per trade, the first
-    # time price breaks below BOTH avg cost and the prior bar's low (prior bar != entry bar).
-    B_HALF_EXIT_BREAKDOWN = True
+    # Same entry/stop/trail/partial-exit rules throughout; only the full-TP R multiple varies.
+    TP_LEVELS  = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+    PRIMARY_TP = 2.5   # used for the monthly breakdown / annualized P&L / JSON export below
 
-    # [C] = [A] plus an entry filter: only take trades whose entry price clears the day's
-    # premarket high (max high of bars before 09:30 ET).
-    C_REQUIRE_ABOVE_PM_HIGH = True
+    # Each row is a labeled variant of Strategy A: an empty override dict runs the strategy
+    # exactly as configured above; add a row with overrides to try a different entry criteria
+    # combination (min_volume, entry_mult, require_ema_proximity, ema_prox_high/cross,
+    # require_high_above_ema9, require_ema9_above_vwap, momentum_filter, ...) alongside it.
+    STRATEGY_VARIANTS = [
+        ('A', {}),
+        ('15-min stop', {'stop_minutes': 15}),
+    ]
 
-    all_trades   = []   # [A] — exported to the dashboard
-    b_trades     = []   # [B] — comparison only, not exported
-    c_trades     = []   # [C] — comparison only, not exported
-    ohlcv_cache  = {}
+    all_trades = {label: {r: [] for r in TP_LEVELS} for label, _ in STRATEGY_VARIANTS}
+    tick_cache = {}
+
+    today_str = datetime.now().strftime('%Y-%m-%d')
 
     for date_str, symbol, first_t in opportunities:
-        if date_str not in ohlcv_cache:
-            if len(ohlcv_cache) >= 10:
-                del ohlcv_cache[next(iter(ohlcv_cache))]
-            ohlcv_cache[date_str] = load_ohlcv_day(date_str)
+        if date_str not in tick_cache:
+            if len(tick_cache) >= 10:
+                del tick_cache[next(iter(tick_cache))]
+            tick_cache[date_str] = load_tick_day(date_str)
 
-        bars = ohlcv_cache[date_str].get(symbol) or []
+        day_cache = tick_cache[date_str]
+        bars = day_cache.get(symbol)
+        # pull from Alpaca when this symbol/day has never been cached, or when it's today's
+        # data and REFETCH_TODAY_TICKS says today's bars are still worth refreshing.
+        if bars is None or (date_str == today_str and REFETCH_TODAY_TICKS):
+            bars = fetch_missing_tick_symbol(date_str, symbol, day_cache)
+        bars = bars or []
         if not bars:
             continue
 
-        all_trades.extend(backtest_symbol_day(symbol, date_str, bars, first_t,
-                                               bar_minutes=A_BAR_MIN, stop_minutes=A_STOP_MIN,
-                                               extra_trigger_minutes=A_EXTRA_MIN,
-                                               trail_minutes=A_TRAIL_MIN,
-                                               momentum_filter=A_MOMENTUM_FILTER,
-                                               partial_tp_bar_close=A_PARTIAL_TP_BAR_CLOSE))
+        for label, variant_kwargs in STRATEGY_VARIANTS:
+            for r in TP_LEVELS:
+                call_kwargs = {
+                    'bar_minutes':            A_BAR_MIN,
+                    'stop_minutes':           A_STOP_MIN,
+                    'extra_trigger_minutes':  A_EXTRA_MIN,
+                    'trail_minutes':          A_TRAIL_MIN,
+                    'momentum_filter':        A_MOMENTUM_FILTER,
+                    'partial_tp_bar_close':   A_PARTIAL_TP_BAR_CLOSE,
+                    'full_tp_r':              r,
+                    'full_tp_dollar':         A_FULL_TP_DOLLAR,
+                    'block_reentry_same_bar': True,
+                    **variant_kwargs,   # per-variant overrides — any of the above, or any other
+                                        # backtest_symbol_day entry-criteria kwarg (min_volume,
+                                        # entry_mult, require_ema_proximity, ema_prox_high/cross,
+                                        # require_high_above_ema9, require_ema9_above_vwap,
+                                        # momentum_filter, ...)
+                }
+                trades = backtest_symbol_day(symbol, date_str, bars, first_t, **call_kwargs)
+                all_trades[label][r].extend(trades)
 
-        b_trades.extend(backtest_symbol_day(symbol, date_str, bars, first_t,
-                                             bar_minutes=A_BAR_MIN, stop_minutes=A_STOP_MIN,
-                                             extra_trigger_minutes=A_EXTRA_MIN,
-                                             trail_minutes=A_TRAIL_MIN,
-                                             momentum_filter=A_MOMENTUM_FILTER,
-                                             partial_tp_bar_close=A_PARTIAL_TP_BAR_CLOSE,
-                                             half_exit_breakdown=B_HALF_EXIT_BREAKDOWN))
-
-        c_trades.extend(backtest_symbol_day(symbol, date_str, bars, first_t,
-                                             bar_minutes=A_BAR_MIN, stop_minutes=A_STOP_MIN,
-                                             extra_trigger_minutes=A_EXTRA_MIN,
-                                             trail_minutes=A_TRAIL_MIN,
-                                             momentum_filter=A_MOMENTUM_FILTER,
-                                             partial_tp_bar_close=A_PARTIAL_TP_BAR_CLOSE,
-                                             require_above_pm_high=C_REQUIRE_ABOVE_PM_HIGH))
-
-    if not all_trades:
+    if not any(all_trades[label].values() for label, _ in STRATEGY_VARIANTS):
         print('No trades generated.')
         return
 
@@ -794,21 +1011,26 @@ def main():
                     max_cw=max_cw, max_cl=max_cl, win_days=win_days, loss_days=loss_days,
                     num_months=num_months, avg_per_mo=avg_per_mo, W=len(wins), L=len(losses))
 
-    stats   = compute_stats(all_trades)
-    stats_b = compute_stats(b_trades) if b_trades else None
-    stats_c = compute_stats(c_trades) if c_trades else None
+    stats = {label: {r: compute_stats(all_trades[label][r]) for r in TP_LEVELS if all_trades[label][r]}
+              for label, _ in STRATEGY_VARIANTS}
 
-    # used further below for the monthly breakdown and annualized P&L
-    net        = stats['net']
-    num_months = stats['num_months']
+    if PRIMARY_TP not in stats.get('A', {}):
+        print(f'No trades at PRIMARY_TP={PRIMARY_TP:g}R for strategy A '
+              f'(entry criteria may be too strict) — other TP levels: {sorted(stats.get("A", {}))}')
+        return
 
-    strategy_name   = (f'[A] {A_BAR_MIN}min entry / {A_TRAIL_MIN}min trail / {A_STOP_MIN}min stop, '
-                        f'OR-trigger vs prev {A_BAR_MIN}min or {A_EXTRA_MIN}min high, MACD > signal, '
-                        f'partial TP on bar close > cost  ({args.from_date}+)')
-    strategy_name_b = '[B] [A] + half-exit below cost & prior bar low (excl. entry bar), once/trade'
-    strategy_name_c = '[C] [A] + entry must clear the day\'s premarket high (bars before 09:30 ET)'
+    # used further below for the monthly breakdown and annualized P&L (variant 'A', the one
+    # that also drives the dashboard JSON export)
+    net        = stats['A'][PRIMARY_TP]['net']
+    num_months = stats['A'][PRIMARY_TP]['num_months']
 
-    col = max(len(strategy_name), len(strategy_name_b), len(strategy_name_c), len('STRATEGY'))
+    def strategy_name_for(r):
+        return (f'{r:g}R  {A_BAR_MIN}min entry / {A_TRAIL_MIN}min trail / {A_STOP_MIN}min stop, '
+                f'OR-trigger vs prev {A_BAR_MIN}min or {A_EXTRA_MIN}min high, MACD > signal, '
+                f'partial TP on bar close > cost, full TP {r:g}R  ({args.from_date}+)')
+
+    row_labels = {r: f'{r:g}R' for r in TP_LEVELS}
+    col = max(max(len(v) for v in row_labels.values()), len('STRATEGY'))
 
     def format_row(name, s):
         pnl_str = f'{s["net"]:+,.2f}'
@@ -828,16 +1050,23 @@ def main():
     )
     divider = '-' * len(header)
 
+    for label, _ in STRATEGY_VARIANTS:
+        print()
+        print(f'  STRATEGY {label}')
+        print(divider)
+        print(header)
+        print(divider)
+        for r in TP_LEVELS:
+            if r in stats[label]:
+                print(format_row(row_labels[r], stats[label][r]))
+        print(divider)
+
     print()
-    print(divider)
-    print(header)
-    print(divider)
-    print(format_row(strategy_name, stats))
-    if stats_b:
-        print(format_row(strategy_name_b, stats_b))
-    if stats_c:
-        print(format_row(strategy_name_c, stats_c))
-    print(divider)
+    print(f'  {"PRIMARY TP (" + f"{PRIMARY_TP:g}R)":<30}  {"TRADES":>6}  {"GROSS P&L":>10}')
+    for label, _ in STRATEGY_VARIANTS:
+        s = stats[label].get(PRIMARY_TP)
+        if s:
+            print(f'  {label:<30}  {s["n"]:>6}  {s["net"]:>+10,.2f}')
 
     # monthly P&L breakdown by session
     def session(hhmm):
@@ -849,7 +1078,7 @@ def main():
 
     month_pnl = defaultdict(float)
     sess_pnl  = defaultdict(lambda: defaultdict(float))
-    for t in all_trades:
+    for t in all_trades['A'][PRIMARY_TP]:
         ym = t['date'][:7]
         s  = session(t['entry_time'])
         month_pnl[ym]      += t['pnl']
@@ -884,13 +1113,14 @@ def main():
     print(f'    2. Bar volume >= {MIN_VOLUME:,}')
     print(f'    3. {A_BAR_MIN}-min MACD > signal line')
     print(f'    4. |prev {A_BAR_MIN}-min high - {A_BAR_MIN}-min EMA9| / max <= {EMA_PROX_HIGH*100:.1f}%  '
-          f'OR  |{A_BAR_MIN}-min EMA9 - {A_BAR_MIN}-min EMA20| / max <= {EMA_PROX_CROSS*100:.1f}%')
+          f'AND  |{A_BAR_MIN}-min EMA9 - {A_BAR_MIN}-min EMA20| / max <= {EMA_PROX_CROSS*100:.1f}%')
     print(f'    5. Prev {A_BAR_MIN}-min bar high > prev {A_BAR_MIN}-min bar EMA9')
     print(f'    6. Prev {A_BAR_MIN}-min bar EMA9 > prev {A_BAR_MIN}-min bar VWAP')
     print()
     print('  EXIT (first hit wins; partial TP checked each bar before stop/EOD close the rest)')
     print(f'    Hard Stop   most recently completed {A_STOP_MIN}-min bar low x {STOP_MULT}  (set at entry, fixed)')
     print(f'    Trail Stop  highest completed {A_TRAIL_MIN}-min low since entry x {STOP_MULT}  (activates once this level > entry)')
+    print(f'    Full TP     full exit at entry + <R>R (swept per strategy row above) or entry + ${A_FULL_TP_DOLLAR:.2f}, whichever is closer')
     print( '    Partial TP  sell 1/4 of remaining shares on any bar that closes above avg cost')
     print( '    EOD         close at last bar')
     print()
@@ -903,7 +1133,7 @@ def main():
         os.makedirs(export_dir, exist_ok=True)
 
         by_year = {}
-        for t in all_trades:
+        for t in all_trades['A'][PRIMARY_TP]:
             rec = {
                 'date':        t['date'],
                 'symbol':      t['symbol'],
@@ -919,6 +1149,7 @@ def main():
                 'shares':      t['shares'],
                 'pnl':         t['pnl'],
                 'exit_reason': t['exit_reason'],
+                'partials':    t.get('partials', []),
             }
             by_year.setdefault(t['date'][:4], []).append(rec)
 
@@ -927,7 +1158,7 @@ def main():
         for yr, yr_trades in sorted(by_year.items()):
             yr_path = os.path.join(export_dir, f'backtest_trades_{yr}.json')
             with open(yr_path, 'w') as f:
-                json.dump({'strategy': strategy_name, 'generated': generated,
+                json.dump({'strategy': strategy_name_for(PRIMARY_TP), 'generated': generated,
                            'trades': yr_trades}, f, separators=(',', ':'))
             print(f'  Exported {len(yr_trades)} trades -> {yr_path}')
             total += len(yr_trades)

@@ -9,8 +9,7 @@ Usage:
     python fetch_ohlcv.py --symbol ACXP                # re-fetch all dates for one symbol
     python fetch_ohlcv.py --date 2026-03-16 --symbol ACXP  # re-fetch one symbol/date pair
 
-Source: Schwab API only. Schwab only retains ~10 days of 1-min history, so
-dates older than that will come back empty.
+Source: Alpaca API (SIP feed). Retains at least several years of 1-min history.
 """
 
 import json
@@ -19,12 +18,9 @@ import sys
 import argparse
 import ftplib
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
-_ET = ZoneInfo('America/New_York')
-
-# Schwab client — initialised once in main(), shared by fetch helpers
-_schwab_client = None
+# Alpaca client — initialised once in main(), shared by fetch helpers
+_alpaca_client = None
 
 _HERE        = os.path.dirname(__file__)
 DASHBOARD    = os.path.join(_HERE, 'dashboard')
@@ -96,48 +92,20 @@ def load_calendar_pairs():
     return pairs
 
 
-def _fetch_schwab(symbol, date_str):
-    """Try Schwab price_history for one symbol/date. Returns candle list or []."""
-    if _schwab_client is None:
+def _fetch_alpaca(symbol, date_str):
+    """Try Alpaca get_minute_bars for one symbol/date. Returns candle list or []."""
+    if _alpaca_client is None:
         return []
     try:
-        # Build midnight-to-midnight ET window in epoch-ms
-        dt_start = datetime.strptime(date_str, '%Y-%m-%d').replace(
-            hour=4, minute=0, second=0, tzinfo=_ET)
-        dt_end   = datetime.strptime(date_str, '%Y-%m-%d').replace(
-            hour=20, minute=0, second=0, tzinfo=_ET)
-
-        resp = _schwab_client.price_history(
-            symbol,
-            frequencyType='minute',
-            frequency=1,
-            startDate=dt_start,
-            endDate=dt_end,
-            needExtendedHoursData=True,
-        )
-        resp.raise_for_status()
-        candles = resp.json().get('candles') or []
-        if not candles:
-            return []
-        return [
-            {
-                'time':   c['datetime'] // 1000,
-                'open':   round(c['open'],   4),
-                'high':   round(c['high'],   4),
-                'low':    round(c['low'],    4),
-                'close':  round(c['close'],  4),
-                'volume': int(c.get('volume') or 0),
-            }
-            for c in candles
-        ]
+        return _alpaca_client.get_minute_bars(symbol, date_str)
     except Exception as e:
-        print(f'  [schwab error] {e}', end=' ')
+        print(f'  [alpaca error] {e}', end=' ')
         return []
 
 
 def fetch_day(symbol, date_str):
-    """Fetch 1-min OHLCV from Schwab."""
-    return _fetch_schwab(symbol, date_str)
+    """Fetch 1-min OHLCV from Alpaca."""
+    return _fetch_alpaca(symbol, date_str)
 
 
 def latest_cached_date():
@@ -161,7 +129,7 @@ def today_str():
 
 
 def main():
-    global _schwab_client
+    global _alpaca_client
 
     parser = argparse.ArgumentParser(description='Fetch 1-min OHLCV for all trade days')
     parser.add_argument('--refresh', action='store_true',
@@ -173,12 +141,13 @@ def main():
     args = parser.parse_args()
 
     try:
-        import schwabdev
         from utilities import config
-        _schwab_client = schwabdev.Client(config.SCHWAB_API_KEY, config.SCHWAB_CLIENT_ID)
-        print('Schwab client ready')
+        from utilities.alpaca_client import AlpacaClient
+        _alpaca_client = AlpacaClient(config.ALPACA_API_KEY_ID, config.ALPACA_API_SECRET_KEY,
+                                       feed=config.ALPACA_DATA_FEED)
+        print('Alpaca client ready')
     except Exception as e:
-        print(f'ERROR: Schwab client unavailable ({e}) — cannot fetch OHLCV')
+        print(f'ERROR: Alpaca client unavailable ({e}) — cannot fetch OHLCV')
         sys.exit(1)
 
     pairs = load_calendar_pairs()
