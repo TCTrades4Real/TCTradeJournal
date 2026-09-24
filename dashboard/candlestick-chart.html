@@ -524,6 +524,11 @@
   <span class="legend-item"><span class="legend-dot" style="background:rgb(239,68,68);border-radius:2px;transform:rotate(45deg)"></span> Exit (loss)</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(76,29,149);border-radius:2px;transform:rotate(45deg)"></span> Roth entry</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(196,181,253);border-radius:2px;transform:rotate(45deg)"></span> Roth exit</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(34,197,94)"></span> Paper entry</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(59,130,246)"></span> Paper partial exit</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(249,115,22)"></span> Paper exit (win)</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(239,68,68)"></span> Paper exit (loss)</span>
+  <span class="legend-item"><span class="legend-dot" style="background:rgb(156,163,175)"></span> Carried over from prior day</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(22,26,52);border:1px solid #2e3248"></span> Pre-market</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(22,26,52);border:1px solid #2e3248"></span> After-hours</span>
   <span class="legend-item"><span class="legend-dot" style="background:rgb(128,255,255)"></span> 9 EMA</span>
@@ -720,18 +725,48 @@
   /* ── Trade grouping ─────────────────────────────── */
   // Groups a flat list of executions into round-trips (position 0→n→0 cycles).
   function groupExecutionsIntoTrades(execs) {
-    const groups = [];
-    let current = [], position = 0;
+    // Round-trips are per (symbol, account) — execs here are already filtered to one
+    // symbol, but two different accounts holding the same symbol the same day (e.g. a
+    // real trade and a paper trade in the same ticker) are financially unrelated
+    // positions. Merging their fills into one chronological position-walk corrupts it —
+    // the walk may never return to zero, so the trade never registers as closed and no
+    // exit marker gets drawn. Bucket by account first, then walk each bucket separately.
+    const byAccount = new Map();
     for (const ex of execs) {
-      current.push(ex);
-      position += ex.side === 'buy' ? ex.qty : -ex.qty;
-      if (Math.abs(position) < 0.001) {
-        groups.push(current);
-        current = [];
-        position = 0;
-      }
+      const key = ex.account || '';
+      if (!byAccount.has(key)) byAccount.set(key, []);
+      byAccount.get(key).push(ex);
     }
-    if (current.length > 0) groups.push(current); // open/partial trade
+
+    const groups = [];
+    for (const acctExecs of byAccount.values()) {
+      // A day's first fill for a symbol being a sell means it's closing a position that
+      // was opened on a PRIOR day (calendar_data.py buckets fills per calendar day, so
+      // the real entry fill lives in yesterday's data, not here) — there's no valid
+      // entry price for it within today alone. Rather than let the position walk below
+      // start negative and drag everything that follows into one ambiguous "carryover"
+      // blob, split it into its own single-fill group (still rendered as the usual
+      // neutral "carryover" marker below, via the existing trade[0].pos_effect ===
+      // 'TO CLOSE' check) instead — a fresh, fully-within-today round-trip right after
+      // it then renders normally on its own.
+      let rest = acctExecs;
+      if (rest.length && rest[0].side === 'sell') {
+        groups.push([rest[0]]);
+        rest = rest.slice(1);
+      }
+
+      let current = [], position = 0;
+      for (const ex of rest) {
+        current.push(ex);
+        position += ex.side === 'buy' ? ex.qty : -ex.qty;
+        if (Math.abs(position) < 0.001) {
+          groups.push(current);
+          current = [];
+          position = 0;
+        }
+      }
+      if (current.length > 0) groups.push(current); // open/partial trade
+    }
     return groups;
   }
 
@@ -1293,8 +1328,12 @@
   /* ── SVG execution markers ───────────────────────── */
   // Returns a cleanup function. Caller is responsible for calling previous cleanup and storing the new one.
   // role: 'entry' (opening side of the round-trip), 'partial' (interim closing fill),
-  // or 'exit' (the fill that flattens the position).
+  // 'exit' (the fill that flattens the position), or 'carryover' (this day's view opens
+  // with a 'TO CLOSE' fill — the real entry happened a prior day and isn't in this day's
+  // data, so there's no valid P&L to color by). Carryover always wins over Roth-purple:
+  // "we can't compute this" is more urgent to signal than which account it's in.
   function realTradeColor(role, tradePnl, isRoth) {
+    if (role === 'carryover') return 'rgb(156,163,175)';
     if (isRoth) return role === 'entry' ? 'rgb(76,29,149)' : 'rgb(196,181,253)';
     if (role === 'entry')   return 'rgb(34,197,94)';
     if (role === 'partial') return 'rgb(59,130,246)';
@@ -1310,6 +1349,7 @@
     const seriesRef   = ctx?.seriesRef   ?? candleSeriesRef;
     const containerId = ctx?.containerId ?? 'chartMain';
     const dotTipEl    = ctx?.dotTipEl    ?? document.getElementById('dotTooltip');
+    const trades      = ctx?.trades      ?? activeTrades;
 
     if (!executions?.length || !chartInst || !seriesRef) return null;
 
@@ -1339,9 +1379,16 @@
     // to its final exit.
     const execRole  = new Map();
     const tradeLines = [];
-    for (const trade of activeTrades) {
+    for (const trade of trades) {
       if (!trade.length) continue;
       const openSide = trade[0].side;
+      // A group whose first visible fill is 'TO CLOSE' didn't actually open here — the
+      // real entry happened a prior day and isn't in this day's data (calendar_data.py
+      // buckets executions per calendar day, so a cross-day round-trip's halves land in
+      // two different days' JSON). Every fill in such a group is really an exit-side
+      // fragment of that other trade; there's no valid entry price to compute P&L from
+      // within this day alone, so render the whole group neutral instead of guessing.
+      const isCarryover = trade[0].pos_effect === 'TO CLOSE';
       let buyCost = 0, sellRev = 0, netPos = 0;
       for (const ex of trade) {
         if (ex.side === 'buy') { buyCost += ex.qty * ex.price; netPos += ex.qty; }
@@ -1353,11 +1400,12 @@
       trade.forEach((ex, i) => {
         const ts = execToTimestamp(ex.time, timeMap);
         if (ts == null) return;
-        const role = ex.side === openSide ? 'entry' : (closed && i === lastIdx ? 'exit' : 'partial');
+        const role = isCarryover ? 'carryover'
+          : ex.side === openSide ? 'entry' : (closed && i === lastIdx ? 'exit' : 'partial');
         execRole.set(`${ts}_${ex.side}_${ex.price}`, { role, pnl });
       });
 
-      if (closed && trade.length > 1) {
+      if (!isCarryover && closed && trade.length > 1) {
         const first = trade[0], last = trade[lastIdx];
         const firstTsBar = execToTimestamp(first.time, posMap);
         const lastTsBar  = execToTimestamp(last.time,  posMap);
@@ -1405,26 +1453,35 @@
         const y = seriesRef.priceToCoordinate(m.price);
         if (x == null || y == null) continue;
 
-        const isRoth = (m.account || '').toLowerCase().includes('roth');
+        const isRoth  = (m.account || '').toLowerCase().includes('roth');
+        const isPaper = (m.account || '').toLowerCase().includes('paper');
         const info   = execRole.get(`${m.ts}_${m.side}_${m.price}`) || { role: m.side === 'buy' ? 'entry' : 'exit', pnl: 0 };
         const color  = realTradeColor(info.role, info.pnl, isRoth);
         const rad    = info.role === 'partial' ? r * 0.75 : r;
-        const pts    = diamondPoints(x, y, rad);
-        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        dot.setAttribute('points', pts);
+        let dot;
+        if (isPaper) {
+          dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', rad);
+        } else {
+          dot = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+          dot.setAttribute('points', diamondPoints(x, y, rad));
+        }
         dot.setAttribute('fill', color);
         dot.setAttribute('stroke', 'rgba(255,255,255,0.6)');
         dot.setAttribute('stroke-width', '1');
         dot.style.pointerEvents = 'all';
         dot.style.cursor = 'crosshair';
 
-        const sideLabel = m.side === 'buy' ? 'BUY' : 'SELL';
-        const roleLabel = info.role === 'entry' ? 'ENTRY' : info.role === 'partial' ? 'PARTIAL EXIT' : 'EXIT';
-        const timeStr   = tsToET(m.ts);
+        const sideLabel   = m.side === 'buy' ? 'BUY' : 'SELL';
+        const roleLabel   = info.role === 'carryover' ? 'CARRIED OVER'
+          : info.role === 'entry' ? 'ENTRY' : info.role === 'partial' ? 'PARTIAL EXIT' : 'EXIT';
+        const labelPrefix = isPaper ? 'PAPER ' : '';
+        const timeStr     = tsToET(m.ts);
         dot.addEventListener('mouseenter', e => {
           dotTipEl.innerHTML =
-            `<span style="color:${color};font-weight:600">${roleLabel}</span>&nbsp;&nbsp;$${m.price.toFixed(2)}<br>` +
-            `<span style="color:#6b7280;font-size:11px">${sideLabel} &middot; ${timeStr}</span>`;
+            `<span style="color:${color};font-weight:600">${labelPrefix}${roleLabel}</span>&nbsp;&nbsp;$${m.price.toFixed(2)}<br>` +
+            `<span style="color:#6b7280;font-size:11px">${sideLabel} &middot; ${timeStr}</span>` +
+            (info.role === 'carryover' ? '<br><span style="color:#6b7280;font-size:10px">entered a prior day — P&L not shown here</span>' : '');
           dotTipEl.style.display = 'block';
           dotTipEl.style.left = (e.clientX + 14) + 'px';
           dotTipEl.style.top  = (e.clientY - 36) + 'px';

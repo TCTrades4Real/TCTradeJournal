@@ -1,0 +1,686 @@
+[
+  {
+    "date": "2026-09-14",
+    "symbol": "FTFT",
+    "entry_time": "10:36",
+    "exit_time": "10:36"
+  },
+  {
+    "date": "2026-09-14",
+    "symbol": "FTFT",
+    "entry_time": "10:36",
+    "exit_time": "10:52"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "11:59",
+    "exit_time": "12:00"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "BNGO",
+    "entry_time": "12:05",
+    "exit_time": "12:06"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "12:04",
+    "exit_time": "12:05"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "BNGO",
+    "entry_time": "12:06",
+    "exit_time": "12:07"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "BNGO",
+    "entry_time": "12:11",
+    "exit_time": "12:12"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "BNGO",
+    "entry_time": "12:17",
+    "exit_time": "12:20"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "BNGO",
+    "entry_time": "12:20",
+    "exit_time": "12:26"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "BNGO",
+    "entry_time": "12:26",
+    "exit_time": "12:34"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "IPW",
+    "entry_time": "12:27",
+    "exit_time": "12:33"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "BNGO",
+    "entry_time": "11:34",
+    "exit_time": "11:57"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "BNGO",
+    "entry_time": "11:57",
+    "exit_time": "12:05"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "11:58",
+    "exit_time": "11:59"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "11:58",
+    "exit_time": "11:58"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "BNGO",
+    "entry_time": "10:42",
+    "exit_time": "11:10"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "BNGO",
+    "entry_time": "11:14",
+    "exit_time": "11:31"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "BNGO",
+    "entry_time": "11:32",
+    "exit_time": "11:32"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "BNGO",
+    "entry_time": "11:33",
+    "exit_time": "11:33"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "BNGO",
+    "entry_time": "10:39",
+    "exit_time": "10:42"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "10:38",
+    "exit_time": "10:38"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "10:38",
+    "exit_time": "10:39"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "10:37",
+    "exit_time": "10:38"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "10:34",
+    "exit_time": "10:37"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "10:31",
+    "exit_time": "10:31"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "10:20",
+    "exit_time": "10:27"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "10:15",
+    "exit_time": "10:16"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "10:16",
+    "exit_time": "10:19"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "10:19",
+    "exit_time": "10:19"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "10:07",
+    "exit_time": "10:08"
+  },
+  {
+    "date": "2026-09-15",
+    "symbol": "VEEA",
+    "entry_time": "10:10",
+    "exit_time": "10:12"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "MEDS",
+    "entry_time": "14:26",
+    "exit_time": "14:27"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "MEDS",
+    "entry_time": "14:07",
+    "exit_time": "14:11"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "MEDS",
+    "entry_time": "13:58",
+    "exit_time": "14:04"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "MEDS",
+    "entry_time": "11:47",
+    "exit_time": "11:47"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "MEDS",
+    "entry_time": "11:27",
+    "exit_time": "11:27"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "MEDS",
+    "entry_time": "11:27",
+    "exit_time": "11:34"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "MEDS",
+    "entry_time": "11:26",
+    "exit_time": "11:26"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "MEDS",
+    "entry_time": "11:26",
+    "exit_time": "11:27"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "MEDS",
+    "entry_time": "11:17",
+    "exit_time": "11:18"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "TGL",
+    "entry_time": "11:57",
+    "exit_time": "11:57"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "TGL",
+    "entry_time": "12:08",
+    "exit_time": "12:09"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "TGL",
+    "entry_time": "11:59",
+    "exit_time": "12:05"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "TGL",
+    "entry_time": "12:10",
+    "exit_time": "12:11"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "TGL",
+    "entry_time": "12:17",
+    "exit_time": "12:17"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "TGL",
+    "entry_time": "12:18",
+    "exit_time": "12:19"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "TGL",
+    "entry_time": "12:41",
+    "exit_time": "12:54"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "TGL",
+    "entry_time": "13:15",
+    "exit_time": "13:15"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "AEHL",
+    "entry_time": "14:28",
+    "exit_time": "14:30"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "DLXY",
+    "entry_time": "14:31",
+    "exit_time": "14:36"
+  },
+  {
+    "date": "2026-09-16",
+    "symbol": "MEDS",
+    "entry_time": "10:42",
+    "exit_time": "10:59"
+  },
+  {
+    "date": "2026-09-17",
+    "symbol": "DAIC",
+    "entry_time": "10:08",
+    "exit_time": "10:09"
+  },
+  {
+    "date": "2026-09-17",
+    "symbol": "DAIC",
+    "entry_time": "10:03",
+    "exit_time": "10:05"
+  },
+  {
+    "date": "2026-09-17",
+    "symbol": "TURB",
+    "entry_time": "09:23",
+    "exit_time": "09:31"
+  },
+  {
+    "date": "2026-09-17",
+    "symbol": "BIAF",
+    "entry_time": "08:52",
+    "exit_time": "08:57"
+  },
+  {
+    "date": "2026-09-17",
+    "symbol": "BIAF",
+    "entry_time": "08:50",
+    "exit_time": "08:52"
+  },
+  {
+    "date": "2026-09-17",
+    "symbol": "DTSS",
+    "entry_time": "09:18",
+    "exit_time": "09:19"
+  },
+  {
+    "date": "2026-09-17",
+    "symbol": "DTSS",
+    "entry_time": "09:22",
+    "exit_time": "09:22"
+  },
+  {
+    "date": "2026-09-17",
+    "symbol": "DTSS",
+    "entry_time": "09:19",
+    "exit_time": "09:20"
+  },
+  {
+    "date": "2026-09-17",
+    "symbol": "BIAF",
+    "entry_time": "08:49",
+    "exit_time": "08:50"
+  },
+  {
+    "date": "2026-09-17",
+    "symbol": "WETO",
+    "entry_time": "09:05",
+    "exit_time": "09:05"
+  },
+  {
+    "date": "2026-09-17",
+    "symbol": "DTSS",
+    "entry_time": "09:20",
+    "exit_time": "09:21"
+  },
+  {
+    "date": "2026-09-17",
+    "symbol": "TURB",
+    "entry_time": "08:42",
+    "exit_time": "08:43"
+  },
+  {
+    "date": "2026-09-17",
+    "symbol": "TURB",
+    "entry_time": "08:46",
+    "exit_time": "08:46"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "11:22",
+    "exit_time": "11:24"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "11:22",
+    "exit_time": "11:22"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "11:17",
+    "exit_time": "11:20"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "10:56",
+    "exit_time": "11:05"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "10:54",
+    "exit_time": "10:56"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "10:53",
+    "exit_time": "10:53"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "10:50",
+    "exit_time": "10:50"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "10:51",
+    "exit_time": "10:52"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "10:46",
+    "exit_time": "10:49"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "10:45",
+    "exit_time": "10:46"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "10:42",
+    "exit_time": "10:44"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "10:42",
+    "exit_time": "10:42"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "10:39",
+    "exit_time": "10:40"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "10:37",
+    "exit_time": "10:38"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "10:33",
+    "exit_time": "10:37"
+  },
+  {
+    "date": "2026-09-18",
+    "symbol": "IMCC",
+    "entry_time": "10:31",
+    "exit_time": "10:32"
+  },
+  {
+    "date": "2026-09-22",
+    "symbol": "DCOY",
+    "entry_time": "10:43",
+    "exit_time": "10:44"
+  },
+  {
+    "date": "2026-09-22",
+    "symbol": "DCOY",
+    "entry_time": "10:42",
+    "exit_time": "10:42"
+  },
+  {
+    "date": "2026-09-22",
+    "symbol": "DCOY",
+    "entry_time": "10:41",
+    "exit_time": "10:42"
+  },
+  {
+    "date": "2026-09-22",
+    "symbol": "DCOY",
+    "entry_time": "10:42",
+    "exit_time": "10:43"
+  },
+  {
+    "date": "2026-09-22",
+    "symbol": "DCOY",
+    "entry_time": "10:43",
+    "exit_time": "10:43"
+  },
+  {
+    "date": "2026-09-22",
+    "symbol": "DCOY",
+    "entry_time": "10:38",
+    "exit_time": "10:41"
+  },
+  {
+    "date": "2026-09-22",
+    "symbol": "DCOY",
+    "entry_time": "10:37",
+    "exit_time": "10:38"
+  },
+  {
+    "date": "2026-09-22",
+    "symbol": "DCOY",
+    "entry_time": "10:21",
+    "exit_time": "10:22"
+  },
+  {
+    "date": "2026-09-22",
+    "symbol": "DCOY",
+    "entry_time": "10:35",
+    "exit_time": "10:36"
+  },
+  {
+    "date": "2026-09-22",
+    "symbol": "DCOY",
+    "entry_time": "10:22",
+    "exit_time": "10:29"
+  },
+  {
+    "date": "2026-09-22",
+    "symbol": "DCOY",
+    "entry_time": "10:20",
+    "exit_time": "10:21"
+  },
+  {
+    "date": "2026-09-22",
+    "symbol": "DCOY",
+    "entry_time": "10:20",
+    "exit_time": "10:20"
+  },
+  {
+    "date": "2026-09-22",
+    "symbol": "DCOY",
+    "entry_time": "10:17",
+    "exit_time": "10:20"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "BENF",
+    "entry_time": "11:51",
+    "exit_time": "12:24"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "BENF",
+    "entry_time": "11:50",
+    "exit_time": "11:51"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "BENF",
+    "entry_time": "11:50",
+    "exit_time": "11:50"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "DAIC",
+    "entry_time": "12:22",
+    "exit_time": "12:24"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "MSS",
+    "entry_time": "11:32",
+    "exit_time": "11:33"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "MSS",
+    "entry_time": "11:32",
+    "exit_time": "11:32"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "MSS",
+    "entry_time": "11:34",
+    "exit_time": "11:34"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "MSS",
+    "entry_time": "11:36",
+    "exit_time": "11:36"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "BENF",
+    "entry_time": "11:37",
+    "exit_time": "11:37"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "BENF",
+    "entry_time": "11:38",
+    "exit_time": "11:40"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "BENF",
+    "entry_time": "11:38",
+    "exit_time": "11:38"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "ARTL",
+    "entry_time": "11:41",
+    "exit_time": "11:46"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "ARTL",
+    "entry_time": "11:41",
+    "exit_time": "11:41"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "GNPX",
+    "entry_time": "11:44",
+    "exit_time": "11:47"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "MSS",
+    "entry_time": "11:45",
+    "exit_time": "11:47"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "FTFT",
+    "entry_time": "11:46",
+    "exit_time": "11:49"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "BENF",
+    "entry_time": "11:47",
+    "exit_time": "11:48"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "BENF",
+    "entry_time": "11:49",
+    "exit_time": "11:50"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "BENF",
+    "entry_time": "11:49",
+    "exit_time": "11:49"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "FTFT",
+    "entry_time": "11:55",
+    "exit_time": "11:56"
+  },
+  {
+    "date": "2026-09-23",
+    "symbol": "FTFT",
+    "entry_time": "11:57",
+    "exit_time": "11:58"
+  }
+]

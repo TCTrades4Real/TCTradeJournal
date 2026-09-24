@@ -150,12 +150,16 @@ def compute_daily_details(executions):
 
     for ex in executions:
         daily_executions[ex['date']].append({
-            'symbol':  ex['symbol'],
-            'account': ex.get('account', ''),
-            'time':    ex['dt'].strftime('%H:%M:%S'),
-            'price':   round(ex['price'], 4),
-            'qty':     abs(int(ex['qty'])),
-            'side':    'buy' if ex['qty'] > 0 else 'sell',
+            'symbol':     ex['symbol'],
+            'account':    ex.get('account', ''),
+            'time':       ex['dt'].strftime('%H:%M:%S'),
+            'price':      round(ex['price'], 4),
+            'qty':        abs(int(ex['qty'])),
+            'side':       'buy' if ex['qty'] > 0 else 'sell',
+            # 'TO OPEN'/'TO CLOSE'/'' — lets the chart recognize a fill that closes a
+            # position opened on a PRIOR day (this day's view has no matching entry to
+            # pair it with, so its P&L can't be computed from this day's data alone).
+            'pos_effect': ex.get('pos_effect', ''),
         })
 
     for ex in executions:
@@ -206,6 +210,12 @@ def compute_daily_details(executions):
                     'qty':         rt_open_qty,
                     'entry_time':  entry_dt.strftime('%H:%M'),
                     'exit_time':   t['dt'].strftime('%H:%M'),
+                    # Roundtrips are bucketed under their EXIT date (the dict key above)
+                    # — this is only different from that when a trade spans multiple
+                    # days. Needed to build a correct delete key for a cross-day trade,
+                    # since date+entry_time alone (assuming same-day) would target the
+                    # wrong day and silently never match.
+                    'entry_date':  entry_dt.date().isoformat(),
                     'hold_secs':   hold_secs,
                     'entry_price': avg_entry,
                     'exit_price':  avg_exit,
@@ -235,10 +245,13 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
         if mo not in result[yr]:
             result[yr][mo] = {'total': 0.0, 'trades': 0, 'days': {}}
 
-        total_pnl      = round(sum(rt['pnl'] for rt in roundtrips), 2)
-        total_pnl_cash = round(sum(rt['pnl'] for rt in roundtrips if 'cash' in rt.get('account', '').lower()), 2)
-        total_pnl_roth = round(sum(rt['pnl'] for rt in roundtrips if 'roth' in rt.get('account', '').lower()), 2)
-        total_pnl_tz   = round(sum(rt['pnl'] for rt in roundtrips if 'tz' in rt.get('account', '').lower()), 2)
+        # NOTE: 'tzlive' (not bare 'tz') below — 'tz' alone would also match the
+        # 'TZPaper' account, since 'tzpaper' contains 'tz' as a substring.
+        total_pnl       = round(sum(rt['pnl'] for rt in roundtrips), 2)
+        total_pnl_cash  = round(sum(rt['pnl'] for rt in roundtrips if 'cash' in rt.get('account', '').lower()), 2)
+        total_pnl_roth  = round(sum(rt['pnl'] for rt in roundtrips if 'roth' in rt.get('account', '').lower()), 2)
+        total_pnl_tz    = round(sum(rt['pnl'] for rt in roundtrips if 'tzlive' in rt.get('account', '').lower()), 2)
+        total_pnl_paper = round(sum(rt['pnl'] for rt in roundtrips if 'paper' in rt.get('account', '').lower()), 2)
         total_trades = len(roundtrips)
         winning = [rt for rt in roundtrips if rt['pnl'] > 0]
         losing  = [rt for rt in roundtrips if rt['pnl'] < 0]
@@ -248,7 +261,8 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
         for rt in roundtrips:
             s = rt['symbol']
             if s not in sym_map:
-                sym_map[s] = {'trades': 0, 'shares': 0, 'pnl': 0.0, 'pnl_cash': 0.0, 'pnl_roth': 0.0, 'pnl_tz': 0.0}
+                sym_map[s] = {'trades': 0, 'shares': 0, 'pnl': 0.0, 'pnl_cash': 0.0, 'pnl_roth': 0.0,
+                               'pnl_tz': 0.0, 'pnl_paper': 0.0}
             sym_map[s]['trades'] += 1
             sym_map[s]['shares'] += int(rt['qty'])
             sym_map[s]['pnl']     = round(sym_map[s]['pnl'] + rt['pnl'], 2)
@@ -257,7 +271,9 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
                 sym_map[s]['pnl_cash'] = round(sym_map[s]['pnl_cash'] + rt['pnl'], 2)
             elif 'roth' in acct:
                 sym_map[s]['pnl_roth'] = round(sym_map[s]['pnl_roth'] + rt['pnl'], 2)
-            elif 'tz' in acct:
+            elif 'paper' in acct:
+                sym_map[s]['pnl_paper'] = round(sym_map[s]['pnl_paper'] + rt['pnl'], 2)
+            elif 'tzlive' in acct:
                 sym_map[s]['pnl_tz'] = round(sym_map[s]['pnl_tz'] + rt['pnl'], 2)
 
         # ── Stats ─────────────────────────────────────────
@@ -293,11 +309,12 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
             chart.append({'t': rt['exit_time'], 'pnl': round(cum, 2)})
 
         result[yr][mo]['days'][dy] = {
-            'pnl':      total_pnl,
-            'pnl_cash': total_pnl_cash,
-            'pnl_roth': total_pnl_roth,
-            'pnl_tz':   total_pnl_tz,
-            'trades':   total_trades,
+            'pnl':       total_pnl,
+            'pnl_cash':  total_pnl_cash,
+            'pnl_roth':  total_pnl_roth,
+            'pnl_tz':    total_pnl_tz,
+            'pnl_paper': total_pnl_paper,
+            'trades':    total_trades,
             'symbols':  sym_map,
             'roundtrips': [
                 {
@@ -307,6 +324,7 @@ def build_json(daily_roundtrips, daily_volume, daily_executions, filter_year=Non
                     'qty':         rt['qty'],
                     'entry_time':  rt['entry_time'],
                     'exit_time':   rt['exit_time'],
+                    'entry_date':  rt['entry_date'],
                     'hold_secs':   rt['hold_secs'],
                     'entry_price': rt['entry_price'],
                     'exit_price':  rt['exit_price'],

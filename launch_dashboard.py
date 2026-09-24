@@ -1,9 +1,11 @@
 """
-launch_dashboard.py — starts a local HTTP server for dashboard/ (if not already
-running) and opens it in a tabless Chrome app window (no tabs, no address bar).
+launch_dashboard.py — starts dashboard_server.py (if not already running) and opens
+the dashboard in a tabless Chrome app window (no tabs, no address bar).
 
 Needed because Chrome/Edge block fetch() of local JSON under file:// (CORS) —
-see CLAUDE.md's Dashboard Notes.
+see CLAUDE.md's Dashboard Notes. dashboard_server.py (rather than plain
+`python -m http.server`) is what makes the candlestick chart's paper-trade delete
+button work — it adds one write endpoint on top of serving static files.
 
 Usage:
     python launch_dashboard.py
@@ -16,7 +18,6 @@ import time
 import webbrowser
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_DASHBOARD_DIR = os.path.join(_HERE, 'dashboard')
 _PORT = 8000
 _URL = f'http://localhost:{_PORT}/index.html'
 _CHROME_ENV_VARS = ('ProgramFiles', 'ProgramFiles(x86)', 'LocalAppData')
@@ -45,8 +46,8 @@ def _find_chrome():
 def main():
     if not _port_open(_PORT):
         subprocess.Popen(
-            [sys.executable, '-m', 'http.server', str(_PORT)],
-            cwd=_DASHBOARD_DIR,
+            [sys.executable, os.path.join(_HERE, 'dashboard_server.py'), str(_PORT)],
+            cwd=_HERE,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             creationflags=subprocess.CREATE_NO_WINDOW,

@@ -1,5 +1,7 @@
 """
-fetch_ohlcv.py — pre-fetch 1-minute OHLCV for every symbol/day in calendar data
+fetch_ohlcv.py — pre-fetch 1-minute OHLCV for every symbol/day in calendar data (this
+now includes TZPaper trades too, since import_tradezero.py blends them into the same
+calendar_data_YYYY.json as everything else)
 Writes dashboard/ohlcv_YYYY-MM-DD.json per trading day (structure: { "SYMBOL": [bars...] })
 
 Usage:

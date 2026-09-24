@@ -35,8 +35,15 @@ class TradeZeroClient:
 
     def get_orders(self):
         """Today's orders (working + closed) for this account. Each row is one order,
-        already blended across any partial fills it received (see 'executed'/'priceAvg')."""
-        return self._get(f'/v1/api/accounts/{self.account_id}/orders').get('orders', [])
+        already blended across any partial fills it received (see 'executed'/'priceAvg').
+        TZ's API 404s (instead of returning an empty list) on days with zero orders so
+        far, so that specific case is swallowed here and treated as no orders."""
+        try:
+            return self._get(f'/v1/api/accounts/{self.account_id}/orders').get('orders', [])
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code == 404:
+                return []
+            raise
 
     def get_account(self):
         """This account's summary record (equity, availableCash, realized, etc.) from

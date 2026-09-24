@@ -355,7 +355,36 @@
     .acct-badge-cash { background: rgba(34,197,94,0.15); color: #22c55e; }
     .acct-badge-roth { background: rgba(168,85,247,0.15); color: #a855f7; }
     .acct-badge-tzlive { background: rgba(20,184,166,0.15); color: #14b8a6; }
+    .acct-badge-paper { background: rgba(245,158,11,0.15); color: #f59e0b; }
     .acct-badge-other { background: rgba(255,255,255,0.06); color: #9ca3af; }
+
+    .row-delete-btn {
+      background: transparent; border: 1px solid rgba(255,255,255,0.08); border-radius: 4px;
+      color: var(--text-secondary); width: 24px; height: 24px; line-height: 1;
+      font-size: 13px; cursor: pointer; padding: 0;
+    }
+    .row-delete-btn:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); color: #ef4444; }
+
+    /* ── Multi-select bulk delete ── */
+    .check-col { width: 36px; }
+    .row-check, .header-check { width: 15px; height: 15px; cursor: pointer; accent-color: #ef4444; vertical-align: middle; }
+    .bulk-bar {
+      display: none; align-items: center; gap: 12px;
+      padding: 10px 20px; border-bottom: 1px solid var(--glass-border);
+      background: rgba(239,68,68,0.08); font-size: 13px; color: var(--text-primary);
+    }
+    .bulk-bar.show { display: flex; }
+    .bulk-bar .bulk-count { font-weight: 600; }
+    .bulk-spacer { flex: 1; }
+    .bulk-btn {
+      background: transparent; border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
+      color: var(--text-secondary); font-size: 13px; font-family: inherit; padding: 6px 14px;
+      cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .bulk-btn:hover:not(:disabled) { background: #2a2a2a; color: #ffffff; }
+    .bulk-btn:disabled { opacity: 0.5; cursor: default; }
+    .bulk-btn-danger { border-color: rgba(239,68,68,0.4); color: #ef4444; }
+    .bulk-btn-danger:hover:not(:disabled) { background: rgba(239,68,68,0.15); }
 
     /* ── Candlestick modal ───────────────────────────── */
     .cdl-overlay {
@@ -377,6 +406,7 @@
 </head>
 <body>
 <script src="nav.js"></script>
+<script src="paper-delete.js"></script>
 
 <div class="cdl-overlay" id="candleModalOverlay">
   <div class="cdl-box">
@@ -466,7 +496,8 @@
       <button class="quick-btn active" data-acct="all">All</button>
       <button class="quick-btn" data-acct="cash">Cash</button>
       <button class="quick-btn" data-acct="roth">Roth</button>
-      <button class="quick-btn" data-acct="tz">TZ Live</button>
+      <button class="quick-btn" data-acct="tzlive">TZ Live</button>
+      <button class="quick-btn" data-acct="paper">Paper</button>
     </div>
   </div>
 
@@ -511,11 +542,20 @@
     <span class="table-meta" id="tableMeta"></span>
   </div>
 
+  <!-- Bulk delete bar (paper trades only) -->
+  <div class="bulk-bar" id="bulkBar">
+    <span><span class="bulk-count" id="bulkCount">0</span> selected</span>
+    <span class="bulk-spacer"></span>
+    <button type="button" class="bulk-btn" id="bulkClearBtn">Clear</button>
+    <button type="button" class="bulk-btn bulk-btn-danger" id="bulkDeleteBtn">Delete selected</button>
+  </div>
+
   <!-- Table -->
   <div style="overflow-x:auto">
     <table class="trades-table">
       <thead>
         <tr>
+          <th class="check-col"><input type="checkbox" class="header-check" id="headerCheck" title="Select all paper trades on this page"></th>
           <th data-col="date">Date <span class="sort-arrow">↕</span></th>
           <th data-col="entry_time">Open Time <span class="sort-arrow">↕</span></th>
           <th data-col="symbol">Symbol <span class="sort-arrow">↕</span></th>
@@ -524,10 +564,11 @@
           <th data-col="entry_price">Entry Price <span class="sort-arrow">↕</span></th>
           <th data-col="exit_price">Exit Price <span class="sort-arrow">↕</span></th>
           <th data-col="pnl">P&amp;L <span class="sort-arrow">↕</span></th>
+          <th></th>
         </tr>
       </thead>
       <tbody id="tradesBody">
-        <tr><td colspan="8" class="empty-state">Loading...</td></tr>
+        <tr><td colspan="10" class="empty-state">Loading...</td></tr>
       </tbody>
     </table>
   </div>
@@ -563,6 +604,13 @@ let currentPage = 1;
 let pageSize = 10;
 let acctFilter = 'all';
 
+// Multi-select bulk delete (paper trades only) — Map so selections survive pagination/
+// sort/filter re-renders; key identifies the round-trip the same way single delete does.
+const selectedPaper = new Map();
+function paperKey(t) {
+  return `${t.entry_date || t.date}|${t.symbol}|${t.entry_time}|${t.exit_time || ''}`;
+}
+
 function setStatus(msg) {
   const el = document.getElementById('statusMsg');
   el.textContent = msg;
@@ -572,13 +620,17 @@ function setStatus(msg) {
 /* ─── Data loading ─── */
 async function loadAllData() {
   setStatus('Loading…');
-  const idx = await fetch('calendar/calendar_index.json').then(r => r.json());
+  // Cache-bust: a paper-trade delete rebuilds these same-named files server-side, and
+  // without a changing query string the browser can serve the pre-delete response
+  // straight from HTTP cache, making the table look like the delete didn't take.
+  const _cb = '?v=' + Date.now();
+  const idx = await fetch('calendar/calendar_index.json' + _cb).then(r => r.json());
   rawRoundtrips = [];
   rawDayStats   = [];
 
   for (const year of idx.years) {
     let raw;
-    try { raw = await fetch(`calendar/calendar_data_${year}.json`).then(r => r.json()); }
+    try { raw = await fetch(`calendar/calendar_data_${year}.json` + _cb).then(r => r.json()); }
     catch { continue; }
     const months = raw[String(year)] ?? raw;
     for (const [month, mdata] of Object.entries(months)) {
@@ -860,20 +912,26 @@ function renderTable() {
   tbody.innerHTML = '';
 
   if (!page.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No trades match the current filters.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No trades match the current filters.</td></tr>';
     document.getElementById('tableMeta').textContent = '0 trades';
     document.getElementById('pageInfo').textContent = '';
     document.getElementById('pageNav').innerHTML = '';
+    updateHeaderCheck([]);
     return;
   }
 
+  const pagePaperKeys = [];
   for (const t of page) {
     const tr = document.createElement('tr');
     const pnlCls = t.pnl > 0 ? 'pnl-pos' : t.pnl < 0 ? 'pnl-neg' : '';
     const acct = (t.account || '').toLowerCase();
-    const acctCls = acct.includes('cash') ? 'acct-badge-cash' : acct.includes('roth') ? 'acct-badge-roth' : acct.includes('tz') ? 'acct-badge-tzlive' : 'acct-badge-other';
+    const isPaper = acct.includes('paper');
+    const acctCls = acct.includes('cash') ? 'acct-badge-cash' : acct.includes('roth') ? 'acct-badge-roth' : isPaper ? 'acct-badge-paper' : acct.includes('tzlive') ? 'acct-badge-tzlive' : 'acct-badge-other';
     const acctLabel = t.account || '—';
+    const key = isPaper ? paperKey(t) : null;
+    if (key) pagePaperKeys.push(key);
     tr.innerHTML = `
+      <td class="check-col">${isPaper ? `<input type="checkbox" class="row-check" ${selectedPaper.has(key) ? 'checked' : ''}>` : ''}</td>
       <td>${fmtDate(t.date)}</td>
       <td>${t.entry_time ?? '—'}</td>
       <td class="sym-cell">${t.symbol ?? '—'}</td>
@@ -882,14 +940,75 @@ function renderTable() {
       <td>${fmtPriceVal(t.entry_price)}</td>
       <td>${fmtPriceVal(t.exit_price)}</td>
       <td class="${pnlCls}">${fmtPnl(t.pnl)}</td>
+      <td>${isPaper ? '<button type="button" class="row-delete-btn" title="Delete this paper trade">✕</button>' : ''}</td>
     `;
     tr.addEventListener('click', () => openCandlestick(t));
+    if (isPaper) {
+      tr.querySelector('.row-delete-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        deleteTradeRow(t);
+      });
+      tr.querySelector('.row-check').addEventListener('click', e => {
+        e.stopPropagation();
+        if (e.target.checked) selectedPaper.set(key, t);
+        else selectedPaper.delete(key);
+        updateHeaderCheck(pagePaperKeys);
+        updateBulkBar();
+      });
+    }
     tbody.appendChild(tr);
   }
 
+  updateHeaderCheck(pagePaperKeys);
+  updateBulkBar();
   document.getElementById('tableMeta').textContent = `${total.toLocaleString()} trade${total !== 1 ? 's' : ''}`;
   document.getElementById('pageInfo').textContent = `${start + 1}–${end} of ${total.toLocaleString()}`;
   renderPagination(total);
+}
+
+function updateHeaderCheck(pagePaperKeys) {
+  const headerCheck = document.getElementById('headerCheck');
+  if (!pagePaperKeys.length) {
+    headerCheck.checked = false;
+    headerCheck.indeterminate = false;
+    headerCheck.disabled = true;
+    return;
+  }
+  headerCheck.disabled = false;
+  const selectedCount = pagePaperKeys.filter(k => selectedPaper.has(k)).length;
+  headerCheck.checked = selectedCount === pagePaperKeys.length;
+  headerCheck.indeterminate = selectedCount > 0 && selectedCount < pagePaperKeys.length;
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulkBar');
+  document.getElementById('bulkCount').textContent = selectedPaper.size;
+  bar.classList.toggle('show', selectedPaper.size > 0);
+}
+
+// Deletes one whole paper round-trip (same rule as the candlestick chart's delete
+// button — real Cash/Roth/TZLive trades have no delete affordance here). POSTs to
+// dashboard_server.py's write endpoint, which appends the key to
+// dashboard/paper/paper_excluded.json and rebuilds every calendar_data_YYYY.json from
+// the raw logs (paper is blended into real totals, so a delete has to rebuild the whole
+// calendar, not just a paper-only file) — then a full reload of this page's data picks
+// up the change immediately.
+//
+// Uses t.entry_date, NOT t.date: roundtrips are bucketed under their EXIT date, so for
+// a same-day trade the two are equal, but for a trade that opened a prior day (and this
+// row's t.date is that later exit day) they differ — the backend matches on the entry
+// fill's own date, so sending the exit date there would silently never match.
+async function deleteTradeRow(t) {
+  try {
+    await deletePaperTradeRequest({
+      date: t.entry_date || t.date, symbol: t.symbol,
+      entry_time: t.entry_time, exit_time: t.exit_time,
+    });
+  } catch (err) {
+    alertPaperDeleteFailure(err);
+    return;
+  }
+  await loadAllData();
 }
 
 function openCandlestick(t) {
@@ -962,6 +1081,61 @@ document.getElementById('pageSizeSelect').addEventListener('change', e => {
   pageSize = parseInt(e.target.value);
   currentPage = 1;
   renderTable();
+});
+
+/* ─── Bulk delete (paper trades) ─── */
+document.getElementById('headerCheck').addEventListener('click', e => {
+  const start = (currentPage - 1) * pageSize;
+  const end   = Math.min(start + pageSize, filteredTrades.length);
+  for (const t of filteredTrades.slice(start, end)) {
+    const acct = (t.account || '').toLowerCase();
+    if (!acct.includes('paper')) continue;
+    if (e.target.checked) selectedPaper.set(paperKey(t), t);
+    else selectedPaper.delete(paperKey(t));
+  }
+  renderTable();
+});
+
+document.getElementById('bulkClearBtn').addEventListener('click', () => {
+  selectedPaper.clear();
+  renderTable();
+});
+
+document.getElementById('bulkDeleteBtn').addEventListener('click', async () => {
+  const count = selectedPaper.size;
+  if (!count) return;
+
+  // "Select all" operates on the whole current page, which can be up to 250 rows if
+  // that page-size option is set — a bare count ("Delete 250 trades?") doesn't make it
+  // obvious the selection spans symbols/dates the user never looked at. Breaking it down
+  // makes an oversized selection visible before it's irreversible.
+  const bySymbol = new Map();
+  for (const t of selectedPaper.values()) bySymbol.set(t.symbol, (bySymbol.get(t.symbol) || 0) + 1);
+  const breakdown = Array.from(bySymbol.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([sym, n]) => `  ${sym}: ${n}`)
+    .join('\n');
+  const msg = `Delete ${count} paper trade${count !== 1 ? 's' : ''}?\n\n${breakdown}\n\nThis can't be undone from the dashboard.`;
+  if (!confirm(msg)) return;
+
+  const btn = document.getElementById('bulkDeleteBtn');
+  btn.disabled = true;
+  btn.textContent = 'Deleting…';
+  try {
+    const trades = Array.from(selectedPaper.values()).map(t => ({
+      date: t.entry_date || t.date, symbol: t.symbol,
+      entry_time: t.entry_time, exit_time: t.exit_time,
+    }));
+    await deletePaperTradesRequest(trades);
+  } catch (err) {
+    alertPaperDeleteFailure(err);
+    btn.disabled = false;
+    btn.textContent = 'Delete selected';
+    return;
+  }
+  selectedPaper.clear();
+  btn.textContent = 'Delete selected';
+  await loadAllData();
 });
 
 /* ═══════════════════════════════════════════
